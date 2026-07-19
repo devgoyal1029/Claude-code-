@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew list *)",
+      "Bash(brew install *)",
+      "Bash(python3 -c \"import fitz\")",
+      "Bash(python3 -c \"import PyPDF2\")",
+      "Bash(python3 -c \"import pdfplumber\")",
+      "Bash(python3 -c \"import fitz; print\\('fitz OK'\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node --check /private/tmp/claude-501/-Users-devmac-AI-agent-of-Invest-verdict-finplanned/2cd7f8b8-f9e7-4955-8537-d1e45cc14b3d/scratchpad/inline_script.js)",
+      "Bash(sips -g pixelWidth -g pixelHeight logo-white.png logo.png)",
+      "Bash(node --check /private/tmp/claude-501/-Users-devmac-AI-agent-of-Invest-verdict-finplanned/2cd7f8b8-f9e7-4955-8537-d1e45cc14b3d/scratchpad/inline_script2.js)",
+      "Bash(node --check /private/tmp/claude-501/-Users-devmac-AI-agent-of-Invest-verdict-finplanned/2cd7f8b8-f9e7-4955-8537-d1e45cc14b3d/scratchpad/inline_script3.js)",
+      "Bash(node --check index.html)",
+      "Bash(node -e \"const e = require\\('./methodology-engine.js'\\); console.log\\('engine self-test:', e.validateAgainstManualExample\\(\\)\\); const sub = e.equitySubAllocation\\('Conservative', {loss_aversion_control: 10}\\); console.log\\('Conservative + high loss aversion:', JSON.stringify\\({large: sub.large_cap_pct, mid: sub.mid_cap_pct, small: sub.small_cap_pct, intl: sub.international_pct}\\)\\); console.log\\('notes:', sub.notes.filter\\(n => n.includes\\('floor'\\) || n.includes\\('clamped'\\)\\)\\);\")"
+    ]
+  }
+}

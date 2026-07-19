@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinPlan — Your Personal Financial Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="pdf-export.js?v=3"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#FAFBFC;
+  --surface:#FFFFFF;
+  --surface-2:#F8FAFC;
+  --surface-3:#F1F5F9;
+
+  --primary:#059669;
+  --primary-deep:#047857;
+  --primary-light:#D1FAE5;
+  --primary-soft:#ECFDF5;
+  --primary-line:#A7F3D0;
+
+  --text:#0F172A;
+  --text-2:#334155;
+  --text-3:#64748B;
+  --text-4:#94A3B8;
+
+  --border:#E2E8F0;
+  --border-soft:#F1F5F9;
+
+  --amber:#F59E0B;
+  --amber-bg:#FFFBEB;
+  --red:#DC2626;
+  --red-bg:#FEF2F2;
+  --blue:#2563EB;
+  --purple:#7C3AED;
+
+  --r:8px;
+  --r-md:12px;
+  --r-lg:16px;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04);
+  --shadow:0 4px 12px rgba(15,23,42,.06);
+  --shadow-lg:0 12px 32px rgba(15,23,42,.08);
+  
+  --navy:#0B1F3A; --navy-dark:#061029;
+  --gold:#C9A961; --gold-bright:#DDB875; --gold-deep:#8B7438;
+  --cream:#FAF7EF; --cream-deep:#F4ECD9;
+  --sage:#7C9476; --bronze:#967040;
+  
+  --font:'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono:'DM Mono', 'SF Mono', monospace;
+}
+
+html,body{background:var(--bg);color:var(--text);font-family:var(--font);font-weight:400;-webkit-font-smoothing:antialiased;min-height:100vh;line-height:1.5}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.topbar-inner{
+  max-width:880px;margin:0 auto;padding:16px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{
+  width:40px;height:40px;border-radius:8px;
+  background:#0B1F3A;
+  display:flex;align-items:center;justify-content:center;color:#C9A961;
+  font-weight:800;font-size:15px;letter-spacing:-0.04em;
+  font-family:'DM Mono', serif;
+  position:relative;
+  box-shadow:0 4px 12px rgba(11,31,58,0.25)
+}
+.brand-mark::after{
+  content:'✓';position:absolute;top:1px;right:3px;
+  font-size:9px;color:#C9A961;font-weight:700
+}
+.brand-text{display:flex;flex-direction:column;line-height:1.05}
+.brand-name{font-size:15px;font-weight:800;color:#0B1F3A;letter-spacing:0.02em;text-transform:uppercase}
+.brand-tag{font-size:9px;color:#8B7438;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;margin-top:2px}
+
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.api-status{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;font-size:12px;font-weight:500;
+  background:var(--surface-3);color:var(--text-3);
+}
+.api-status.connected{background:var(--primary-soft);color:var(--primary-deep)}
+.api-status .dot{width:6px;height:6px;border-radius:50%;background:var(--text-4)}
+.api-status.connected .dot{background:var(--primary);box-shadow:0 0 0 3px rgba(5,150,105,0.2)}
+
+.icon-btn{
+  width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s
+}
+.icon-btn:hover{background:var(--surface-2);color:var(--text);border-color:var(--text-4)}
+.icon-btn i{font-size:18px}
+
+/* ── LAYOUT ── */
+.wrap{max-width:880px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+/* ── HERO ── */
+.hero{
+  background:linear-gradient(135deg, var(--primary-soft) 0%, #FFFFFF 100%);
+  border:1px solid var(--primary-line);
+  border-radius:var(--r-lg);
+  padding:2.5rem 2rem;margin-bottom:2.5rem;
+  position:relative;overflow:hidden
+}
+.hero::before{
+  content:'';position:absolute;top:-80px;right:-80px;width:240px;height:240px;
+  background:radial-gradient(circle, rgba(5,150,105,0.08) 0%, transparent 70%);
+  border-radius:50%;
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;letter-spacing:0.08em;
+  color:var(--primary-deep);background:var(--primary-light);
+  padding:5px 12px;border-radius:999px;text-transform:uppercase;
+  margin-bottom:1rem
+}
+.hero h1{
+  font-size:36px;font-weight:700;letter-spacing:-0.025em;
+  color:var(--text);line-height:1.15;margin-bottom:0.75rem;max-width:520px
+}
+.hero h1 span{color:var(--primary)}
+.hero p{font-size:15px;color:var(--text-2);line-height:1.7;max-width:520px;font-weight:400}
+.hero-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.5rem}
+.hero-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:500;padding:6px 12px;
+  background:rgba(255,255,255,0.7);border:1px solid var(--border);
+  border-radius:999px;color:var(--text-2)
+}
+.hero-pill i{font-size:14px;color:var(--primary)}
+
+/* ── PROGRESS ── */
+.progress{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:12px;
+  margin-bottom:2.5rem
+}
+.pstep{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.pstep-bar{width:100%;height:4px;border-radius:999px;background:var(--border)}
+.pstep-bar-inner{height:100%;border-radius:999px;background:var(--primary);width:0;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.pstep.active .pstep-bar-inner,.pstep.done .pstep-bar-inner{width:100%}
+.pstep-meta{display:flex;align-items:center;gap:8px;width:100%}
+.pstep-num{
+  font-size:11px;font-weight:600;color:var(--text-4);
+  background:var(--surface-3);padding:2px 8px;border-radius:999px;
+  font-family:var(--mono)
+}
+.pstep.active .pstep-num{color:var(--primary-deep);background:var(--primary-light)}
+.pstep.done .pstep-num{color:var(--primary-deep);background:var(--primary-light)}
+.pstep-label{font-size:12px;font-weight:500;color:var(--text-3)}
+.pstep.active .pstep-label{color:var(--text)}
+.pstep.done .pstep-label{color:var(--text-2)}
+
+/* ── CARD ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:2rem;display:none;
+  box-shadow:var(--shadow-sm);
+  animation:fadeUp .5s cubic-bezier(.2,.7,.2,1) both
+}
+.card.visible{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:600;letter-spacing:0.06em;
+  color:var(--primary);text-transform:uppercase;margin-bottom:0.75rem
+}
+.card-eyebrow i{font-size:14px}
+.card-title{font-size:24px;font-weight:700;letter-spacing:-0.02em;color:var(--text);margin-bottom:0.5rem;line-height:1.2}
+.card-sub{font-size:14px;color:var(--text-3);line-height:1.6;margin-bottom:2rem;max-width:540px}
+
+/* ── FORM FIELDS ── */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:1.5rem}
+.fields.single{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:8px}
+.field > label{
+  font-size:12px;font-weight:600;color:var(--text-2);
+  display:flex;align-items:center;gap:4px
+}
+.field-hint{font-size:11px;color:var(--text-4);font-weight:400;margin-left:auto}
+
+.field input[type=text],.field input[type=number],.field select,.field textarea{
+  font-family:var(--font);font-size:14px;font-weight:500;
+  padding:11px 14px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);border-radius:var(--r);
+  transition:all .15s;width:100%
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--primary);
+  box-shadow:0 0 0 3px var(--primary-soft)
+}
+.field input::placeholder{color:var(--text-4)}
+.field select{
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2364748B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px
+}
+
+/* Slider */
+.slider{
+  background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 16px;
+  display:flex;align-items:center;gap:14px
+}
+.slider input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:4px;background:var(--border);border-radius:999px;outline:none;cursor:pointer
+}
+.slider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:#fff;border:2px solid var(--primary);cursor:pointer;
+  box-shadow:0 2px 6px rgba(5,150,105,0.25)
+}
+.slider input[type=range]::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:#fff;
+  border:2px solid var(--primary);cursor:pointer
+}
+.slider-val{
+  font-family:var(--mono);font-size:13px;font-weight:600;
+  color:var(--primary-deep);background:var(--primary-light);
+  padding:4px 10px;border-radius:6px;min-width:54px;text-align:center;
+  font-variant-numeric:tabular-nums
+}
+
+/* Risk meter */
+.risk-meter-wrap{margin-top:12px}
+.risk-meter{
+  height:6px;border-radius:999px;
+  background:linear-gradient(to right, #10B981 0%, #F59E0B 50%, #EF4444 100%);
+  position:relative
+}
+.risk-thumb{
+  position:absolute;top:-6px;width:18px;height:18px;border-radius:50%;
+  background:#fff;border:3px solid var(--text);transform:translateX(-50%);
+  transition:left .25s cubic-bezier(.2,.7,.2,1);box-shadow:var(--shadow)
+}
+.risk-labels{
+  display:flex;justify-content:space-between;font-size:11px;color:var(--text-4);
+  margin-top:12px;font-weight:500
+}
+
+/* Chips */
+.chip-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{
+  font-family:var(--font);font-size:13px;font-weight:500;
+  padding:9px 16px;border:1.5px solid var(--border);border-radius:999px;
+  background:var(--surface);color:var(--text-2);cursor:pointer;user-select:none;
+  transition:all .15s;display:inline-flex;align-items:center;gap:6px
+}
+.chip:hover{border-color:var(--primary-line);background:var(--primary-soft);color:var(--primary-deep)}
+.chip.selected{border-color:var(--primary);background:var(--primary-light);color:var(--primary-deep);font-weight:600}
+.chip.selected::before{content:'✓';font-weight:700;margin-right:2px}
+
+/* Adaptive question panel */
+.adaptive{
+  margin-top:1.25rem;padding:1.25rem;
+  background:var(--primary-soft);border:1px dashed var(--primary-line);
+  border-radius:var(--r-md);display:none;
+  animation:fadeUp .35s both
+}
+.adaptive.visible{display:block}
+.adaptive-label{
+  font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--primary-deep);
+  text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:6px
+}
+.adaptive-label i{font-size:14px}
+
+/* Buttons */
+.actions{
+  display:flex;gap:10px;justify-content:flex-end;align-items:center;
+  margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border-soft)
+}
+.btn{
+  font-family:var(--font);font-size:13px;font-weight:600;letter-spacing:-0.005em;
+  padding:11px 22px;border-radius:var(--r);cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  transition:all .15s;display:inline-flex;align-items:center;gap:6px
+}
+.btn:hover{background:var(--surface-2);border-color:var(--text-4)}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 4px 12px rgba(5,150,105,0.25)}
+.btn.primary:hover{background:var(--primary-deep);border-color:var(--primary-deep)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--primary-deep)}
+.btn.ghost:hover{background:var(--primary-soft);border-color:var(--primary-line)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn i{font-size:16px}
+
+/* ── LOADING ── */
+.loading{display:none;padding:4rem 0;text-align:center;animation:fadeUp .4s both}
+.loading.visible{display:block}
+.spinner{width:48px;height:48px;margin:0 auto 1.5rem;position:relative}
+.spinner::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  border:3px solid var(--primary-light);
+  border-top-color:var(--primary);
+  animation:spin .9s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:17px;font-weight:600;color:var(--text);margin-bottom:8px}
+.loading-sub{font-size:13px;color:var(--text-3)}
+
+/* ── REPORT ── */
+.report{display:none;animation:fadeUp .5s both}
+.report.visible{display:block}
+
+.report-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  margin-bottom:2rem
+}
+.report-head h2{font-size:28px;font-weight:700;letter-spacing:-0.025em;color:var(--text);line-height:1.2}
+.report-head .sub{font-size:13px;color:var(--text-3);margin-top:4px}
+.report-actions{display:flex;gap:8px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:1.25rem;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)
+}
+.stat-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px}
+.stat-val{font-size:26px;font-weight:700;color:var(--text);letter-spacing:-0.025em;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat-val .unit{font-size:14px;font-weight:500;color:var(--text-3);margin-left:2px}
+.stat-sub{font-size:11px;color:var(--text-3);margin-top:6px;font-weight:500}
+.stat.accent{background:linear-gradient(135deg, var(--primary-soft) 0%, #fff 100%);border-color:var(--primary-line)}
+.stat.accent .stat-val{color:var(--primary-deep)}
+
+/* Chart cards */
+.chart-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:1.5rem;margin-bottom:1rem;box-shadow:var(--shadow-sm)
+}
+.chart-card h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.chart-card h4 i{font-size:16px;color:var(--primary)}
+.chart-card canvas{max-height:280px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+
+/* Report content (AI generated) */
+#report-content{counter-reset:section;display:flex;flex-direction:column;gap:1.25rem}
+
+.report-section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:2.5rem 2.25rem;
+  box-shadow:var(--shadow-sm);
+  counter-increment:section;
+  position:relative;
+  scroll-margin-top:80px;
+}
+.report-section::before{
+  content:"Section " counter(section, decimal-leading-zero);
+  display:inline-flex;align-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--primary-deep);background:var(--primary-light);
+  padding:5px 14px;border-radius:999px;
+  letter-spacing:0.1em;margin-bottom:1.25rem
+}
+
+.report-section h2{
+  font-size:24px;font-weight:700;color:var(--text);
+  letter-spacing:-0.025em;line-height:1.2;
+  margin:0 0 1rem;padding:0;border:none
+}
+.report-section h3{
+  font-size:15px;font-weight:600;color:var(--primary-deep);
+  margin:1.75rem 0 0.75rem;padding-top:1rem;
+  border-top:1px dashed var(--border)
+}
+.report-section h3:first-of-type{margin-top:1.25rem}
+.report-section p{
+  font-size:14.5px;line-height:1.75;color:var(--text-2);
+  margin-bottom:1rem
+}
+.report-section p:last-child{margin-bottom:0}
+.report-section ul,.report-section ol{
+  padding-left:1.5rem;margin-bottom:1rem
+}
+.report-section li{
+  font-size:14.5px;line-height:1.7;color:var(--text-2);
+  margin-bottom:0.55rem;padding-left:0.25rem
+}
+.report-section li::marker{color:var(--primary);font-weight:600}
+.report-section strong{color:var(--text);font-weight:600}
+.report-section em{
+  color:var(--primary-deep);font-style:normal;font-weight:600;
+  background:var(--primary-soft);padding:1px 7px;border-radius:4px
+}
+
+.report-section table{
+  width:100%;border-collapse:separate;border-spacing:0;
+  margin:1.25rem 0;font-size:13px;
+  border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;table-layout:auto;
+  box-shadow:0 1px 3px rgba(15,23,42,.03)
+}
+.report-section thead th{
+  background:var(--primary-deep);color:#fff;
+  padding:12px 14px;text-align:left;font-weight:600;
+  font-size:11px;text-transform:uppercase;letter-spacing:0.06em;
+  vertical-align:middle;line-height:1.4;
+  border-bottom:1px solid var(--primary-deep)
+}
+.report-section td{
+  padding:12px 14px;border-bottom:1px solid var(--border-soft);
+  color:var(--text-2);vertical-align:top;line-height:1.55;
+  font-size:13px
+}
+.report-section td:first-child{font-weight:500;color:var(--text)}
+.report-section tr:last-child td{border-bottom:none}
+.report-section tbody tr:nth-child(even) td{background:var(--surface-2)}
+.report-section tbody tr:hover td{background:var(--primary-soft);transition:background .15s}
+
+/* Wide tables get horizontal scroll */
+@media(max-width:680px){
+  .report-section{padding:1.5rem 1.25rem}
+  .report-section h2{font-size:20px}
+  .report-section table{font-size:12px;display:block;overflow-x:auto;white-space:nowrap}
+  .report-section td,.report-section th{padding:9px 10px}
+}
+
+/* ── PDF CAPTURE: navy + gold theme override for html2canvas ── */
+/* ── PDF CAPTURE: navy + gold theme for html2canvas ── */
+body.pdf-capture .report-section{background:var(--navy);color:#E8EDF4;border:1px solid var(--gold);box-shadow:none}
+body.pdf-capture .report-section::before{background:var(--gold);color:var(--navy-dark);border:none}
+body.pdf-capture .report-section h2{color:#fff}
+body.pdf-capture .report-section h3{color:var(--gold-bright);border-top-color:rgba(201,169,97,.3)}
+body.pdf-capture .report-section strong{color:#fff}
+body.pdf-capture .report-section em{background:rgba(201,169,97,.18);color:var(--gold-bright)}
+body.pdf-capture .report-section p,body.pdf-capture .report-section li{color:#E8EDF4}
+body.pdf-capture .report-section li::marker{color:var(--gold-bright)}
+body.pdf-capture .report-section table{border-color:var(--gold)}
+body.pdf-capture .report-section thead th{background:var(--gold);color:var(--navy-dark);border-bottom:none}
+body.pdf-capture .report-section td{border-bottom:1px solid rgba(201,169,97,.25);color:#E8EDF4}
+body.pdf-capture .report-section td:first-child{color:#fff}
+body.pdf-capture .report-section tbody tr:nth-child(even) td{background:rgba(255,255,255,.04)}
+body.pdf-capture .report-section tbody tr:hover td{background:transparent}
+/* Refine */
+.refine{
+  margin-top:1.5rem;padding:1.5rem;
+  background:linear-gradient(135deg, var(--primary-soft) 0%, var(--surface) 100%);
+  border:1px solid var(--primary-line);border-radius:var(--r-md)
+}
+.refine-label{font-size:12px;font-weight:600;color:var(--primary-deep);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.refine-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.refine-btn{
+  font-family:var(--font);font-size:13px;font-weight:500;
+  padding:9px 14px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text-2);
+  border-radius:999px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:all .15s
+}
+.refine-btn:hover{
+  background:var(--primary-soft);border-color:var(--primary-line);color:var(--primary-deep);
+  transform:translateY(-1px)
+}
+.refine-btn i{font-size:14px}
+.refine-status{
+  margin-top:12px;font-size:12px;color:var(--primary-deep);font-weight:500;
+  min-height:16px
+}
+/* Disclaimer */
+.disclaimer{
+  margin-top:1.5rem;padding:1rem 1.25rem;background:var(--amber-bg);
+  border:1px solid #FDE68A;border-radius:var(--r-md);
+  font-size:12px;color:#92400E;line-height:1.7;
+  display:flex;gap:12px
+}
+.disclaimer i{font-size:18px;flex-shrink:0;margin-top:1px}
+.disclaimer strong{color:#78350F;font-weight:600}
+
+/* Footer */
+.foot{
+  margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--text-4)
+}
+.foot a{color:var(--primary-deep);text-decoration:none;font-weight:500}
+
+/* Responsive */
+@media(max-width:680px){
+  .wrap{padding:1.5rem 1rem 3rem}
+  .hero{padding:1.75rem 1.25rem}
+  .hero h1{font-size:26px}
+  .card{padding:1.5rem 1.25rem}
+  .card-title{font-size:20px}
+  .fields{grid-template-columns:1fr;gap:16px}
+  .stats{grid-template-columns:1fr 1fr}
+  .charts-row{grid-template-columns:1fr}
+  .progress{grid-template-columns:repeat(5,1fr);gap:4px}
+  .pstep-label{display:none}
+  .pstep-num{font-size:10px;padding:1px 6px}
+  .report-head{flex-direction:column}
+  .actions .btn{padding:11px 16px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">IV</div>
+      <div class="brand-text">
+        <span class="brand-name">InvestVerdict</span>
+        <span class="brand-tag">Clarity Before You Invest</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="api-status connected">
+  <span class="dot"></span>
+  <span>Free · No signup</span>
+</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <span class="hero-eyebrow"><i class="ti ti-sparkles" style="font-size:13px"></i> Educational · SEBI-aware</span>
+    <h1>A financial plan, <span>built around your goals.</span></h1>
+    <p>Answer a few smart questions. FinPlan profiles your situation and proposes asset allocation, screening criteria, and a multi-year projection — calibrated to your goals and risk profile.</p>
+    <div class="hero-pills">
+      <span class="hero-pill"><i class="ti ti-chart-pie"></i> Allocation strategy</span>
+      <span class="hero-pill"><i class="ti ti-filter"></i> Screening ratios</span>
+      <span class="hero-pill"><i class="ti ti-trending-up"></i> 10-yr projection</span>
+      <span class="hero-pill"><i class="ti ti-file-download"></i> PDF report</span>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <nav class="progress" id="progress">
+    <div class="pstep active" id="pill-0">
+      <div class="pstep-bar"><div class="pstep-bar-inner"></div></div>
+      <div class="pstep-meta"><span class="pstep-num">01</span><span class="pstep-label">Intro</span></div>
+    </div>
+    <div class="pstep" id="pill-1">
+      <div class="pstep-bar"><div class="pstep-bar-inner"></div></div>
+      <div class="pstep-meta"><span class="pstep-num">02</span><span class="pstep-label">About you</span></div>
+    </div>
+    <div class="pstep" id="pill-2">
+      <div class="pstep-bar"><div class="pstep-bar-inner"></div></div>
+      <div class="pstep-meta"><span class="pstep-num">03</span><span class="pstep-label">Finances</span></div>
+    </div>
+    <div class="pstep" id="pill-3">
+      <div class="pstep-bar"><div class="pstep-bar-inner"></div></div>
+      <div class="pstep-meta"><span class="pstep-num">04</span><span class="pstep-label">Goals</span></div>
+    </div>
+    <div class="pstep" id="pill-4">
+      <div class="pstep-bar"><div class="pstep-bar-inner"></div></div>
+      <div class="pstep-meta"><span class="pstep-num">05</span><span class="pstep-label">Plan</span></div>
+    </div>
+  </nav>
+
+  <!-- ── STAGE 0: INTRO ── -->
+  <section class="card visible" id="stage-0">
+    <span class="card-eyebrow"><i class="ti ti-user-circle"></i> Quick introduction</span>
+    <h2 class="card-title">Let's get to know you</h2>
+    <p class="card-sub">Just the basics — your name, language preference, and what brought you here today.</p>
+
+    <div class="fields">
+      <div class="field">
+        <label>First name</label>
+        <input type="text" id="s0-name" placeholder="e.g. Rahul">
+      </div>
+      <div class="field">
+        <label>Preferred language</label>
+        <select id="s0-lang">
+          <option>English</option><option>Hindi</option><option>Tamil</option>
+          <option>Telugu</option><option>Kannada</option><option>Marathi</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>What brings you here?</label>
+        <select id="s0-why">
+          <option>Plan my first investment</option>
+          <option>Grow existing wealth</option>
+          <option>Save for a specific goal</option>
+          <option>Plan for retirement</option>
+          <option>Understand my options better</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Investing experience</label>
+        <select id="s0-exp">
+          <option>Complete beginner</option>
+          <option>Some basic knowledge</option>
+          <option>Intermediate — invested before</option>
+          <option>Advanced — actively manage investments</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" onclick="nextStage(0)">Continue <i class="ti ti-arrow-right"></i></button>
+    </div>
+  </section>
+
+  <!-- ── STAGE 1: PERSONAL ── -->
+  <section class="card" id="stage-1">
+    <span class="card-eyebrow"><i class="ti ti-id"></i> About you</span>
+    <h2 class="card-title">Your personal context</h2>
+    <p class="card-sub">These details shape your risk <em style="color:var(--primary-deep);font-style:normal;font-weight:600">capacity</em> — what you can afford to risk, regardless of what you want.</p>
+
+    <div class="fields">
+      <div class="field">
+        <label>Age</label>
+        <input type="number" id="s1-age" placeholder="e.g. 32" min="18" max="80">
+      </div>
+      <div class="field">
+        <label>Life stage</label>
+        <select id="s1-life">
+          <option>Single, no dependents</option>
+          <option>Married, no children</option>
+          <option>Married with young children</option>
+          <option>Married with grown children</option>
+          <option>Near or in retirement</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Employment type</label>
+        <select id="s1-emp">
+          <option>Salaried (private sector)</option>
+          <option>Salaried (government / PSU)</option>
+          <option>Self-employed / freelancer</option>
+          <option>Business owner</option>
+          <option>Retired</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Income stability</label>
+        <select id="s1-job">
+          <option>Very stable</option>
+          <option>Fairly stable</option>
+          <option>Somewhat uncertain</option>
+          <option>Quite uncertain / variable</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label>Financial dependents <span class="field-hint">children, parents, others</span></label>
+        <div class="slider">
+          <input type="range" min="0" max="8" value="1" id="s1-dep" oninput="document.getElementById('s1-dep-val').textContent=this.value">
+          <span class="slider-val" id="s1-dep-val">1</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>City &amp; state</label>
+        <input type="text" id="s1-city" placeholder="e.g. Bengaluru, Karnataka">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="prevStage(1)"><i class="ti ti-arrow-left"></i> Back</button>
+      <button class="btn primary" onclick="nextStage(1)">Continue <i class="ti ti-arrow-right"></i></button>
+    </div>
+  </section>
+
+  <!-- ── STAGE 2: FINANCES ── -->
+  <section class="card" id="stage-2">
+    <span class="card-eyebrow"><i class="ti ti-wallet"></i> Your finances</span>
+    <h2 class="card-title">Where you stand today</h2>
+    <p class="card-sub">A frank measure of cash flow, reserves, and obligations. Be honest — we build on what is, not what we wish for.</p>
+
+    <div class="fields">
+      <div class="field">
+        <label>Monthly income</label>
+        <select id="s2-inc">
+          <option>Below ₹30,000</option>
+          <option>₹30,000 – ₹60,000</option>
+          <option>₹60,000 – ₹1,00,000</option>
+          <option>₹1,00,000 – ₹2,00,000</option>
+          <option>₹2,00,000 – ₹5,00,000</option>
+          <option>Above ₹5,00,000</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Monthly expenses <span class="field-hint">% of income</span></label>
+        <div class="slider">
+          <input type="range" min="10" max="100" step="5" value="60" id="s2-exp" oninput="document.getElementById('s2-exp-val').textContent=this.value+'%'">
+          <span class="slider-val" id="s2-exp-val">60%</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Existing savings &amp; investments</label>
+        <select id="s2-sav">
+          <option>None yet</option>
+          <option>Under ₹1 lakh</option>
+          <option>₹1 – ₹5 lakh</option>
+          <option>₹5 – ₹20 lakh</option>
+          <option>₹20 lakh – ₹1 crore</option>
+          <option>Above ₹1 crore</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Outstanding debt / EMIs</label>
+        <select id="s2-debt">
+          <option>No debt</option>
+          <option>Under ₹5 lakh</option>
+          <option>₹5 – ₹20 lakh</option>
+          <option>₹20 lakh – ₹1 crore</option>
+          <option>Above ₹1 crore</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fields single">
+      <div class="field">
+        <label>Emergency fund status</label>
+        <div class="chip-group" id="chips-emfund">
+          <div class="chip" onclick="selectChip(this,'chips-emfund')">6+ months covered</div>
+          <div class="chip" onclick="selectChip(this,'chips-emfund')">Partial (1–3 months)</div>
+          <div class="chip" onclick="selectChip(this,'chips-emfund')">Not yet</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Insurance coverage</label>
+        <div class="chip-group" id="chips-ins">
+          <div class="chip" onclick="selectChip(this,'chips-ins')">Both health &amp; life</div>
+          <div class="chip" onclick="selectChip(this,'chips-ins')">Health only</div>
+          <div class="chip" onclick="selectChip(this,'chips-ins')">Life only</div>
+          <div class="chip" onclick="selectChip(this,'chips-ins')">Neither</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="prevStage(2)"><i class="ti ti-arrow-left"></i> Back</button>
+      <button class="btn primary" onclick="nextStage(2)">Continue <i class="ti ti-arrow-right"></i></button>
+    </div>
+  </section>
+
+  <!-- ── STAGE 3: GOALS & RISK ── -->
+  <section class="card" id="stage-3">
+    <span class="card-eyebrow"><i class="ti ti-target"></i> Goals &amp; risk</span>
+    <h2 class="card-title">What are you investing for?</h2>
+    <p class="card-sub">Pick your primary goal — we'll ask a few smart follow-ups specific to that goal, then measure your risk appetite.</p>
+
+    <div class="fields single">
+      <div class="field">
+        <label>Primary goal</label>
+        <div class="chip-group" id="chips-goal">
+          <div class="chip" onclick="selectGoal(this)">Retirement corpus</div>
+          <div class="chip" onclick="selectGoal(this)">Child's education</div>
+          <div class="chip" onclick="selectGoal(this)">Buy a home</div>
+          <div class="chip" onclick="selectGoal(this)">Wealth creation</div>
+          <div class="chip" onclick="selectGoal(this)">Passive income / FIRE</div>
+          <div class="chip" onclick="selectGoal(this)">Marriage / big event</div>
+          <div class="chip" onclick="selectGoal(this)">Tax optimisation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPTIVE GOAL QUESTIONS (rendered by JS) -->
+    <div class="adaptive" id="adaptive-goal">
+      <div class="adaptive-label"><i class="ti ti-bulb"></i> Smart follow-ups for this goal</div>
+      <div id="adaptive-fields"></div>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label>Investment horizon</label>
+        <div class="slider">
+          <input type="range" min="1" max="40" value="10" id="s3-hor" oninput="document.getElementById('s3-hor-val').textContent=this.value+' yr'">
+          <span class="slider-val" id="s3-hor-val">10 yr</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Monthly investable (₹)</label>
+        <input type="text" id="s3-sip" placeholder="e.g. 15,000">
+      </div>
+    </div>
+
+    <div class="fields single">
+      <div class="field">
+        <label>If your portfolio dropped 30% in one year, you would…</label>
+        <div class="chip-group" id="chips-react">
+          <div class="chip" onclick="selectChip(this,'chips-react')">Sell everything immediately</div>
+          <div class="chip" onclick="selectChip(this,'chips-react')">Reduce investment amounts</div>
+          <div class="chip" onclick="selectChip(this,'chips-react')">Stay the course</div>
+          <div class="chip" onclick="selectChip(this,'chips-react')">Invest more — opportunity</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fields single">
+      <div class="field">
+        <label>Risk appetite — <span id="risk-label-text" style="color:var(--primary-deep);font-weight:600">Moderate</span></label>
+        <div class="slider">
+          <input type="range" min="0" max="100" value="50" id="s3-risk" oninput="updateRisk(this.value)">
+          <span class="slider-val" id="s3-risk-val">50</span>
+        </div>
+        <div class="risk-meter-wrap">
+          <div class="risk-meter"><div class="risk-thumb" id="risk-thumb" style="left:50%"></div></div>
+          <div class="risk-labels"><span>Conservative</span><span>Moderate</span><span>Aggressive</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fields single">
+      <div class="field">
+        <label>Preferred investment style</label>
+        <div class="chip-group" id="chips-style">
+          <div class="chip" onclick="selectChip(this,'chips-style')">Fully passive (set &amp; forget)</div>
+          <div class="chip" onclick="selectChip(this,'chips-style')">Mostly passive with reviews</div>
+          <div class="chip" onclick="selectChip(this,'chips-style')">Active — I research</div>
+          <div class="chip" onclick="selectChip(this,'chips-style')">Very active — I trade</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="prevStage(3)"><i class="ti ti-arrow-left"></i> Back</button>
+      <button class="btn primary" onclick="generateReport()">Generate my plan <i class="ti ti-sparkles"></i></button>
+    </div>
+  </section>
+
+  <!-- ── LOADING ── -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loading-msg">Analysing your financial profile...</div>
+    <div class="loading-sub">This usually takes 20–30 seconds</div>
+  </div>
+
+  <!-- ── REPORT ── -->
+  <div class="report" id="report-out">
+    <div class="report-head">
+      <div>
+        <h2 id="report-name-title">Your Financial Plan</h2>
+        <div class="sub" id="report-sub">Personalised composition · Educational only</div>
+      </div>
+      <div class="report-actions">
+        <button class="btn ghost" onclick="startOver()"><i class="ti ti-refresh"></i> Restart</button>
+        <button class="btn primary" onclick="downloadPDF()"><i class="ti ti-file-download"></i> Download PDF</button>
+      </div>
+    </div>
+
+    <div id="charts-area"></div>
+    <div id="report-content"></div>
+
+    <div class="disclaimer">
+      <i class="ti ti-alert-triangle"></i>
+      <div>
+        <strong>Educational only — not SEBI-registered advice.</strong> No specific securities, stocks, or funds are named. All projections are illustrative. Please consult a SEBI-registered advisor before investing. Investments carry market risk; past performance does not guarantee future returns.
+      </div>
+    </div>
+
+    <div class="refine">
+  <div class="refine-label"><i class="ti ti-adjustments"></i> Refine your plan — quick actions</div>
+  <div class="refine-actions">
+    <button class="refine-btn" onclick="refineAction('conservative')"><i class="ti ti-shield"></i> More conservative</button>
+    <button class="refine-btn" onclick="refineAction('aggressive')"><i class="ti ti-flame"></i> More aggressive</button>
+    <button class="refine-btn" onclick="refineAction('sipUp')"><i class="ti ti-trending-up"></i> SIP +25%</button>
+    <button class="refine-btn" onclick="refineAction('sipDown')"><i class="ti ti-trending-down"></i> SIP −25%</button>
+    <button class="refine-btn" onclick="refineAction('horizonUp')"><i class="ti ti-calendar-plus"></i> Horizon +2 yr</button>
+    <button class="refine-btn" onclick="refineAction('horizonDown')"><i class="ti ti-calendar-minus"></i> Horizon −2 yr</button>
+    <button class="refine-btn" onclick="refineAction('taxFocus')"><i class="ti ti-receipt-tax"></i> Tax focus</button>
+    <button class="refine-btn" onclick="refineAction('retireFocus')"><i class="ti ti-armchair"></i> Retirement focus</button>
+    <button class="refine-btn" onclick="refineAction('reset')"><i class="ti ti-refresh"></i> Reset to original</button>
+  </div>
+  <div class="refine-status" id="refine-status"></div>
+</div>
+  </div>
+
+  <footer class="foot">
+    <span>InvestVerdict · investverdict.com</span>
+    <span>Educational use only · Built for India</span>
+  </footer>
+</div>
+
+<script>
+// ── STATE ──
+let currentStage = 0;
+let lastProfile = null;
+let originalProfile = null;
+let chartsRendered = [];
+let selectedGoal = null;
+
+// ── RISK LABELS ──
+const RISK_LABELS_LONG  = ['Conservative','Moderately Conservative','Moderate','Moderately Aggressive','Aggressive'];
+const RISK_LABELS_SHORT = ['Conservative','Mod. Conservative','Moderate','Mod. Aggressive','Aggressive'];
+function riskBandIndex(score){
+  return score <= 20 ? 0 : score <= 40 ? 1 : score <= 60 ? 2 : score <= 80 ? 3 : 4;
+}
+function riskLabel(score, short){
+  return (short ? RISK_LABELS_SHORT : RISK_LABELS_LONG)[riskBandIndex(score)];
+}
+
+// ── CHIP SELECT ──
+function selectChip(el, groupId) {
+  document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ── ADAPTIVE GOAL QUESTIONS ──
+const goalQuestions = {
+  'Retirement corpus': [
+    { id: 'g-retire-age', label: 'Target retirement age', type: 'number', placeholder: '60', min: 35, max: 80 },
+    { id: 'g-retire-need', label: 'Expected monthly expenses in retirement (today\'s value)', type: 'select',
+      options: ['Under ₹30,000','₹30,000 – ₹60,000','₹60,000 – ₹1,00,000','₹1,00,000 – ₹2,00,000','Above ₹2,00,000'] },
+    { id: 'g-retire-existing', label: 'Existing retirement-specific savings (EPF, NPS, PPF)', type: 'select',
+      options: ['None yet','Under ₹5 lakh','₹5 – ₹25 lakh','₹25 lakh – ₹1 crore','Above ₹1 crore'] }
+  ],
+  "Child's education": [
+    { id: 'g-child-age', label: "Child's current age (years)", type: 'number', placeholder: '5', min: 0, max: 25 },
+    { id: 'g-edu-type', label: 'Education target', type: 'select',
+      options: ['Indian undergrad','Indian postgrad / professional','Foreign undergrad','Foreign postgrad','Multiple stages (UG + PG)'] },
+    { id: 'g-edu-cost', label: "Today's cost estimate", type: 'select',
+      options: ['Under ₹10 lakh','₹10 – ₹25 lakh','₹25 – ₹50 lakh','₹50 lakh – ₹1 crore','Above ₹1 crore'] }
+  ],
+  'Buy a home': [
+    { id: 'g-home-cost', label: 'Target home value (today\'s price)', type: 'select',
+      options: ['Under ₹40 lakh','₹40 lakh – ₹80 lakh','₹80 lakh – ₹1.5 crore','₹1.5 – ₹3 crore','Above ₹3 crore'] },
+    { id: 'g-home-down', label: 'Down payment target', type: 'select',
+      options: ['20% (standard)','25–30%','40–50%','Buy outright (no loan)'] },
+    { id: 'g-home-when', label: 'When do you want to buy?', type: 'select',
+      options: ['Within 2 years','3–5 years','5–10 years','10+ years'] }
+  ],
+  'Wealth creation': [
+    { id: 'g-wealth-target', label: 'Target corpus', type: 'select',
+      options: ['₹25 lakh','₹50 lakh','₹1 crore','₹2 – ₹5 crore','₹5 – ₹10 crore','Above ₹10 crore'] },
+    { id: 'g-wealth-purpose', label: 'Primary use for that corpus', type: 'select',
+      options: ['Financial freedom','Children\'s future','Business / venture capital','Real estate / second home','Generational wealth','Undecided — pure growth'] }
+  ],
+  'Passive income / FIRE': [
+    { id: 'g-fire-income', label: 'Target monthly passive income (today\'s value)', type: 'select',
+      options: ['Under ₹50,000','₹50,000 – ₹1,00,000','₹1,00,000 – ₹2,00,000','₹2,00,000 – ₹5,00,000','Above ₹5,00,000'] },
+    { id: 'g-fire-age', label: 'Target FIRE age', type: 'number', placeholder: '45', min: 30, max: 70 },
+    { id: 'g-fire-style', label: 'FIRE style', type: 'select',
+      options: ['Lean FIRE (minimal lifestyle)','Regular FIRE (current lifestyle)','Fat FIRE (premium lifestyle)','Coast FIRE (let it grow)'] }
+  ],
+  'Marriage / big event': [
+    { id: 'g-event-when', label: 'When?', type: 'select',
+      options: ['Within 1 year','1–3 years','3–5 years','5+ years'] },
+    { id: 'g-event-cost', label: "Today's cost estimate", type: 'select',
+      options: ['Under ₹5 lakh','₹5 – ₹15 lakh','₹15 – ₹30 lakh','₹30 – ₹75 lakh','Above ₹75 lakh'] }
+  ],
+  'Tax optimisation': [
+    { id: 'g-tax-regime', label: 'Tax regime', type: 'select',
+      options: ['Old regime','New regime','Not sure — help me decide'] },
+    { id: 'g-tax-bracket', label: 'Approximate tax bracket', type: 'select',
+      options: ['Below taxable limit','5% slab','20% slab','30% slab','30% + surcharge (high income)'] },
+    { id: 'g-tax-utilised', label: '80C limit currently utilised', type: 'select',
+      options: ['Fully utilised (₹1.5L)','Partially utilised','Not utilised at all','Don\'t know'] }
+  ]
+};
+
+function selectGoal(el){
+  document.querySelectorAll('#chips-goal .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedGoal = el.textContent.trim();
+  renderAdaptive(selectedGoal);
+}
+
+function renderAdaptive(goal){
+  const panel = document.getElementById('adaptive-goal');
+  const fieldsEl = document.getElementById('adaptive-fields');
+  const qs = goalQuestions[goal];
+  if (!qs) { panel.classList.remove('visible'); return; }
+
+  let html = '<div class="fields">';
+  qs.forEach(q => {
+    html += '<div class="field"><label>' + q.label + '</label>';
+    if (q.type === 'select') {
+      html += '<select id="' + q.id + '">';
+      q.options.forEach(o => html += '<option>' + o + '</option>');
+      html += '</select>';
+    } else if (q.type === 'number') {
+      html += '<input type="number" id="' + q.id + '" placeholder="' + (q.placeholder || '') + '"' +
+              (q.min !== undefined ? ' min="' + q.min + '"' : '') +
+              (q.max !== undefined ? ' max="' + q.max + '"' : '') + '>';
+    } else {
+      html += '<input type="text" id="' + q.id + '" placeholder="' + (q.placeholder || '') + '">';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  fieldsEl.innerHTML = html;
+  panel.classList.add('visible');
+}
+
+function collectAdaptive(){
+  if (!selectedGoal || !goalQuestions[selectedGoal]) return {};
+  const result = {};
+  goalQuestions[selectedGoal].forEach(q => {
+    const el = document.getElementById(q.id);
+    if (el) result[q.label] = el.value || 'Not specified';
+  });
+  return result;
+}
+
+// ── RISK SLIDER ──
+function updateRisk(val) {
+  document.getElementById('s3-risk-val').textContent = val;
+  document.getElementById('risk-thumb').style.left = val + '%';
+  document.getElementById('risk-label-text').textContent = riskLabel(parseInt(val));
+}
+
+// ── PROGRESS ──
+function nextStage(from) {
+  document.getElementById('stage-' + from).classList.remove('visible');
+  document.getElementById('pill-' + from).classList.remove('active');
+  document.getElementById('pill-' + from).classList.add('done');
+  currentStage = from + 1;
+  document.getElementById('stage-' + currentStage).classList.add('visible');
+  document.getElementById('pill-' + currentStage).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function prevStage(from) {
+  document.getElementById('stage-' + from).classList.remove('visible');
+  document.getElementById('pill-' + from).classList.remove('active');
+  currentStage = from - 1;
+  document.getElementById('pill-' + (from - 1)).classList.remove('done');
+  document.getElementById('stage-' + currentStage).classList.add('visible');
+  document.getElementById('pill-' + currentStage).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function startOver() {
+  originalProfile = null;
+  chartsRendered.forEach(c => { try{ c.destroy(); }catch(e){} });
+  chartsRendered = [];
+  document.getElementById('charts-area').innerHTML = '';
+  document.getElementById('report-content').innerHTML = '';
+  document.getElementById('report-out').classList.remove('visible');
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('pill-' + i).classList.remove('done','active');
+  }
+  document.getElementById('pill-0').classList.add('active');
+  document.getElementById('stage-0').classList.add('visible');
+  currentStage = 0;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function getChipVal(groupId) {
+  const sel = document.querySelector('#' + groupId + ' .chip.selected');
+  return sel ? sel.textContent.trim() : 'Not specified';
+}
+
+function collectProfile() {
+  return {
+    name: document.getElementById('s0-name').value || 'Investor',
+    language: document.getElementById('s0-lang').value,
+    purpose: document.getElementById('s0-why').value,
+    experience: document.getElementById('s0-exp').value,
+    age: parseInt(document.getElementById('s1-age').value) || 35,
+    lifeStage: document.getElementById('s1-life').value,
+    employment: document.getElementById('s1-emp').value,
+    jobStability: document.getElementById('s1-job').value,
+    dependents: document.getElementById('s1-dep').value,
+    city: document.getElementById('s1-city').value || 'India',
+    income: document.getElementById('s2-inc').value,
+    expensePct: document.getElementById('s2-exp').value,
+    savings: document.getElementById('s2-sav').value,
+    debt: document.getElementById('s2-debt').value,
+    emergencyFund: getChipVal('chips-emfund'),
+    insurance: getChipVal('chips-ins'),
+    primaryGoal: selectedGoal || getChipVal('chips-goal'),
+    goalDetails: collectAdaptive(),
+    horizon: document.getElementById('s3-hor').value,
+    monthlySIP: document.getElementById('s3-sip').value || 'Not specified',
+    riskScore: parseInt(document.getElementById('s3-risk').value),
+    marketReaction: getChipVal('chips-react'),
+    investStyle: getChipVal('chips-style')
+  };
+}
+
+function inferSIPAmount(profile) {
+  const sipStr = profile.monthlySIP.replace(/[^0-9]/g,'');
+  return sipStr ? parseInt(sipStr) : 10000;
+}
+
+// ── CHARTS ──
+function buildCharts(profile) {
+  chartsRendered.forEach(c => { try{ c.destroy(); }catch(e){} });
+  chartsRendered = [];
+  const area = document.getElementById('charts-area');
+  area.innerHTML = '';
+
+  const riskScore = profile.riskScore;
+  const horizon = parseInt(profile.horizon);
+  const sip = inferSIPAmount(profile);
+  const { eq, debt, gold, reits, alt } = getAllocation(riskScore);
+  const projCorpus = projection(sip, horizon, 11);
+  const projShort = projCorpus >= 10000000
+    ? (projCorpus/10000000).toFixed(1) + ' Cr'
+    : (projCorpus/100000).toFixed(0) + ' L';
+
+  // Stats
+  const statsEl = document.createElement('div');
+  statsEl.className = 'stats';
+  statsEl.innerHTML = `
+    <div class="stat accent">
+      <div class="stat-label">Risk Profile</div>
+      <div class="stat-val">${riskScore}<span class="unit">/100</span></div>
+      <div class="stat-sub">${riskLabel(riskScore, true)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Equity</div>
+      <div class="stat-val">${eq}<span class="unit">%</span></div>
+      <div class="stat-sub">of total allocation</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Horizon</div>
+      <div class="stat-val">${horizon}<span class="unit"> yr</span></div>
+      <div class="stat-sub">investment runway</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Projection*</div>
+      <div class="stat-val">₹${projShort}</div>
+      <div class="stat-sub">@ 11% moderate</div>
+    </div>
+  `;
+  area.appendChild(statsEl);
+
+  // Charts row
+  const chartsRow = document.createElement('div');
+  chartsRow.className = 'charts-row';
+  chartsRow.innerHTML = `
+    <div class="chart-card"><h4><i class="ti ti-chart-pie"></i> Asset allocation</h4><canvas id="ch-alloc"></canvas></div>
+    <div class="chart-card"><h4><i class="ti ti-trending-up"></i> 10-year projection</h4><canvas id="ch-proj"></canvas></div>
+  `;
+  area.appendChild(chartsRow);
+
+  Chart.defaults.color = '#64748B';
+  Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // Donut
+  const ctx1 = document.getElementById('ch-alloc').getContext('2d');
+  const c1 = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['Equity','Debt','Gold/Silver','REITs','Alternatives'],
+      datasets: [{
+        data: [eq, debt, gold, reits, alt],
+        backgroundColor: ['#059669','#2563EB','#F59E0B','#7C3AED','#64748B'],
+        borderColor: '#fff', borderWidth: 3, hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, cutout: '66%',
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 14, font: { size: 12, weight: 500 }, color: '#334155', boxWidth: 12, boxHeight: 12, usePointStyle: true, pointStyle: 'circle' } },
+        tooltip: {
+          backgroundColor: '#0F172A', padding: 12, cornerRadius: 8,
+          titleFont: { size: 13, weight: 600 }, bodyFont: { size: 12 },
+          callbacks: { label: ctx => `  ${ctx.label}: ${ctx.parsed}%` }
+        }
+      }
+    }
+  });
+  chartsRendered.push(c1);
+
+  // Projection line
+  const years = Array.from({length: horizon + 1}, (_, i) => `Yr ${i}`);
+  const projAtRate = rate => years.map((_, i) => projection(sip, i, rate));
+  const conservative = projAtRate(8);
+  const moderate = projAtRate(11);
+  const optimistic = projAtRate(14);
+
+  const ctx2 = document.getElementById('ch-proj').getContext('2d');
+  const c2 = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { label: 'Conservative · 8%', data: conservative, borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 },
+        { label: 'Moderate · 11%', data: moderate, borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.12)', fill: true, tension: 0.35, borderWidth: 2.5, pointRadius: 0 },
+        { label: 'Optimistic · 14%', data: optimistic, borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.06)', fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0, borderDash: [5,4] }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 12, font: { size: 11, weight: 500 }, color: '#334155', boxWidth: 20, boxHeight: 2 } },
+        tooltip: {
+          backgroundColor: '#0F172A', padding: 12, cornerRadius: 8,
+          titleFont: { size: 13, weight: 600 }, bodyFont: { size: 12 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const fmt = v >= 10000000 ? '₹' + (v/10000000).toFixed(1) + ' Cr' : '₹' + (v/100000).toFixed(1) + ' L';
+              return `  ${ctx.dataset.label}: ${fmt}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          grid: { color: '#F1F5F9', drawBorder: false },
+          ticks: { font: { size: 10, family: 'DM Mono' }, color: '#94A3B8',
+            callback: v => v >= 10000000 ? '₹'+(v/10000000).toFixed(1)+'Cr' : '₹'+(v/100000).toFixed(0)+'L' }
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Mono' }, color: '#94A3B8' } }
+      }
+    }
+  });
+  chartsRendered.push(c2);
+
+  // Equity breakdown
+  const eqB = getEquityBreakdown(riskScore);
+  const eqBreak = [eqB.large, eqB.mid, eqB.small, eqB.intl];
+
+  const eqRow = document.createElement('div');
+  eqRow.className = 'chart-card';
+  eqRow.innerHTML = '<h4><i class="ti ti-chart-bar"></i> Equity breakdown</h4><canvas id="ch-eq" style="max-height:200px"></canvas>';
+  area.appendChild(eqRow);
+
+  const ctx3 = document.getElementById('ch-eq').getContext('2d');
+  const c3 = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: ['Large Cap','Mid Cap','Small Cap','International'],
+      datasets: [{
+        data: eqBreak,
+        backgroundColor: ['#059669','#10B981','#34D399','#2563EB'],
+        borderRadius: 6, borderWidth: 0, barThickness: 22
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0F172A', padding: 12, cornerRadius: 8,
+          callbacks: { label: ctx => `  ${ctx.parsed.x}%` }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#F1F5F9', drawBorder: false }, ticks: { callback: v => v + '%', font: { size: 10, family: 'DM Mono' }, color: '#94A3B8' }, max: 60 },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: 500 }, color: '#334155' } }
+      }
+    }
+  });
+  chartsRendered.push(c3);
+}
+
+const loadingMsgs = [
+  'Analysing your financial profile...',
+  'Calculating risk capacity vs appetite...',
+  'Building asset allocation...',
+  'Selecting screening criteria...',
+  'Running 10-year projections...',
+  'Drafting your action plan...'
+];
+
+// ── LOCAL INTELLIGENCE ENGINE ──
+
+function calculateCompositeRisk(profile) {
+  let capacity = 50;
+  const factors = [];
+
+  // Age — younger = more time to recover from drawdowns
+  if (profile.age < 25)       { capacity += 22; factors.push(['Age', '+22', 'Under 25 — maximum compounding window']); }
+  else if (profile.age < 30)  { capacity += 18; factors.push(['Age', '+18', '25–29 — long runway']); }
+  else if (profile.age < 35)  { capacity += 12; factors.push(['Age', '+12', '30–34 — strong runway']); }
+  else if (profile.age < 40)  { capacity += 6;  factors.push(['Age', '+6',  '35–39 — moderate runway']); }
+  else if (profile.age < 45)  { capacity += 0;  factors.push(['Age', '0',   '40–44 — neutral']); }
+  else if (profile.age < 50)  { capacity -= 6;  factors.push(['Age', '-6',  '45–49 — shorter runway']); }
+  else if (profile.age < 55)  { capacity -= 12; factors.push(['Age', '-12', '50–54 — approaching retirement']); }
+  else if (profile.age < 60)  { capacity -= 18; factors.push(['Age', '-18', '55–59 — pre-retirement']); }
+  else                        { capacity -= 25; factors.push(['Age', '-25', '60+ — capital preservation phase']); }
+
+  // Dependents
+  const deps = parseInt(profile.dependents) || 0;
+  if (deps === 0)      { capacity += 6;  factors.push(['Dependents', '+6',  'None — only your own needs']); }
+  else if (deps === 1) { capacity += 0;  factors.push(['Dependents', '0',   '1 dependent — neutral']); }
+  else if (deps === 2) { capacity -= 6;  factors.push(['Dependents', '-6',  '2 dependents — added obligation']); }
+  else if (deps <= 4)  { capacity -= 12; factors.push(['Dependents', '-12', deps + ' dependents — heavy obligation']); }
+  else                 { capacity -= 18; factors.push(['Dependents', '-18', deps + ' dependents — very heavy load']); }
+
+  // Job stability
+  if (profile.jobStability === 'Very stable')             { capacity += 12; factors.push(['Job stability', '+12', 'Very stable income']); }
+  else if (profile.jobStability === 'Fairly stable')      { capacity += 5;  factors.push(['Job stability', '+5',  'Fairly stable income']); }
+  else if (profile.jobStability === 'Somewhat uncertain') { capacity -= 8;  factors.push(['Job stability', '-8',  'Income somewhat uncertain']); }
+  else                                                    { capacity -= 16; factors.push(['Job stability', '-16', 'Highly variable income']); }
+
+  // Employment type adds nuance
+  if (profile.employment === 'Salaried (government / PSU)') { capacity += 4; factors.push(['Employment', '+4', 'Government/PSU — extra security']); }
+  else if (profile.employment === 'Self-employed / freelancer') { capacity -= 4; factors.push(['Employment', '-4', 'Self-employed — irregular cash flow risk']); }
+  else if (profile.employment === 'Business owner') { capacity -= 6; factors.push(['Employment', '-6', 'Business owner — concentrated risk']); }
+  else if (profile.employment === 'Retired') { capacity -= 10; factors.push(['Employment', '-10', 'Retired — no new income']); }
+
+  // Emergency fund
+  if (profile.emergencyFund === 'Not yet')          { capacity -= 15; factors.push(['Emergency fund', '-15', 'No buffer — every dip is dangerous']); }
+  else if (profile.emergencyFund.includes('Partial')) { capacity -= 6; factors.push(['Emergency fund', '-6', 'Partial buffer — vulnerable']); }
+  else                                              { capacity += 5;  factors.push(['Emergency fund', '+5',  '6+ months covered']); }
+
+  // Insurance
+  if (profile.insurance === 'Neither')               { capacity -= 12; factors.push(['Insurance', '-12', 'No coverage — one event derails the plan']); }
+  else if (profile.insurance === 'Health only' || profile.insurance === 'Life only') { capacity -= 6; factors.push(['Insurance', '-6', profile.insurance + ' — partial protection']); }
+  else                                               { capacity += 4;  factors.push(['Insurance', '+4',  'Health + Life covered']); }
+
+  // Debt load (as ratio to income)
+  const debtAmt = parseDebt(profile.debt);
+  const monthlyIncome = parseIncome(profile.income);
+  const annualIncome = monthlyIncome * 12;
+  const debtMultiple = annualIncome > 0 ? debtAmt / annualIncome : 0;
+  if (debtMultiple === 0)        { capacity += 5;  factors.push(['Debt load', '+5',  'No debt']); }
+  else if (debtMultiple < 1)     { capacity += 0;  factors.push(['Debt load', '0',   'Debt < 1× annual income — manageable']); }
+  else if (debtMultiple < 3)     { capacity -= 5;  factors.push(['Debt load', '-5',  'Debt 1–3× annual income — moderate strain']); }
+  else if (debtMultiple < 6)     { capacity -= 12; factors.push(['Debt load', '-12', 'Debt 3–6× annual income — heavy strain']); }
+  else                           { capacity -= 20; factors.push(['Debt load', '-20', 'Debt > 6× annual income — danger zone']); }
+
+  // Expense ratio
+  const exp = parseInt(profile.expensePct) || 60;
+  if (exp <= 50)      { capacity += 8;  factors.push(['Expense ratio', '+8',  exp + '% — strong saver']); }
+  else if (exp <= 65) { capacity += 3;  factors.push(['Expense ratio', '+3',  exp + '% — healthy buffer']); }
+  else if (exp <= 80) { capacity -= 4;  factors.push(['Expense ratio', '-4',  exp + '% — thin margin']); }
+  else                { capacity -= 12; factors.push(['Expense ratio', '-12', exp + '% — almost no savings cushion']); }
+
+  // Savings vs income (years of expenses already saved)
+  const savings = parseSavings(profile.savings);
+  const annualExpense = annualIncome * (exp/100);
+  const yearsCovered = annualExpense > 0 ? savings / annualExpense : 0;
+  if (yearsCovered >= 5)      { capacity += 10; factors.push(['Wealth buffer', '+10', '5+ years of expenses saved']); }
+  else if (yearsCovered >= 2) { capacity += 5;  factors.push(['Wealth buffer', '+5',  '2–5 years of expenses saved']); }
+  else if (yearsCovered >= 1) { capacity += 0;  factors.push(['Wealth buffer', '0',   '1 year of expenses saved']); }
+  else                        { capacity -= 5;  factors.push(['Wealth buffer', '-5',  'Less than 1 year of expenses saved']); }
+
+  // Investing experience
+  if (profile.experience === 'Complete beginner')              { capacity -= 5; factors.push(['Experience', '-5', 'Beginner — start gentler']); }
+  else if (profile.experience === 'Some basic knowledge')      { capacity += 0; factors.push(['Experience', '0',  'Basic knowledge']); }
+  else if (profile.experience.includes('Intermediate'))         { capacity += 3; factors.push(['Experience', '+3', 'Intermediate']); }
+  else                                                          { capacity += 6; factors.push(['Experience', '+6', 'Advanced — can handle complexity']); }
+
+  // Behavioural test — market reaction
+  if (profile.marketReaction === 'Sell everything immediately')      { capacity -= 12; factors.push(['Behaviour', '-12', 'Panic-sell tendency — reduce equity']); }
+  else if (profile.marketReaction === 'Reduce investment amounts')   { capacity -= 4;  factors.push(['Behaviour', '-4',  'Mild risk aversion in drawdowns']); }
+  else if (profile.marketReaction === 'Stay the course')             { capacity += 6;  factors.push(['Behaviour', '+6',  'Calm under pressure']); }
+  else                                                                { capacity += 10; factors.push(['Behaviour', '+10', 'Opportunistic in dips']); }
+
+  capacity = Math.max(5, Math.min(100, capacity));
+  let composite = Math.round((profile.riskScore * 0.5) + (capacity * 0.5));
+
+  // Horizon override — short horizon must override appetite
+  const h = parseInt(profile.horizon);
+  if (h <= 2)       composite = Math.min(composite, 25);
+  else if (h <= 4)  composite = Math.min(composite, 45);
+  else if (h <= 7)  composite = Math.min(composite, 65);
+
+  composite = Math.max(5, Math.min(100, composite));
+  const label = riskLabel(composite);
+  return { appetite: profile.riskScore, capacity, composite, label, factors };
+}
+
+function getAllocation(score) {
+  if (score <= 20) return { eq:20, debt:60, gold:12, reits:5, alt:3 };
+  if (score <= 40) return { eq:40, debt:40, gold:12, reits:5, alt:3 };
+  if (score <= 60) return { eq:60, debt:25, gold:8, reits:5, alt:2 };
+  if (score <= 80) return { eq:70, debt:15, gold:8, reits:5, alt:2 };
+  return { eq:80, debt:8, gold:6, reits:4, alt:2 };
+}
+
+function getEquityBreakdown(score) {
+  if (score <= 40) return { large:50, mid:30, small:10, intl:10 };
+  if (score <= 60) return { large:40, mid:35, small:15, intl:10 };
+  if (score <= 80) return { large:30, mid:35, small:25, intl:10 };
+  return { large:20, mid:30, small:35, intl:15 };
+}
+
+// Multi-factor allocation — base allocation modified by age, horizon, goal, debt, behaviour
+function computeAllocation(profile, risk){
+  const a = { ...getAllocation(risk.composite) };
+  const h = parseInt(profile.horizon);
+  const notes = [];
+
+  // Age modifier (independent of composite)
+  if (profile.age >= 60)      { a.eq -= 12; a.debt += 12; notes.push('Age 60+ pulled equity down 12 pts for capital preservation.'); }
+  else if (profile.age >= 55) { a.eq -= 8;  a.debt += 8;  notes.push('Age 55+ pulled equity down 8 pts for capital preservation.'); }
+  else if (profile.age >= 50) { a.eq -= 5;  a.debt += 5;  notes.push('Age 50+ trimmed equity by 5 pts.'); }
+  else if (profile.age < 25)  { a.eq += 5;  a.debt -= 5;  notes.push('Under 25 — boosted equity by 5 pts (long compounding window).'); }
+
+  // Horizon override (most powerful — capital safety dominates short timelines)
+  if (h <= 2) {
+    Object.assign(a, { eq: 10, debt: 70, gold: 15, reits: 3, alt: 2 });
+    notes.push('Horizon ≤ 2 yr — forced capital-safety allocation regardless of risk score.');
+  } else if (h <= 4) {
+    a.eq = Math.min(a.eq, 35); a.debt = 100 - a.eq - a.gold - a.reits - a.alt;
+    notes.push('Horizon ≤ 4 yr — equity capped at 35%.');
+  } else if (h >= 20) {
+    a.eq = Math.min(85, a.eq + 5); a.debt = Math.max(5, a.debt - 5);
+    notes.push('Horizon ≥ 20 yr — added 5 pts to equity for long compounding.');
+  }
+
+  // Goal modifiers
+  const g = profile.primaryGoal;
+  if (g === 'Retirement corpus' && profile.age >= 50) {
+    a.eq -= 8; a.debt += 8; notes.push('Retirement goal + age 50+ — heavier debt for capital protection.');
+  }
+  if (g === 'Buy a home' && h <= 3) {
+    Object.assign(a, { eq: 15, debt: 65, gold: 12, reits: 5, alt: 3 });
+    notes.push('Home purchase ≤ 3 yr — locked into safety blueprint.');
+  }
+  if (g === 'Marriage / big event' && h <= 2) {
+    Object.assign(a, { eq: 8, debt: 75, gold: 12, reits: 3, alt: 2 });
+    notes.push('Event ≤ 2 yr — almost full capital preservation.');
+  }
+  if (g === "Child's education") {
+    const childAgeStr = (profile.goalDetails || {})["Child's current age (years)"] || '5';
+    const childAge = parseInt(childAgeStr) || 5;
+    const yearsToCollege = Math.max(1, 18 - childAge);
+    if (yearsToCollege <= 3) {
+      Object.assign(a, { eq: 20, debt: 60, gold: 12, reits: 5, alt: 3 });
+      notes.push("Child's education due in ≤ 3 yr — capital-preservation blueprint.");
+    } else if (yearsToCollege <= 7) {
+      a.eq = Math.min(a.eq, 45); a.debt = 100 - a.eq - a.gold - a.reits - a.alt;
+      notes.push("Child's education ≤ 7 yr away — equity capped at 45%.");
+    }
+  }
+  if (g === 'Passive income / FIRE') {
+    a.reits = Math.min(15, a.reits + 5); a.alt = Math.max(0, a.alt - 2); a.eq -= 3;
+    notes.push('FIRE goal — tilted toward income-producing REITs.');
+  }
+  if (g === 'Tax optimisation') {
+    notes.push('Tax-optimisation goal — see SIP table for ELSS/PPF/NPS routing under the same allocation.');
+  }
+
+  // Debt-first override
+  const debtAmt = parseDebt(profile.debt);
+  const annualIncome = parseIncome(profile.income) * 12;
+  if (annualIncome > 0 && debtAmt / annualIncome > 3) {
+    a.eq = Math.max(20, a.eq - 10); a.debt += 10;
+    notes.push('Debt > 3× annual income — equity reduced; recommend aggressive debt payoff before scaling SIPs.');
+  }
+
+  // Behaviour override
+  if (profile.marketReaction === 'Sell everything immediately' && a.eq > 40) {
+    const reduce = a.eq - 40;
+    a.eq = 40; a.debt += reduce;
+    notes.push('Panic-sell tendency — equity capped at 40% until temperament strengthens.');
+  }
+
+  // No emergency fund — temporarily boost liquid debt
+  if (profile.emergencyFund === 'Not yet') {
+    const shift = Math.min(10, a.eq - 20);
+    if (shift > 0) { a.eq -= shift; a.debt += shift; notes.push('No emergency fund — 10% reroute from equity to liquid debt until reserve built.'); }
+  }
+
+  // Normalise & clamp
+  ['eq','debt','gold','reits','alt'].forEach(k => { a[k] = Math.max(0, Math.round(a[k])); });
+  const sum = a.eq + a.debt + a.gold + a.reits + a.alt;
+  if (sum !== 100) a.eq += (100 - sum);
+  a.eq = Math.max(0, a.eq);
+
+  return { ...a, notes };
+}
+
+// Goal feasibility — calculates target vs achievable, gap, required SIP
+function computeGoalFeasibility(profile, sip){
+  const horizon = parseInt(profile.horizon);
+  const projected = projection(sip, horizon, 11);
+  const inflation = 1.06;
+  const g = profile.goalDetails || {};
+  let target = 0, label = '', targetYear = '';
+
+  if (profile.primaryGoal === 'Retirement corpus') {
+    const monthlyExp = parseRangeMid(g['Expected monthly expenses in retirement (today\'s value)']) || 60000;
+    const retireAge = parseInt(g['Target retirement age'] || '60') || 60;
+    const years = Math.max(1, retireAge - profile.age);
+    const inflatedAnnual = monthlyExp * 12 * Math.pow(inflation, years);
+    target = Math.round(inflatedAnnual * 25); // 4% safe withdrawal
+    label = `corpus at retirement (age ${retireAge})`;
+    targetYear = `age ${retireAge}`;
+  } else if (profile.primaryGoal === "Child's education") {
+    const cost = parseRangeMid(g["Today's cost estimate"]) || 2500000;
+    const childAge = parseInt(g["Child's current age (years)"] || '5') || 5;
+    const years = Math.max(1, 18 - childAge);
+    target = Math.round(cost * Math.pow(inflation, years));
+    label = `education corpus when child turns 18`;
+    targetYear = `${years} years`;
+  } else if (profile.primaryGoal === 'Buy a home') {
+    const cost = parseRangeMid(g["Target home value (today's price)"]) || 8000000;
+    const downRaw = (g['Down payment target'] || '20%').match(/\d+/);
+    const downPct = downRaw ? parseInt(downRaw[0]) : 20;
+    target = Math.round(cost * (downPct/100) * Math.pow(inflation, horizon));
+    label = `${downPct}% down payment`;
+    targetYear = `${horizon} years`;
+  } else if (profile.primaryGoal === 'Wealth creation') {
+    target = parseRangeMid(g['Target corpus']) || 10000000;
+    label = 'target corpus';
+    targetYear = `${horizon} years`;
+  } else if (profile.primaryGoal === 'Passive income / FIRE') {
+    const monthly = parseRangeMid(g["Target monthly passive income (today's value)"]) || 100000;
+    const fireAge = parseInt(g['Target FIRE age'] || '45') || 45;
+    const years = Math.max(1, fireAge - profile.age);
+    const inflatedMonthly = monthly * Math.pow(inflation, years);
+    target = Math.round(inflatedMonthly * 12 * 25);
+    label = `FIRE corpus at age ${fireAge}`;
+    targetYear = `age ${fireAge}`;
+  } else if (profile.primaryGoal === 'Marriage / big event') {
+    const cost = parseRangeMid(g["Today's cost estimate"]) || 1500000;
+    target = Math.round(cost * Math.pow(inflation, horizon));
+    label = 'event corpus';
+    targetYear = `${horizon} years`;
+  } else if (profile.primaryGoal === 'Tax optimisation') {
+    // Not corpus-based — return null
+    return null;
+  }
+
+  if (!target) return null;
+  const required = requiredSIPForTarget(target, horizon, 11);
+  const gap = target - projected;
+  const sipGap = required - sip;
+  const sipGapPct = sip > 0 ? (sipGap / sip) : 1;
+  let status = 'on_track', verdict = '';
+  if (gap <= 0) {
+    status = 'surplus';
+    verdict = `On track — your projected corpus of ${fmtINR(projected)} exceeds the inflation-adjusted target of ${fmtINR(target)} by ${fmtINR(Math.abs(gap))}.`;
+  } else if (sipGapPct <= 0.15) {
+    status = 'close';
+    verdict = `Almost there — your projected ${fmtINR(projected)} is just under target ${fmtINR(target)}. Step up SIP by ${fmtINR(sipGap)}/month (≈${Math.round(sipGapPct*100)}%) to close the gap.`;
+  } else if (sipGapPct <= 0.5) {
+    status = 'gap';
+    verdict = `Meaningful gap — current SIP projects ${fmtINR(projected)} vs target ${fmtINR(target)}. Required SIP: ${fmtINR(required)}/month (an increase of ${fmtINR(sipGap)}). Consider stepping SIP up annually by 10–15%.`;
+  } else {
+    status = 'large_gap';
+    verdict = `Large gap — current SIP projects ${fmtINR(projected)} vs target ${fmtINR(target)}. Required SIP: ${fmtINR(required)}/month — nearly ${Math.round(sipGapPct*100)}% more than today. Either step up SIP aggressively, extend horizon, or moderate the target.`;
+  }
+
+  return { target, projected, gap, required, sipGap, sipGapPct, status, verdict, label, targetYear };
+}
+
+// Helpful: Tax-saving plan based on regime & bracket
+function buildTaxPlan(profile){
+  const g = profile.goalDetails || {};
+  const regime = g['Tax regime'] || '';
+  const bracket = g['Approximate tax bracket'] || '';
+  const utilised = g['80C limit currently utilised'] || '';
+  if (profile.primaryGoal !== 'Tax optimisation') return null;
+  const old = regime.toLowerCase().includes('old');
+  const high = bracket.includes('30%') || bracket.includes('20%');
+  const rows = [];
+  if (old) {
+    rows.push(['Section 80C (₹1.5 L cap)','ELSS or PPF','3-yr lock-in (ELSS) — equity, market-linked. PPF — 15-yr, sovereign safety, 7%+ tax-free.', utilised.includes('Fully') ? 'Already maxed ✓' : 'Stack here']);
+    rows.push(['Section 80CCD(1B) (extra ₹50K)','NPS Tier-1','Above 80C cap — directly reduces taxable income.', high ? 'Strongly recommended' : 'Recommended']);
+    rows.push(['Section 80D','Health insurance premium','₹25K self + ₹50K parents (senior). Premiums get extra cushion.', 'Use to its limit']);
+    rows.push(['HRA / Home loan','If applicable','HRA exemption or home-loan interest 24(b) up to ₹2 L.', 'Check eligibility']);
+    if (high) rows.push(['Tax-free bond ladder','SGB / tax-free PSU bonds','SGB capital gain at maturity is tax-free.', 'Layer in']);
+  } else {
+    rows.push(['New regime baseline','Lower slabs, fewer deductions','You forgo 80C/80D/HRA — but slabs are gentler. Often better for high earners with low deductions.', 'Run both scenarios']);
+    rows.push(['NPS Tier-1 (Employer)','Section 80CCD(2)','Employer NPS contribution up to 10% of basic is still deductible under new regime.', high ? 'Negotiate at appraisal' : 'Optional']);
+    rows.push(['Standard deduction','₹75,000','Auto-applied — no action needed.', 'Automatic']);
+  }
+  return { regime, bracket, rows, old };
+}
+
+function fmtINR(n) {
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + ' Cr';
+  if (n >= 100000) return '₹' + (n/100000).toFixed(2) + ' L';
+  if (n >= 1000) return '₹' + Math.round(n/1000) + 'K';
+  return '₹' + Math.round(n);
+}
+
+function projection(sip, horizon, ratePct) {
+  const r = ratePct / 100 / 12;
+  return Math.round(sip * ((Math.pow(1 + r, horizon * 12) - 1) / r));
+}
+
+// Required monthly SIP to reach a future target at given rate
+function requiredSIPForTarget(target, horizon, ratePct){
+  const r = ratePct/100/12;
+  const n = horizon * 12;
+  if (n <= 0) return target;
+  return Math.round(target / ((Math.pow(1 + r, n) - 1) / r));
+}
+
+// ── PARSE NUMERIC TIERS FROM DROPDOWNS ──
+function parseIncome(s){
+  if (!s) return 50000;
+  if (s.includes('Below')) return 20000;
+  if (s.includes('₹30,000 – ₹60,000')) return 45000;
+  if (s.includes('₹60,000 – ₹1,00,000')) return 80000;
+  if (s.includes('₹1,00,000 – ₹2,00,000')) return 150000;
+  if (s.includes('₹2,00,000 – ₹5,00,000')) return 350000;
+  if (s.includes('Above ₹5,00,000')) return 700000;
+  return 50000;
+}
+function parseSavings(s){
+  if (!s || s.includes('None')) return 0;
+  if (s.includes('Under ₹1 lakh')) return 50000;
+  if (s.includes('₹1 – ₹5 lakh')) return 300000;
+  if (s.includes('₹5 – ₹20 lakh')) return 1250000;
+  if (s.includes('₹20 lakh – ₹1 crore')) return 6000000;
+  if (s.includes('Above ₹1 crore')) return 15000000;
+  return 0;
+}
+function parseDebt(s){
+  if (!s || s.includes('No debt')) return 0;
+  if (s.includes('Under ₹5 lakh')) return 250000;
+  if (s.includes('₹5 – ₹20 lakh')) return 1250000;
+  if (s.includes('₹20 lakh – ₹1 crore')) return 6000000;
+  if (s.includes('Above ₹1 crore')) return 15000000;
+  return 0;
+}
+function parseRangeMid(str){
+  if (!str) return 0;
+  const lower = String(str).toLowerCase();
+  const crore = /(\d+(?:\.\d+)?)\s*(crore|cr)/i.exec(str);
+  const lakh = /(\d+(?:\.\d+)?)\s*lakh/i.exec(str);
+  const matches = (str.match(/₹\s?([\d,]+(?:\.\d+)?)/g) || []).map(m => parseFloat(m.replace(/[₹,\s]/g,'')));
+  if (lower.includes('above')) {
+    if (crore) return parseFloat(crore[1]) * 10000000 * 1.3;
+    if (lakh) return parseFloat(lakh[1]) * 100000 * 1.3;
+    if (matches.length) return matches[0] * 1.3;
+  }
+  if (lower.includes('under') || lower.includes('below')) {
+    if (crore) return parseFloat(crore[1]) * 10000000 * 0.7;
+    if (lakh) return parseFloat(lakh[1]) * 100000 * 0.7;
+    if (matches.length) return matches[0] * 0.7;
+  }
+  // Range like "₹X – ₹Y"
+  if (matches.length >= 2) return (matches[0] + matches[1]) / 2;
+  // Words like "₹10 – ₹25 lakh" — numbers in matches will be small, need to multiply
+  const allNums = (str.match(/(\d+(?:\.\d+)?)/g) || []).map(parseFloat);
+  if (allNums.length >= 2) {
+    const mid = (allNums[0] + allNums[1]) / 2;
+    if (lower.includes('crore') || lower.includes('cr')) return mid * 10000000;
+    if (lower.includes('lakh')) return mid * 100000;
+    return mid;
+  }
+  if (allNums.length === 1) {
+    if (lower.includes('crore') || lower.includes('cr')) return allNums[0] * 10000000;
+    if (lower.includes('lakh')) return allNums[0] * 100000;
+    return allNums[0];
+  }
+  return 0;
+}
+
+function getCityTier(city){
+  const c = (city || '').toLowerCase();
+  const tier1 = ['mumbai','delhi','bangalore','bengaluru','hyderabad','chennai','kolkata','pune','gurgaon','gurugram','noida'];
+  const tier2 = ['ahmedabad','jaipur','lucknow','kanpur','nagpur','indore','thane','bhopal','visakhapatnam','patna','vadodara','ghaziabad','ludhiana','agra','nashik','faridabad','meerut','rajkot','varanasi','aurangabad','amritsar','navi mumbai','allahabad','ranchi','howrah','coimbatore','jabalpur','gwalior','vijayawada','jodhpur','madurai','raipur','kota','chandigarh','guwahati','mysore','thiruvananthapuram','kochi','mangalore','salem','tiruchirappalli','hubli','bhubaneswar','cuttack','dehradun','surat'];
+  if (tier1.some(t => c.includes(t))) return 1;
+  if (tier2.some(t => c.includes(t))) return 2;
+  return 3;
+}
+
+function buildHealthRows(profile) {
+  const rows = [];
+  const monthlyIncome = parseIncome(profile.income);
+  const annualIncome = monthlyIncome * 12;
+  const debtAmt = parseDebt(profile.debt);
+  const savings = parseSavings(profile.savings);
+  const exp = parseInt(profile.expensePct) || 60;
+  const annualExpense = annualIncome * (exp/100);
+  const cityTier = getCityTier(profile.city);
+
+  // 1. Emergency fund
+  if (profile.emergencyFund === 'Not yet') {
+    rows.push(['Emergency Fund', 'Not built', `Build ${fmtINR(Math.round(annualExpense/2))} (6 months) in liquid/overnight funds`, 'CRITICAL']);
+  } else if (profile.emergencyFund.includes('Partial')) {
+    rows.push(['Emergency Fund', 'Partial', 'Top up to 6 months — overnight + liquid funds', 'HIGH']);
+  } else {
+    rows.push(['Emergency Fund', '6+ months ✓', 'Maintain; review yearly', 'OK']);
+  }
+
+  // 2. Term Life Insurance
+  const termTarget = Math.round(annualIncome * 12); // 12× annual
+  if (profile.insurance === 'Neither' || profile.insurance === 'Health only') {
+    rows.push(['Term Life Cover', 'Missing', `Buy ${fmtINR(termTarget)} sum assured (12× annual income)`, 'CRITICAL']);
+  } else {
+    rows.push(['Term Life Cover', 'Present', `Verify sum assured ≥ ${fmtINR(termTarget)}; review at every life event`, 'OK']);
+  }
+
+  // 3. Health Insurance
+  const healthTarget = cityTier === 1 ? 2500000 : cityTier === 2 ? 1500000 : 1000000;
+  if (profile.insurance === 'Neither' || profile.insurance === 'Life only') {
+    rows.push(['Health Insurance', 'Missing', `Buy family floater ≥ ${fmtINR(healthTarget)} (Tier ${cityTier} city benchmark)`, 'CRITICAL']);
+  } else {
+    rows.push(['Health Insurance', 'Present', `Confirm cover ≥ ${fmtINR(healthTarget)}; add super top-up if low`, 'OK']);
+  }
+
+  // 4. Expense ratio
+  if (exp > 85)      rows.push(['Expense Ratio', exp + '%', 'Critical — cut to 70% or lower urgently', 'HIGH']);
+  else if (exp > 75) rows.push(['Expense Ratio', exp + '%', 'High — trim discretionary, aim for 65%', 'HIGH']);
+  else if (exp > 65) rows.push(['Expense Ratio', exp + '%', 'Slightly high — aim for 60%', 'MEDIUM']);
+  else if (exp > 45) rows.push(['Expense Ratio', exp + '%', 'Healthy savings rate', 'OK']);
+  else               rows.push(['Expense Ratio', exp + '%', 'Excellent saver — channel surplus to investments', 'OK']);
+
+  // 5. Debt-to-income
+  const debtMult = annualIncome > 0 ? debtAmt/annualIncome : 0;
+  if (debtMult === 0) rows.push(['Debt-to-Income', 'No debt', 'Maintain — avoid unnecessary EMIs', 'OK']);
+  else if (debtMult < 1) rows.push(['Debt-to-Income', '<1× income', 'Manageable; continue SIPs alongside EMIs', 'OK']);
+  else if (debtMult < 3) rows.push(['Debt-to-Income', `${debtMult.toFixed(1)}× income`, 'Moderate strain — clear high-interest first', 'MEDIUM']);
+  else if (debtMult < 6) rows.push(['Debt-to-Income', `${debtMult.toFixed(1)}× income`, 'Heavy strain — pause non-essential SIPs', 'HIGH']);
+  else                   rows.push(['Debt-to-Income', `${debtMult.toFixed(1)}× income`, 'Danger zone — aggressive debt payoff before any equity', 'CRITICAL']);
+
+  // 6. Savings rate buffer (months of expenses)
+  const monthsCovered = annualExpense > 0 ? Math.round((savings / annualExpense) * 12) : 0;
+  if (monthsCovered >= 60)     rows.push(['Wealth Buffer', monthsCovered + ' months', 'Strong reserve — focus on growth', 'OK']);
+  else if (monthsCovered >= 24) rows.push(['Wealth Buffer', monthsCovered + ' months', 'Solid buffer — continue building', 'OK']);
+  else if (monthsCovered >= 12) rows.push(['Wealth Buffer', monthsCovered + ' months', 'Modest cushion — keep adding', 'MEDIUM']);
+  else if (monthsCovered >= 6)  rows.push(['Wealth Buffer', monthsCovered + ' months', 'Thin buffer — prioritise savings rate', 'MEDIUM']);
+  else                          rows.push(['Wealth Buffer', monthsCovered + ' months', 'Inadequate — boost savings rate before lifestyle expense growth', 'HIGH']);
+
+  // 7. Age-vs-dependents combo
+  const deps = parseInt(profile.dependents) || 0;
+  if (deps >= 2 && profile.insurance !== 'Both health & life') {
+    rows.push(['Family Protection', `${deps} dependents`, 'Multiple dependents + incomplete insurance — fill gaps first', 'HIGH']);
+  } else if (deps === 0 && profile.age < 35) {
+    rows.push(['Family Protection', 'No dependents', 'Window to take growth risk — capture it', 'OK']);
+  } else {
+    rows.push(['Family Protection', `${deps} dependents`, 'Adequate — review every life event', 'OK']);
+  }
+
+  // 8. Investment continuity
+  if (savings === 0 && profile.experience === 'Complete beginner') {
+    rows.push(['Investing Habit', 'No prior investments', 'Start small ₹5K SIP — habit matters more than amount', 'MEDIUM']);
+  } else if (savings > 0 && profile.experience.includes('Advanced')) {
+    rows.push(['Investing Habit', 'Established', 'Maintain discipline; resist tinkering', 'OK']);
+  } else {
+    rows.push(['Investing Habit', 'Building', 'Automate SIPs to remove emotion', 'OK']);
+  }
+
+  return rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><strong>${r[3]}</strong></td></tr>`).join('');
+}
+
+function buildActionPlan(profile, risk, alloc, feasibility) {
+  const steps = [];
+  const monthlyIncome = parseIncome(profile.income);
+  const annualIncome = monthlyIncome * 12;
+  const debtAmt = parseDebt(profile.debt);
+  const savings = parseSavings(profile.savings);
+  const exp = parseInt(profile.expensePct) || 60;
+  const horizon = parseInt(profile.horizon);
+  const cityTier = getCityTier(profile.city);
+  const deps = parseInt(profile.dependents) || 0;
+  const young = profile.age < 35;
+  const nearRetire = profile.age >= 50;
+
+  // === STEP 1–3: FOUNDATIONS (always first if missing) ===
+  if (profile.emergencyFund === 'Not yet') {
+    const target = Math.round(annualIncome * (exp/100) / 2);
+    steps.push(`<strong>Build emergency reserve first.</strong> Open a liquid + overnight fund pair at any AMC, start a ₹${Math.max(5000, Math.round(target/12)).toLocaleString('en-IN')}/month SIP toward ${fmtINR(target)} (6 months of expenses). <em>Pause aggressive equity SIPs</em> until this reserve crosses 3 months.`);
+  } else if (profile.emergencyFund.includes('Partial')) {
+    steps.push(`<strong>Top up emergency fund</strong> to 6 months of expenses. Park in 50% liquid + 50% overnight funds for the right liquidity-yield balance.`);
+  }
+
+  if (profile.insurance === 'Neither' || profile.insurance === 'Health only') {
+    const cover = fmtINR(annualIncome * 12);
+    steps.push(`<strong>Buy pure term life insurance</strong> with sum assured of ${cover} (≈12× annual income). Use online aggregators; pick the insurer with highest claim-settlement ratio over 5 years, not the cheapest premium. Avoid ULIPs and "money-back" policies — they are insurance + investment mixed at high cost.`);
+  }
+  if (profile.insurance === 'Neither' || profile.insurance === 'Life only') {
+    const cover = cityTier === 1 ? '₹25 lakh' : cityTier === 2 ? '₹15 lakh' : '₹10 lakh';
+    steps.push(`<strong>Buy family floater health insurance</strong> ≥ ${cover} sum insured (Tier ${cityTier} city). Look for: no room-rent cap, no co-pay, no disease-specific sub-limits, restoration benefit, day-care coverage. Add a super top-up of ₹50 L–1 Cr at low premium.`);
+  }
+  if (deps > 0 && profile.insurance !== 'Neither' && profile.insurance !== 'Life only') {
+    steps.push(`<strong>Write a will and assign nominations</strong> across every investment + insurance + bank account. With ${deps} dependent${deps>1?'s':''}, this is non-negotiable.`);
+  }
+
+  // === STEP 4: DEBT-FIRST RULE ===
+  if (debtAmt > annualIncome * 3) {
+    steps.push(`<strong>Aggressive debt payoff before SIP scaling.</strong> Your debt is ${(debtAmt/annualIncome).toFixed(1)}× annual income. Any loan above 12% interest beats almost any equity post-tax return. List every debt by interest rate (snowball: highest rate first), redirect 60–70% of investable surplus there until total debt drops below 2× annual income.`);
+  } else if (debtAmt > 0 && annualIncome > 0 && (debtAmt/annualIncome) > 1) {
+    steps.push(`<strong>Parallel debt + investing.</strong> With debt at ${(debtAmt/annualIncome).toFixed(1)}× income, split surplus 40% to debt prepayment, 60% to SIPs until ratio drops below 1×.`);
+  }
+
+  // === STEP 5: CORE SIP ARCHITECTURE ===
+  steps.push(`<strong>Set up the core SIP architecture.</strong> Automate split: <em>${alloc.eq}% equity, ${alloc.debt}% debt, ${alloc.gold}% gold, ${alloc.reits}% REITs</em>. Use <strong>direct plans only</strong> — the 0.6–1% expense gap vs regular plans compounds to ₹15–25 L over 20 years on a ₹15K SIP.`);
+
+  // === STEP 6: GOAL SEGREGATION ===
+  steps.push(`<strong>Segregate by goal in separate folios.</strong> Goal-money should never mix with general spending money. Open a dedicated AMC/broker account named after the goal — psychology matters more than tax optimisation here.`);
+
+  // === STEP 7: EQUITY APPROACH ===
+  if (profile.experience.includes('Advanced')) {
+    steps.push(`<strong>Direct equity allowed — disciplined.</strong> Use the screening ratios in §5 (ROE>15%, ROCE>15%, D/E<0.5, promoter holding>50%, pledge<10%) on Screener.in. Limit direct stocks to ≤30% of equity portion; balance via index funds for stability.`);
+  } else if (profile.experience.includes('Intermediate')) {
+    steps.push(`<strong>Mutual funds preferred over direct stocks.</strong> Use a 70/30 split within equity: 70% index funds (large-cap), 30% actively-managed mid/small. Direct stocks only after you've held an MF portfolio cleanly through one full correction.`);
+  } else {
+    steps.push(`<strong>Index funds only for now.</strong> As a beginner, start with Nifty 50 + Nifty Next 50 index funds — they outperform 65–75% of active funds over 10+ years after costs. Add active funds only once you can read a factsheet end-to-end.`);
+  }
+
+  // === STEP 8: GOAL FEASIBILITY ACTION ===
+  if (feasibility && feasibility.status === 'large_gap') {
+    steps.push(`<strong>Address the corpus gap.</strong> Your projected ${fmtINR(feasibility.projected)} falls short of the ${fmtINR(feasibility.target)} target. To bridge: (a) step up SIP by ${fmtINR(feasibility.sipGap)}/month now, OR (b) commit to a 10–15% annual SIP step-up, OR (c) extend horizon by 3–5 years, OR (d) revise target downward. Pick one and commit before the year ends.`);
+  } else if (feasibility && feasibility.status === 'gap') {
+    steps.push(`<strong>Step up SIP annually.</strong> Your projection is ${fmtINR(feasibility.gap)} short of target. A 10% annual SIP step-up (₹${Math.round((parseInt(String(profile.monthlySIP).replace(/[^0-9]/g,'')) || 10000)*0.1).toLocaleString('en-IN')}/month added each year on your anniversary) will close the gap without dramatic lifestyle change.`);
+  } else if (feasibility && feasibility.status === 'close') {
+    steps.push(`<strong>Small SIP boost closes the gap.</strong> Add ${fmtINR(feasibility.sipGap)}/month to your current SIP and you hit ${fmtINR(feasibility.target)} on schedule.`);
+  } else {
+    steps.push(`<strong>Build a step-up SIP discipline.</strong> Even when on track, add 8–10% to your SIP every year — your income will grow, and your investment growth should match.`);
+  }
+
+  // === STEP 9: HORIZON & BUCKETING ===
+  if (horizon >= 10) {
+    steps.push(`<strong>Bucket strategy:</strong> Keep this ${horizon}-yr corpus in a long-equity bucket. Open a separate <em>short-term bucket</em> (liquid + ultra-short funds) for any 1–3 year needs. The discipline of not touching the long bucket is what unlocks compounding.`);
+  } else if (horizon <= 4) {
+    steps.push(`<strong>Capital protection mode.</strong> Your ${horizon}-year window is too short to ride market cycles. Skew toward gilt + AAA corporate bond + liquid funds. Equity exposure only via balanced advantage / hybrid conservative funds.`);
+  }
+
+  // === STEP 10: GOAL-SPECIFIC ===
+  if (profile.primaryGoal === 'Retirement corpus') {
+    steps.push(`<strong>Stack retirement-specific vehicles.</strong> Maximise <em>NPS Tier-1</em> (extra ₹50,000 deduction under 80CCD(1B), above the ₹1.5L 80C cap), <em>EPF + VPF</em> if salaried, then ELSS/PPF for 80C. These have lower taxation than regular MFs at withdrawal.`);
+    if (nearRetire) steps.push(`<strong>Start a glide path now.</strong> 5 years from retirement, begin shifting 5% per year from equity to debt. By retirement, sit at ~30% equity / 60% debt / 10% gold to fund SWP without forced selling in a bear market.`);
+  }
+  if (profile.primaryGoal === 'Tax optimisation') {
+    const tp = buildTaxPlan(profile);
+    if (tp && tp.old) steps.push(`<strong>Layer the old-regime 80C stack:</strong> PPF or ELSS for the ₹1.5L cap (ELSS if horizon > 5 yr, PPF if conservative), NPS for the additional ₹50K under 80CCD(1B), health premium for 80D. In the 30% bracket this stack alone saves ~₹65–75K per year.`);
+    else steps.push(`<strong>New-regime optimisation:</strong> You forgo 80C — focus instead on employer NPS contribution (80CCD(2) still allowed), standard deduction, and tax-free vehicles like SGB. Re-run "old vs new" calculation every March.`);
+  }
+  if (profile.primaryGoal === "Child's education") {
+    const childAge = parseInt((profile.goalDetails || {})["Child's current age (years)"] || '5');
+    const yrsToCollege = Math.max(1, 18 - childAge);
+    steps.push(`<strong>Education glide path.</strong> Run aggressive equity now (child is ${childAge}); shift 10% of corpus per year from equity to debt starting ${Math.max(1, yrsToCollege - 5)} years before admission. Final 2 years: 80% debt minimum — you cannot afford a 30% drawdown 6 months before fees are due.`);
+  }
+  if (profile.primaryGoal === 'Buy a home' && horizon <= 5) {
+    steps.push(`<strong>Pre-EMI parking.</strong> Your home corpus must be intact when you need it. Keep ≥70% in arbitrage / corporate bond / short-duration debt funds. Avoid equity except in balanced advantage funds with disciplined exit triggers.`);
+  }
+  if (profile.primaryGoal === 'Passive income / FIRE') {
+    steps.push(`<strong>Two-phase plan:</strong> Until you hit the FIRE corpus, run aggressive accumulation (equity-heavy SIP). Once corpus achieved, rebalance to a 50/40/10 (debt/equity/gold) and start a 4% SWP. Test SWP for 6 months before quitting active income.`);
+  }
+
+  // === STEP 11: STP IF LUMP SUM ===
+  if (savings > annualIncome * 2) {
+    steps.push(`<strong>Don't lump-sum into equity.</strong> Your existing ${fmtINR(savings)} corpus deserves an STP (Systematic Transfer Plan) — park in liquid fund, transfer ${fmtINR(Math.round(savings/12))}/month into equity over 12 months to average market entry.`);
+  }
+
+  // === STEP 12: REBALANCING ===
+  steps.push(`<strong>Set an annual rebalance date</strong> (your birthday or April 1). If any asset class drifts >5% from target, sell the overweight and buy the underweight — this enforces buy-low, sell-high mechanically without emotion.`);
+
+  // === STEP 13: STEP-UP DISCIPLINE ===
+  if (young) {
+    steps.push(`<strong>Step-up SIP — the secret weapon.</strong> A ₹15K SIP at 11% over 25 years = ₹2.1 Cr. The same SIP stepped up 10% annually = ₹4.5 Cr. Automate the step-up to your salary appraisal cycle.`);
+  }
+
+  // === STEP 14: BEHAVIOURAL ===
+  if (profile.marketReaction === 'Sell everything immediately') {
+    steps.push(`<strong>Lower your equity ceiling until temperament strengthens.</strong> Your stated reaction (sell in panic) historically destroys 40–60% of long-term returns. Start with conservative hybrid funds, watch yourself through one correction, then graduate.`);
+  } else if (profile.marketReaction === 'Invest more — opportunity') {
+    steps.push(`<strong>Keep dry powder for drawdowns.</strong> If you genuinely add capital in dips, reserve 5–10% of investable as a "drawdown fund" in liquid — deploy only when Nifty falls ≥15% from peak.`);
+  }
+
+  // === STEP 15: LITERACY ===
+  steps.push(`<strong>Quarterly learning, not daily noise.</strong> Read one investing book per quarter (Bogle's <em>Little Book of Common Sense Investing</em>, Graham's <em>Intelligent Investor</em>, Sethi's <em>I Will Teach You to Be Rich</em>). Unfollow daily-prediction finance YouTubers — they sell attention, not insight.`);
+
+  return steps.map(s => `<li>${s}</li>`).join('');
+}
+
+function buildReportHTML(profile, refine) {
+  const risk = calculateCompositeRisk(profile);
+  const a = computeAllocation(profile, risk);
+  const eq = getEquityBreakdown(risk.composite);
+  const sipStr = String(profile.monthlySIP).replace(/[^0-9]/g,'');
+  const sip = sipStr ? parseInt(sipStr) : 10000;
+  const horizon = parseInt(profile.horizon);
+  const feasibility = computeGoalFeasibility(profile, sip);
+  const taxPlan = buildTaxPlan(profile);
+  const cityTier = getCityTier(profile.city);
+
+  // Monthly amounts per category
+  const mEq = Math.round(sip * a.eq / 100);
+  const mDebt = Math.round(sip * a.debt / 100);
+  const mGold = Math.round(sip * a.gold / 100);
+  const mReits = Math.round(sip * a.reits / 100);
+  const mAlt = Math.round(sip * a.alt / 100);
+  const mLarge = Math.round(mEq * eq.large / 100);
+  const mMid = Math.round(mEq * eq.mid / 100);
+  const mSmall = Math.round(mEq * eq.small / 100);
+  const mIntl = Math.round(mEq * eq.intl / 100);
+
+  // Projection rows
+  const projYears = [1, 3, 5, 7, 10, horizon].filter((v,i,arr) => arr.indexOf(v) === i && v <= horizon).sort((a,b)=>a-b);
+  const projRows = projYears.map(y => {
+    const inv = sip * 12 * y;
+    return `<tr><td><strong>Year ${y}</strong></td><td>${fmtINR(inv)}</td><td>${fmtINR(projection(sip, y, 8))}</td><td>${fmtINR(projection(sip, y, 11))}</td><td>${fmtINR(projection(sip, y, 14))}</td></tr>`;
+  }).join('');
+
+  // Goal-specific opener
+  let goalOpener = '';
+  if (profile.primaryGoal === 'Retirement corpus') goalOpener = `Building a retirement corpus is your headline goal — patience and compounding are your two strongest allies over the next ${horizon} years.`;
+  else if (profile.primaryGoal === "Child's education") goalOpener = `Funding your child's education is a fixed-horizon goal — you cannot postpone it. Capital protection becomes more important as the goal year approaches.`;
+  else if (profile.primaryGoal === 'Buy a home') goalOpener = `A home purchase is a lump-sum goal. We will balance growth with safety so the corpus is intact when you need it.`;
+  else if (profile.primaryGoal === 'Wealth creation') goalOpener = `Open-ended wealth creation is the most flexible mandate — we lean into equity for the next ${horizon} years.`;
+  else if (profile.primaryGoal === 'Passive income / FIRE') goalOpener = `FIRE demands two phases: aggressive accumulation now, dignified withdrawal later. We start with growth, then transition to income-producing assets.`;
+  else if (profile.primaryGoal === 'Marriage / big event') goalOpener = `A near-dated lifestyle goal — capital safety is the priority over the last 1–2 years.`;
+  else if (profile.primaryGoal === 'Tax optimisation') goalOpener = `Tax-efficient investing is half the battle won. The right wrapper around the same asset can save 10–15% post-tax CAGR.`;
+
+  const html = `
+<h2>Executive Summary</h2>
+<p>Hello <strong>${profile.name}</strong> — here is a plan built around your goal of <em>${profile.primaryGoal}</em> over a <strong>${horizon}-year</strong> horizon, with a monthly investable of <strong>₹${profile.monthlySIP}</strong>.</p>
+<p>${goalOpener}</p>
+<p>Your composite risk profile is <em>${risk.label}</em> (score ${risk.composite}/100), arrived at by blending your self-assessed appetite (${risk.appetite}/100) with your structural <strong>capacity</strong> (${risk.capacity}/100) — factoring in age, dependents, income stability, emergency fund, and insurance status. At ${horizon} years and a moderate 11% assumed CAGR, your projected corpus is <em>${fmtINR(projection(sip, horizon, 11))}</em>, versus total invested of <em>${fmtINR(sip * 12 * horizon)}</em> — that gap is the compounding gift.</p>
+
+<h2>Financial Health Check</h2>
+<p>Before any investment plan, the foundations: emergency reserve, insurance, debt, savings discipline. Gaps here multiply the risk of every rupee you invest.</p>
+<table>
+<thead><tr><th>Area</th><th>Current</th><th>Recommended Action</th><th>Priority</th></tr></thead>
+<tbody>${buildHealthRows(profile)}</tbody>
+</table>
+
+<h2>Risk Profile Deep Dive</h2>
+<p>There are two different things called "risk" in investing: <em>capacity</em> (what you can structurally afford to lose) and <em>appetite</em> (what you say you're comfortable losing). They rarely match. We measure 11 factors below and use the weighted blend.</p>
+<table>
+<thead><tr><th>Summary Factor</th><th>Score</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Risk Appetite (self-assessed)</td><td>${risk.appetite} / 100</td><td>What you said you'd tolerate in a downturn</td></tr>
+<tr><td>Risk Capacity (calculated)</td><td>${risk.capacity} / 100</td><td>What your structural situation supports</td></tr>
+<tr><td>Composite Risk</td><td><strong>${risk.composite} / 100</strong></td><td>50/50 weighted blend, horizon-capped</td></tr>
+<tr><td>Final Classification</td><td colspan="2"><strong>${risk.label}</strong></td></tr>
+</tbody>
+</table>
+
+<h3>Detailed Capacity Breakdown</h3>
+<p>Each factor below moved your capacity score up or down. Use this to see exactly which gaps to close to unlock higher equity allocation safely.</p>
+<table>
+<thead><tr><th>Factor</th><th>Impact</th><th>Reason</th></tr></thead>
+<tbody>
+${risk.factors.map(f => `<tr><td>${f[0]}</td><td><strong>${f[1]}</strong></td><td>${f[2]}</td></tr>`).join('')}
+</tbody>
+</table>
+<p>${risk.appetite > risk.capacity + 15 ? '<em>Your appetite exceeds your capacity</em> — common in young investors with high aspirations but thin safety nets. We dial the equity ceiling down to protect against forced selling in a downturn.' : risk.capacity > risk.appetite + 15 ? '<em>Your capacity exceeds your appetite</em> — you can afford more risk than you currently feel comfortable taking. Build experience through one full market cycle, then revisit.' : 'Your appetite and capacity are well-aligned — the recommended allocation reflects both.'}</p>
+
+${feasibility ? `
+<h2>Goal Feasibility Check</h2>
+<p>The most important question: can your current SIP actually reach your goal? We inflate today's target by 6% per year, then back-solve the required SIP.</p>
+<table>
+<thead><tr><th>Item</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Goal</td><td>${feasibility.label}</td></tr>
+<tr><td>Target year</td><td>${feasibility.targetYear}</td></tr>
+<tr><td>Inflation-adjusted target</td><td><strong>${fmtINR(feasibility.target)}</strong></td></tr>
+<tr><td>Your current SIP projects to</td><td>${fmtINR(feasibility.projected)} @ 11% CAGR</td></tr>
+<tr><td>Gap (target − projected)</td><td><strong>${feasibility.gap > 0 ? fmtINR(feasibility.gap) + ' short' : fmtINR(Math.abs(feasibility.gap)) + ' surplus'}</strong></td></tr>
+<tr><td>Required monthly SIP</td><td><strong>${fmtINR(feasibility.required)}</strong> ${feasibility.sipGap > 0 ? '(an increase of ' + fmtINR(feasibility.sipGap) + ')' : '(already exceeded)'}</td></tr>
+<tr><td>Verdict</td><td><em>${feasibility.status === 'surplus' ? 'On track' : feasibility.status === 'close' ? 'Almost there' : feasibility.status === 'gap' ? 'Meaningful gap' : 'Large gap'}</em></td></tr>
+</tbody>
+</table>
+<p>${feasibility.verdict}</p>` : ''}
+
+${a.notes && a.notes.length ? `
+<h2>Allocation Reasoning</h2>
+<p>Your allocation is not just based on risk score — these specific factors shaped it:</p>
+<ul>
+${a.notes.map(n => `<li>${n}</li>`).join('')}
+</ul>` : ''}
+
+<h2>Recommended Asset Allocation</h2>
+<p>The blueprint below allocates your ${fmtINR(sip)}/month across asset classes that historically have low correlation — so when one zigs, another zags, and your portfolio rides smoother through cycles.</p>
+<table>
+<thead><tr><th>Asset Class</th><th>Sub-category</th><th>Allocation</th><th>Vehicle Type</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td rowspan="4"><strong>Equity ${a.eq}%</strong></td><td>Large-cap</td><td>${(a.eq*eq.large/100).toFixed(0)}%</td><td>Index fund / ETF</td><td>Core stability, low expense</td></tr>
+<tr><td>Mid-cap</td><td>${(a.eq*eq.mid/100).toFixed(0)}%</td><td>Active mid-cap fund</td><td>Growth multiplier</td></tr>
+<tr><td>Small-cap</td><td>${(a.eq*eq.small/100).toFixed(0)}%</td><td>Active small-cap fund</td><td>High-risk, high-reward tail</td></tr>
+<tr><td>International</td><td>${(a.eq*eq.intl/100).toFixed(0)}%</td><td>US / global index fund</td><td>Currency + geographic diversification</td></tr>
+<tr><td rowspan="3"><strong>Debt ${a.debt}%</strong></td><td>Govt securities (G-Secs)</td><td>${(a.debt*0.4).toFixed(0)}%</td><td>Gilt fund / direct G-Sec</td><td>Sovereign safety</td></tr>
+<tr><td>AAA corporate bonds</td><td>${(a.debt*0.4).toFixed(0)}%</td><td>Corporate bond fund</td><td>Slightly better yield</td></tr>
+<tr><td>Liquid / short-duration</td><td>${(a.debt*0.2).toFixed(0)}%</td><td>Liquid / overnight fund</td><td>Reserve + opportunity cash</td></tr>
+<tr><td><strong>Gold ${a.gold}%</strong></td><td>SGB / Gold ETF</td><td>${a.gold}%</td><td>SGB (preferred) or Gold ETF</td><td>Inflation hedge, INR weakness hedge</td></tr>
+<tr><td><strong>REITs ${a.reits}%</strong></td><td>Listed REITs</td><td>${a.reits}%</td><td>Listed REIT units</td><td>Real estate exposure + rental yield</td></tr>
+<tr><td><strong>Alternatives ${a.alt}%</strong></td><td>Optional</td><td>${a.alt}%</td><td>Multi-asset / commodity funds</td><td>Diversifier (skip if beginner)</td></tr>
+</tbody>
+</table>
+
+<h2>Screening Criteria — What to Look For</h2>
+<p>This section is the heart of educational investing. <strong>We do not name specific funds or stocks</strong> — but we tell you exactly which numbers to check on <em>Screener.in, Tickertape, ValueResearch, MoneyControl, AMFI</em>, so you can filter intelligently.</p>
+
+<h3>1. Direct Equity (individual stocks)</h3>
+<table>
+<thead><tr><th>Metric</th><th>What to Look For</th><th>Why</th><th>Where to Check</th></tr></thead>
+<tbody>
+<tr><td>P/E Ratio</td><td>Below sector median; avoid &gt;40 unless growth justifies</td><td>Valuation sanity check</td><td>Screener.in / Tickertape</td></tr>
+<tr><td>P/B Ratio</td><td>&lt;3 for non-financials; &lt;2 for banks</td><td>Book value coverage</td><td>Screener.in</td></tr>
+<tr><td>ROE</td><td><strong>&gt; 15%</strong> consistently for 5 years</td><td>Capital efficiency</td><td>Screener.in</td></tr>
+<tr><td>ROCE</td><td><strong>&gt; 15%</strong>; ideally &gt; cost of capital</td><td>Operational profitability</td><td>Screener.in</td></tr>
+<tr><td>Debt-to-Equity</td><td><strong>&lt; 0.5</strong> (zero ideal for non-financials)</td><td>Leverage risk</td><td>Screener.in</td></tr>
+<tr><td>Promoter Holding</td><td><strong>&gt; 50%</strong>; stable or rising</td><td>Skin in the game</td><td>Screener.in</td></tr>
+<tr><td>Promoter Pledge</td><td><strong>&lt; 10%</strong> (ideally 0%)</td><td>Distress signal</td><td>BSE / NSE filings</td></tr>
+<tr><td>Sales Growth (3-yr CAGR)</td><td><strong>&gt; 10%</strong></td><td>Topline momentum</td><td>Screener.in</td></tr>
+<tr><td>EPS Growth (3-yr CAGR)</td><td><strong>&gt; 12%</strong></td><td>Bottomline momentum</td><td>Screener.in</td></tr>
+<tr><td>Operating Margin</td><td>Stable or rising 5-yr trend</td><td>Pricing power</td><td>Screener.in</td></tr>
+<tr><td>Interest Coverage</td><td><strong>&gt; 3×</strong></td><td>Debt-service safety</td><td>Screener.in</td></tr>
+<tr><td>Current Ratio</td><td><strong>&gt; 1.5</strong></td><td>Short-term liquidity</td><td>Screener.in</td></tr>
+<tr><td>Free Cash Flow</td><td>Positive for 3+ years</td><td>Real cash generation</td><td>Screener.in</td></tr>
+<tr><td>Beta (vs Nifty)</td><td>&lt; 1 for defensive, &gt; 1 for growth</td><td>Volatility relative to market</td><td>Tickertape</td></tr>
+<tr><td>52-week Range</td><td>Currently in lower 40% of range = better entry</td><td>Avoid buying at peak</td><td>NSE / BSE</td></tr>
+</tbody>
+</table>
+
+<h3>2. Equity Mutual Funds</h3>
+<table>
+<thead><tr><th>Metric</th><th>What to Look For</th><th>Why</th><th>Where to Check</th></tr></thead>
+<tbody>
+<tr><td>AUM (Assets Under Management)</td><td>₹500 Cr – ₹25,000 Cr sweet spot (mid/small-cap)</td><td>Too small = risky; too large = harder to outperform</td><td>AMFI / ValueResearch</td></tr>
+<tr><td>Expense Ratio (Direct Plan)</td><td><strong>&lt; 1%</strong> for active; <strong>&lt; 0.4%</strong> for index</td><td>Costs compound against you</td><td>AMC website</td></tr>
+<tr><td>3-yr Rolling Returns</td><td>Beats benchmark in &gt; 70% of rolling windows</td><td>True consistency, not point-to-point luck</td><td>ValueResearch / Rupeevest</td></tr>
+<tr><td>5-yr Rolling Returns</td><td>Beats benchmark in &gt; 75% of rolling windows</td><td>Long-term consistency</td><td>ValueResearch</td></tr>
+<tr><td>Standard Deviation</td><td>Lower than category average</td><td>Volatility measure</td><td>ValueResearch</td></tr>
+<tr><td>Sharpe Ratio</td><td><strong>&gt; 1</strong> (the higher the better)</td><td>Risk-adjusted return</td><td>ValueResearch</td></tr>
+<tr><td>Sortino Ratio</td><td><strong>&gt; 1.5</strong></td><td>Downside-risk-adjusted return (better than Sharpe)</td><td>Tickertape</td></tr>
+<tr><td>Alpha</td><td><strong>Positive</strong>; &gt; 2 is good for active funds</td><td>Excess return vs benchmark</td><td>ValueResearch</td></tr>
+<tr><td>Beta</td><td>0.8 – 1.1 for diversified equity</td><td>Market sensitivity</td><td>ValueResearch</td></tr>
+<tr><td>Information Ratio</td><td><strong>&gt; 0.5</strong></td><td>Active management skill</td><td>Fund factsheet</td></tr>
+<tr><td>Fund Manager Tenure</td><td><strong>&gt; 5 years</strong> at this fund</td><td>Track record continuity</td><td>AMC website</td></tr>
+<tr><td>Portfolio Turnover</td><td>&lt; 50% for stable strategies</td><td>High churn = higher costs + taxes</td><td>Factsheet</td></tr>
+<tr><td>Top 10 Holdings Concentration</td><td>40–60% for diversified funds</td><td>Avoids overconcentration risk</td><td>Factsheet</td></tr>
+<tr><td>Exit Load</td><td>Usually 1% if redeemed &lt; 1 year</td><td>Plan holding period accordingly</td><td>AMC website</td></tr>
+</tbody>
+</table>
+
+<h3>3. Debt Funds &amp; Bonds</h3>
+<table>
+<thead><tr><th>Metric</th><th>What to Look For</th><th>Why</th><th>Where to Check</th></tr></thead>
+<tbody>
+<tr><td>Credit Rating Profile</td><td><strong>&gt; 80% AAA</strong>; AA acceptable; avoid below A</td><td>Default risk</td><td>Factsheet</td></tr>
+<tr><td>Yield to Maturity (YTM)</td><td>Compare across similar-duration funds</td><td>Expected return if held to maturity</td><td>Factsheet</td></tr>
+<tr><td>Modified Duration</td><td>Match to your investment horizon</td><td>Interest-rate sensitivity</td><td>Factsheet</td></tr>
+<tr><td>Average Maturity</td><td>Should match expected holding period</td><td>Reinvestment risk</td><td>Factsheet</td></tr>
+<tr><td>Macaulay Duration</td><td>Weighted-average time to cash flows</td><td>True time-to-recover</td><td>Factsheet</td></tr>
+<tr><td>Expense Ratio</td><td><strong>&lt; 0.5%</strong> for liquid; &lt; 0.7% for short-duration</td><td>Costs eat into already-thin yields</td><td>AMC website</td></tr>
+<tr><td>Concentration in Single Issuer</td><td><strong>&lt; 10%</strong> per issuer</td><td>Single-default risk</td><td>Factsheet</td></tr>
+</tbody>
+</table>
+
+<h3>4. Gold (SGB / Gold ETF)</h3>
+<table>
+<thead><tr><th>Metric</th><th>What to Look For</th><th>Why</th><th>Where to Check</th></tr></thead>
+<tbody>
+<tr><td>SGB Coupon</td><td><strong>2.5% p.a.</strong> on issue price</td><td>Bonus over gold price appreciation</td><td>RBI / NSE</td></tr>
+<tr><td>SGB Tenure</td><td>8 years (exit allowed after 5)</td><td>Tax-free capital gain if held to maturity</td><td>RBI prospectus</td></tr>
+<tr><td>Gold ETF Expense Ratio</td><td><strong>&lt; 0.5%</strong></td><td>Annual drag on returns</td><td>AMC website</td></tr>
+<tr><td>Gold ETF Tracking Error</td><td><strong>&lt; 1%</strong> vs gold price</td><td>How well ETF mimics actual gold</td><td>Factsheet</td></tr>
+<tr><td>Liquidity (ETF)</td><td>Daily traded volume &gt; ₹1 Cr</td><td>Exit ease</td><td>NSE</td></tr>
+</tbody>
+</table>
+
+<h3>5. REITs</h3>
+<table>
+<thead><tr><th>Metric</th><th>What to Look For</th><th>Why</th><th>Where to Check</th></tr></thead>
+<tbody>
+<tr><td>Distribution Yield</td><td><strong>6–8%</strong> annually</td><td>Income component</td><td>REIT investor presentation</td></tr>
+<tr><td>Occupancy Rate</td><td><strong>&gt; 90%</strong></td><td>Demand strength</td><td>Quarterly disclosure</td></tr>
+<tr><td>WALE</td><td><strong>&gt; 5 years</strong> weighted avg lease expiry</td><td>Income visibility</td><td>Quarterly disclosure</td></tr>
+<tr><td>LTV (Loan-to-Value)</td><td><strong>&lt; 30%</strong> (regulatory cap 49%)</td><td>Leverage risk</td><td>Annual report</td></tr>
+<tr><td>Tenant Concentration</td><td>Top 10 tenants &lt; 50% of rent</td><td>Diversification</td><td>Annual report</td></tr>
+<tr><td>Sponsor Quality</td><td>Listed parent, good track record</td><td>Governance</td><td>Public filings</td></tr>
+</tbody>
+</table>
+
+<h2>Investment Structure — Your Monthly Plan</h2>
+<p>Based on your <strong>${fmtINR(sip)}/month</strong> investable, here is the recommended SIP structure. Set these up as <em>direct plan, growth option</em> (not regular/dividend) — direct plans save 0.5–1% in commissions annually, which compounds enormously.</p>
+<table>
+<thead><tr><th>Category</th><th>Monthly Amount</th><th>Vehicle</th><th>Mode</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Large-cap Equity</td><td>${fmtINR(mLarge)}</td><td>Nifty 50 / Sensex Index Fund</td><td>SIP</td><td>Core stability</td></tr>
+<tr><td>Mid-cap Equity</td><td>${fmtINR(mMid)}</td><td>Active mid-cap fund</td><td>SIP</td><td>Growth engine</td></tr>
+<tr><td>Small-cap Equity</td><td>${fmtINR(mSmall)}</td><td>Active small-cap fund</td><td>SIP</td><td>High-return tail</td></tr>
+<tr><td>International Equity</td><td>${fmtINR(mIntl)}</td><td>US / global index fund</td><td>SIP</td><td>Geographic diversification</td></tr>
+<tr><td>Debt</td><td>${fmtINR(mDebt)}</td><td>Gilt + Corporate bond + Liquid funds</td><td>SIP</td><td>Stability + reserve</td></tr>
+<tr><td>Gold</td><td>${fmtINR(mGold)}</td><td>SGB tranches when issued / Gold ETF SIP</td><td>SIP / lump-sum at SGB issue</td><td>Inflation hedge</td></tr>
+<tr><td>REITs</td><td>${fmtINR(mReits)}</td><td>Listed REIT units</td><td>Direct buy quarterly</td><td>Rental income + real estate</td></tr>
+${a.alt > 0 ? `<tr><td>Alternatives</td><td>${fmtINR(mAlt)}</td><td>Multi-asset fund</td><td>SIP</td><td>Diversifier</td></tr>` : ''}
+<tr style="background:var(--primary-soft);font-weight:600"><td><strong>TOTAL</strong></td><td><strong>${fmtINR(sip)}</strong></td><td colspan="3">Per month</td></tr>
+</tbody>
+</table>
+<p><strong>STP strategy:</strong> If you have a lump sum sitting idle, do not invest it all at once. Park it in a <em>liquid fund</em> and set up a Systematic Transfer Plan (STP) to move ₹${fmtINR(Math.round(sip*0.5))}/week into equity over 6–12 months. This averages out market timing risk.</p>
+${horizon <= 5 || profile.primaryGoal === 'Retirement corpus' ? `<p><strong>SWP strategy:</strong> Once you reach your corpus target, switch to a <em>Systematic Withdrawal Plan</em> to pull out 4–5% annually (the "safe withdrawal rate"). This preserves the corpus while giving you regular income.</p>` : ''}
+
+<h2>${horizon}-Year Projection</h2>
+<p>Growth at three different annualised return assumptions, given your monthly SIP of <strong>${fmtINR(sip)}</strong>. The <em>Optimistic</em> column assumes a long-running bull market, the <em>Conservative</em> column assumes a low-growth decade.</p>
+<table>
+<thead><tr><th>Year</th><th>Total Invested</th><th>Conservative (8%)</th><th>Moderate (11%)</th><th>Optimistic (14%)</th></tr></thead>
+<tbody>${projRows}</tbody>
+</table>
+<p>The "moderate" column is your planning anchor. Notice how the gap between <em>total invested</em> and <em>corpus</em> widens dramatically after year 7 — that is compounding doing its quiet work.</p>
+
+<h2>Priority Action Plan</h2>
+<p>In strict priority order. Do not skip ahead.</p>
+<ol>${buildActionPlan(profile, risk, a, feasibility)}</ol>
+
+<h2>Review Cadence &amp; Tax Notes</h2>
+<h3>Review schedule</h3>
+<ul>
+<li><strong>Monthly (10 minutes):</strong> Confirm SIPs ran successfully; log net worth in a sheet.</li>
+<li><strong>Quarterly (30 minutes):</strong> Check allocation drift; read each fund's latest factsheet; note any manager change or strategy shift.</li>
+<li><strong>Annually (2 hours):</strong> Full rebalance if any class has drifted &gt;5% from target. Tax-harvest LTCG up to ₹1.25 lakh exemption (FY 2025–26). Review insurance sum assured.</li>
+</ul>
+
+<h3>Tax awareness (educational, not advice)</h3>
+<ul>
+<li><strong>Equity LTCG:</strong> 12.5% tax on gains above ₹1.25 lakh per FY (FY 2025–26). Hold &gt; 1 year to qualify.</li>
+<li><strong>Equity STCG:</strong> 20% tax if sold within 1 year. Avoid unless absolutely needed.</li>
+<li><strong>Debt funds:</strong> Post-April 2023 purchases — gains taxed at slab rate, no indexation. Plan accordingly.</li>
+<li><strong>SGB:</strong> Capital gain at maturity (8 years) is <em>tax-free</em>. Interest taxable at slab rate.</li>
+<li><strong>NPS Tier 1:</strong> Additional ₹50,000 deduction under 80CCD(1B) — above the ₹1.5L 80C cap.</li>
+<li><strong>ELSS:</strong> 3-year lock-in, qualifies for 80C up to ₹1.5L (old regime only).</li>
+</ul>
+
+<h3>Tax-harvesting trick</h3>
+<p>Every year, sell equity holdings whose gain is just under ₹1.25 lakh, then immediately buy them back. You "harvest" tax-free gains and reset your cost basis higher — saving 12.5% on those gains forever.</p>
+
+${taxPlan ? `
+<h2>Your Tax-Saving Stack</h2>
+<p>Specific to your <em>${taxPlan.regime || 'undecided'}</em> regime and <em>${taxPlan.bracket || 'unstated'}</em> bracket. ${taxPlan.old ? 'Old-regime users can stack 80C + 80CCD(1B) + 80D for ~₹2.25 L of deductions.' : 'New-regime users have fewer deductions but gentler slabs — re-run "old vs new" calculation every March.'}</p>
+<table>
+<thead><tr><th>Lever</th><th>Vehicle</th><th>Why</th><th>Action</th></tr></thead>
+<tbody>
+${taxPlan.rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><strong>${r[3]}</strong></td></tr>`).join('')}
+</tbody>
+</table>
+` : ''}
+
+<h2>Life-Stage Considerations</h2>
+<p>Beyond pure numbers, your stage of life dictates which risks deserve attention.</p>
+<ul>
+${profile.lifeStage === 'Single, no dependents' ? `<li><strong>Single, no dependents:</strong> Highest equity tolerance — capture this window. Health insurance is still essential (one hospitalisation can wipe years of savings). Skip elaborate term life unless you have loan EMIs co-signed by family.</li>` : ''}
+${profile.lifeStage === 'Married, no children' ? `<li><strong>Married, no children:</strong> Build joint emergency fund (12 months for one income, 6 months for two). Both spouses need term life. Plan for the next stage — children dramatically change cash flow.</li>` : ''}
+${profile.lifeStage === 'Married with young children' ? `<li><strong>Married with young children:</strong> Term life is non-negotiable for both income earners. Start the education corpus today — the earliest rupees do the heaviest lifting. Health cover should include maternity / paediatric riders.</li>` : ''}
+${profile.lifeStage === 'Married with grown children' ? `<li><strong>Married with grown children:</strong> Begin the retirement glide path. Health insurance becomes the bigger risk — top-up cover at this age is cheap; later it isn't. Communicate financial plan to grown children to avoid disputes.</li>` : ''}
+${profile.lifeStage === 'Near or in retirement' ? `<li><strong>Near or in retirement:</strong> Capital preservation > growth. Run the 4% safe-withdrawal calculation. Health insurance and senior-citizen riders are critical. Avoid "high-yield" products promising guaranteed returns above 8%.</li>` : ''}
+${cityTier === 1 ? `<li><strong>Tier 1 city (${profile.city}):</strong> Higher cost of living — emergency fund needs to cover at least 6 months of real metro expenses. Health cover ≥ ₹25 L given metro hospital rates. Rent vs buy maths often favours rent for first home.</li>` : cityTier === 2 ? `<li><strong>Tier 2 city (${profile.city}):</strong> Mid cost of living — ₹15 L health cover usually sufficient. Real estate may be a viable investment given lower entry, but liquidity is still poor.</li>` : `<li><strong>Smaller city (${profile.city}):</strong> Lower cost of living gives a real advantage — your savings rate can be much higher than metro peers. Use that head start aggressively.</li>`}
+${profile.employment === 'Self-employed / freelancer' ? `<li><strong>Self-employed:</strong> Build a 12-month emergency fund (vs 6 for salaried). Don't skip PPF / NPS just because there's no EPF auto-deduct. Quarterly advance tax payments — automate them.</li>` : ''}
+${profile.employment === 'Business owner' ? `<li><strong>Business owner:</strong> Separate business and personal finances ruthlessly. Pay yourself a salary on the 1st of every month — that's the SIP base. Avoid the temptation to reinvest 100% in the business; diversification is what protects you when the business has a bad year.</li>` : ''}
+${profile.employment === 'Salaried (government / PSU)' ? `<li><strong>Government / PSU:</strong> Pension safety net allows higher equity tolerance than the same age in private sector. Capture this advantage; don't be more conservative than your situation warrants.</li>` : ''}
+</ul>
+
+<h2>Behavioural Note</h2>
+<p>${profile.marketReaction === 'Sell everything immediately' ? `Your stated reaction to a 30% drawdown is <em>"sell everything immediately"</em>. Honest answer — and the most expensive instinct in investing. Historical data: investors who sold in March 2020 locked in 30%+ losses; those who stayed (or added) recovered fully within 9 months. <strong>Your plan handles this by capping equity at ${a.eq}%</strong>, holding ${a.debt}% in stable debt. Use the debt buffer to mentally "anchor" — every month you hold through a fall, the discipline gets easier.` : profile.marketReaction === 'Reduce investment amounts' ? `Your reaction (<em>"reduce investment amounts"</em>) is sensible but costs returns — the rupees you don't invest in a crash are the highest-return rupees of your career. A practical bridge: don't cut your SIP, but redirect 25% of the SIP to debt for 3 months until volatility settles. You stay invested, your discipline stays intact.` : profile.marketReaction === 'Stay the course' ? `Your reaction (<em>"stay the course"</em>) is what 90% of long-term wealth depends on. Your plan trusts that — equity at ${a.eq}% reflects this discipline. Two warnings: (1) staying the course only works if you started with the right allocation, so review yearly; (2) "doing nothing" requires not checking the portfolio in panic — limit yourself to one check per quarter during corrections.` : `Your reaction (<em>"invest more in drawdowns"</em>) is the rarest and most profitable temperament. A practical caveat: keep a "drawdown fund" (5–10% of investable in liquid) so you actually have the dry powder to deploy. Don't redirect SIPs — the SIPs are already buying low automatically. Use the drawdown fund only when Nifty falls ≥15% from peak.`}</p>
+
+<p style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border-soft);font-size:14px;color:var(--text-2)"><strong>${profile.name},</strong> the plan above is a starting blueprint, not a finished portfolio. Your numbers will shift — income will rise, dependents will change, markets will swing. The discipline is not in picking the perfect fund; it is in <em>showing up every month</em> and reviewing once a year. ${horizon}-year horizons are won by patience, not by cleverness. Begin with Step 1.</p>
+
+`;
+  return wrapSections(html);
+}
+
+function wrapSections(html) {
+  const parts = html.split(/(?=<h2[\s>])/);
+  return parts.map(part => {
+    const t = part.trim();
+    if (!t) return '';
+    if (t.startsWith('<h2')) return `<section class="report-section">${t}</section>`;
+    return t;
+  }).join('');
+}
+
+// ── GENERATE REPORT ──
+async function generateReport(refineInstruction) {
+  lastProfile = collectProfile();
+
+  if (!refineInstruction) {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('stage-' + i).classList.remove('visible');
+      document.getElementById('pill-' + i).classList.remove('active');
+      document.getElementById('pill-' + i).classList.add('done');
+    }
+    document.getElementById('pill-4').classList.add('active');
+    buildCharts(lastProfile);
+    document.getElementById('report-name-title').textContent = lastProfile.name + "'s Financial Plan";
+    document.getElementById('report-sub').textContent = 'Goal: ' + lastProfile.primaryGoal + ' · ' + lastProfile.horizon + ' year horizon';
+  }
+
+  document.getElementById('report-out').classList.remove('visible');
+  document.getElementById('loading').classList.add('visible');
+
+  // Simulate a brief composition delay for UX
+  let msgIdx = 0;
+  const msgInterval = setInterval(() => {
+    msgIdx = (msgIdx + 1) % loadingMsgs.length;
+    document.getElementById('loading-msg').textContent = loadingMsgs[msgIdx];
+  }, 600);
+
+  await new Promise(r => setTimeout(r, 1800));
+  clearInterval(msgInterval);
+
+  const html = buildReportHTML(lastProfile, refineInstruction);
+
+  document.getElementById('loading').classList.remove('visible');
+  document.getElementById('report-content').innerHTML = html;
+  document.getElementById('report-out').classList.add('visible');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── REFINE ACTIONS ──
+function refineAction(kind){
+  if (!lastProfile) return;
+  if (!originalProfile) originalProfile = JSON.parse(JSON.stringify(lastProfile));
+
+  let note = '';
+  switch(kind){
+    case 'conservative':
+      lastProfile.riskScore = Math.max(5, lastProfile.riskScore - 20);
+      note = `Risk score lowered to ${lastProfile.riskScore}/100 — allocation pulled toward debt & gold.`;
+      break;
+    case 'aggressive':
+      lastProfile.riskScore = Math.min(100, lastProfile.riskScore + 20);
+      note = `Risk score raised to ${lastProfile.riskScore}/100 — allocation pushed toward equity & small-cap.`;
+      break;
+    case 'sipUp': {
+      const cur = parseInt(String(lastProfile.monthlySIP).replace(/[^0-9]/g,'')) || 10000;
+      const newSip = Math.round(cur * 1.25);
+      lastProfile.monthlySIP = newSip.toLocaleString('en-IN');
+      note = `Monthly SIP raised to ₹${newSip.toLocaleString('en-IN')} — projections recalculated.`;
+      break;
+    }
+    case 'sipDown': {
+      const cur = parseInt(String(lastProfile.monthlySIP).replace(/[^0-9]/g,'')) || 10000;
+      const newSip = Math.max(500, Math.round(cur * 0.75));
+      lastProfile.monthlySIP = newSip.toLocaleString('en-IN');
+      note = `Monthly SIP reduced to ₹${newSip.toLocaleString('en-IN')} — projections recalculated.`;
+      break;
+    }
+    case 'horizonUp':
+      lastProfile.horizon = String(Math.min(40, parseInt(lastProfile.horizon) + 2));
+      note = `Horizon extended to ${lastProfile.horizon} years — more compounding runway.`;
+      break;
+    case 'horizonDown':
+      lastProfile.horizon = String(Math.max(1, parseInt(lastProfile.horizon) - 2));
+      note = `Horizon shortened to ${lastProfile.horizon} years — capital safety prioritised.`;
+      break;
+    case 'taxFocus':
+      lastProfile.primaryGoal = 'Tax optimisation';
+      note = 'Switched primary lens to tax optimisation — see action plan & tax notes.';
+      break;
+    case 'retireFocus':
+      lastProfile.primaryGoal = 'Retirement corpus';
+      note = 'Switched primary lens to retirement corpus.';
+      break;
+    case 'reset':
+      lastProfile = JSON.parse(JSON.stringify(originalProfile));
+      note = 'Reverted to your original answers.';
+      break;
+  }
+
+  buildCharts(lastProfile);
+  document.getElementById('report-content').innerHTML = buildReportHTML(lastProfile, null);
+  document.getElementById('report-name-title').textContent = lastProfile.name + "'s Financial Plan";
+  document.getElementById('report-sub').textContent = 'Goal: ' + lastProfile.primaryGoal + ' · ' + lastProfile.horizon + ' year horizon';
+
+  const status = document.getElementById('refine-status');
+  if (status) {
+    status.textContent = '✓ ' + note;
+    setTimeout(() => { if (status) status.textContent = ''; }, 4500);
+  }
+
+  document.getElementById('charts-area').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+</body>
+</html>
