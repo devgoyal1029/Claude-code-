@@ -9,16 +9,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root{ --navy:#05111f; --navy2:#0a1c30; --gold:#c9982a; --gold-soft:#e0b94f; --mut:#9fb1c4;
+  :root{ --navy:#f6f3ec; --navy2:#ffffff; --gold:#c9982a; --gold-soft:#8a6a15; --mut:#6d675a;
     --sh-bg:#ffffff; --sh-text:#1d1d1d; --sh-head:#3c7d3f; --sh-banner:#5a9550; --sh-accent:#2f6b32; --sh-muted:#8a8a8a;
     --amber:#b08400; --amber-bg:#fff6df; --good:#1f7a3d; --bad:#b3261e; }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--navy);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
-  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);}
-  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
-  header .sub{color:var(--mut);font-size:13px;} header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid #e3dcc9;background:var(--navy2);}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:#8a6a15;}
+  header .sub{color:var(--mut);font-size:13px;} header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #e3dcc9;padding:7px 14px;border-radius:8px;}
   main{max-width:1240px;margin:0 auto;padding:24px;}
-  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:26px;margin:0 0 6px;color:#eef3f9;}
+  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:26px;margin:0 0 6px;color:#20272f;}
   h2 .meta{font-family:'DM Sans';font-weight:400;color:var(--mut);font-size:13px;letter-spacing:0;}
   h3{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;color:var(--gold-soft);font-size:16px;margin:20px 0 8px;}
   .empty{color:var(--mut);padding:50px;text-align:center;}
@@ -27,7 +27,7 @@
   /* every content block is a white Excel sheet, like the Analysis screen */
   .hero,.d-inputs,.d-out,.d-ig,.d-tvmethod,.d-limits,.chartbox{
     background:var(--sh-bg); color:var(--sh-text); border:1px solid #d6dce4; border-radius:8px;
-    box-shadow:0 14px 34px -22px rgba(0,0,0,.5); font-family:'DM Sans',Arial,sans-serif;}
+    box-shadow:0 10px 28px -20px rgba(31,28,20,.22); font-family:'DM Sans',Arial,sans-serif;}
 
   /* hero result banner (Excel green title-bar style) */
   .hero{display:flex;flex-wrap:wrap;gap:22px;align-items:center;justify-content:space-between;
@@ -62,10 +62,10 @@
   .d-tvmethod label{display:flex;gap:6px;align-items:center;}
   .d-exitm{width:54px;background:#fbfdfb;border:1px solid #c9d3c9;color:var(--sh-text);border-radius:6px;padding:3px 5px;text-align:right;}
 
-  .d-warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;margin-top:12px;color:var(--amber);font-size:12.5px;display:flex;flex-direction:column;gap:6px;}
+  .d-warnbox{background:var(--amber-bg);border:1px solid #7a5c10;border-radius:8px;padding:10px 14px;margin-top:12px;color:var(--amber);font-size:12.5px;display:flex;flex-direction:column;gap:6px;}
 
   /* WACC build-up as an Excel row band */
-  .wacc-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;overflow:hidden;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+  .wacc-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;overflow:hidden;box-shadow:0 10px 28px -20px rgba(31,28,20,.22);}
   @media(max-width:760px){.wacc-cards{grid-template-columns:1fr 1fr;}}
   .wc{padding:14px;border-right:1px solid #eef1ec;border-bottom:1px solid #eef1ec;}
   .wc span{color:var(--sh-muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
@@ -74,7 +74,7 @@
   .wc.accent{background:#f3f8f3;} .wc.accent b{color:var(--sh-head);}
 
   /* Excel-style calc tables */
-  table.dt,table.sens{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+  table.dt,table.sens{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 10px 28px -20px rgba(31,28,20,.22);}
   table.dt th,table.dt td,table.sens th,table.sens td{padding:7px 11px;border-bottom:1px solid #eef1ec;text-align:right;white-space:nowrap;color:var(--sh-text);}
   table.dt th:first-child,table.dt td:first-child,table.sens th:first-child{text-align:left;}
   table.dt thead th,table.sens thead th{background:#f3f6f3;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--sh-head);}

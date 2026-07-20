@@ -9,14 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root{ --navy:#05111f; --navy2:#0a1c30; --panel:#0d2236; --line:#1c3a52;
-    --gold:#c9982a; --gold-soft:#e0b94f; --txt:#eef3f9; --mut:#9fb1c4;
-    --amber:#f4b740; --amber-bg:#3a2f0e; --good:#3ad29f; --good-bg:#0e2e22;
-    --bad:#ff6b6b; --bad-bg:#2e1010; --fc:#14331f; }
+  :root{ --navy:#f6f3ec; --navy2:#ffffff; --panel:#fbf9f3; --line:#e3dcc9;
+    --gold:#c9982a; --gold-soft:#8a6a15; --txt:#20272f; --mut:#6d675a;
+    --amber:#9a6d00; --amber-bg:#fdf3d9; --good:#157a4c; --good-bg:#eaf5ee;
+    --bad:#c23a2e; --bad-bg:#fdeeec; --fc:#e4f2e8; }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--navy);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
   header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);background:var(--navy2);}
-  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:#8a6a15;}
   header .sub{color:var(--mut);font-size:13px;}
   header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 14px;border-radius:8px;}
   main{max-width:1340px;margin:0 auto;padding:24px;}
@@ -48,17 +48,17 @@
   .asm-u{color:var(--mut);font-size:11px;margin-left:3px;}
 
   /* warnings */
-  .fc-warnbox{background:var(--amber-bg);border:1px solid #5c4a12;border-radius:10px;padding:12px 16px;margin-top:14px;color:var(--amber);}
+  .fc-warnbox{background:var(--amber-bg);border:1px solid #e8d49c;border-radius:10px;padding:12px 16px;margin-top:14px;color:var(--amber);}
   .fc-warnbox ul{margin:8px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:5px;}
   .fc-warnbox li{font-size:12.5px;} .fc-warnbox .tag{color:var(--gold-soft);font-weight:700;margin-right:6px;}
   .fc-warnbox .disclaimer{color:var(--mut);font-size:11px;margin-top:8px;font-style:italic;}
 
   /* balance badge */
   .vbar{border-radius:10px;padding:12px 16px;font-weight:700;margin-top:14px;}
-  .vbar.good{background:var(--good-bg);color:var(--good);border:1px solid #1c5c46;}
-  .vbar.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #5c1c1c;}
+  .vbar.good{background:var(--good-bg);color:var(--good);border:1px solid #bfdccb;}
+  .vbar.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #f0cfc9;}
   .vlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;}
-  .vlist li.fail{color:var(--bad);background:var(--bad-bg);border:1px solid #5c1c1c;border-radius:7px;padding:6px 10px;font-size:12.5px;}
+  .vlist li.fail{color:var(--bad);background:var(--bad-bg);border:1px solid #f0cfc9;border-radius:7px;padding:6px 10px;font-size:12.5px;}
   .vlist .tag{font-weight:700;margin-right:6px;}
 
   /* forecast tables */
@@ -78,7 +78,7 @@
   /* ===== white Excel-style forecast sheet (same structure as analysis) ===== */
   :root{ --sh-bg:#ffffff; --sh-text:#1d1d1d; --sh-head:#3c7d3f; --sh-banner:#5a9550; --sh-accent:#2f6b32; --sh-muted:#9a9a9a; }
   .sheet{background:var(--sh-bg);color:var(--sh-text);border:1px solid #d6dce4;border-radius:8px;
-    padding:22px 24px 28px;margin:0 0 40px;box-shadow:0 18px 50px -26px rgba(0,0,0,.6);font-family:'DM Sans',Arial,sans-serif;}
+    padding:22px 24px 28px;margin:0 0 40px;box-shadow:0 18px 44px -30px rgba(31,28,20,.25);font-family:'DM Sans',Arial,sans-serif;}
   .sheet-hdr .co{font-family:Georgia,'Times New Roman',serif;font-size:23px;font-weight:700;color:var(--sh-text);}
   .sheet-hdr .meta{color:var(--sh-muted);font-size:12.5px;margin-top:3px;}
   .sheet-title{background:var(--sh-head);color:#fff;text-align:center;font-weight:700;font-size:14px;padding:7px 10px;margin-top:14px;}
@@ -99,10 +99,10 @@
   .sheet table.xl td.fcol{background:#fdf8ec;}
 
   /* teach side panel (shared markup with the term panel) */
-  .term-overlay{position:fixed;inset:0;background:rgba(2,8,15,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:80;}
+  .term-overlay{position:fixed;inset:0;background:rgba(31,28,20,.35);opacity:0;pointer-events:none;transition:opacity .25s;z-index:80;}
   .term-overlay.show{opacity:1;pointer-events:auto;}
   .term-panel{position:fixed;top:0;right:0;height:100vh;width:min(420px,92vw);z-index:90;background:var(--navy2);
-    border-left:1px solid var(--line);box-shadow:-24px 0 60px -20px rgba(0,0,0,.7);transform:translateX(100%);
+    border-left:1px solid var(--line);box-shadow:-24px 0 60px -20px rgba(31,28,20,.25);transform:translateX(100%);
     transition:transform .3s cubic-bezier(.22,.61,.36,1);display:flex;flex-direction:column;padding:22px;}
   .term-panel.open{transform:translateX(0);}
   .tp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px;}

@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --navy:#05111f; --navy2:#0a1c30; --panel:#0d2236; --line:#1c3a52;
-    --gold:#c9982a; --gold-soft:#e0b94f; --gold-bright:#f3cd63; --txt:#eef3f9; --mut:#9fb1c4;
-    --good:#3ad29f; --good-bg:#0e2e22; --amber:#f4b740; --amber-bg:#3a2f0e; --ease:cubic-bezier(.22,.61,.36,1); }
+  :root{ --navy:#f6f3ec; --navy2:#ffffff; --panel:#fbf9f3; --line:#e3dcc9;
+    --gold:#c9982a; --gold-soft:#8a6a15; --gold-bright:#8a6200; --txt:#20272f; --mut:#6d675a;
+    --good:#157a4c; --good-bg:#eaf5ee; --amber:#9a6d00; --amber-bg:#fdf3d9; --ease:cubic-bezier(.22,.61,.36,1); }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--navy);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
   header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);background:var(--navy2);}
-  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:#8a6a15;}
   header .sub{color:var(--mut);font-size:13px;}
   header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 14px;border-radius:8px;}
   main{max-width:1180px;margin:0 auto;padding:26px 24px 60px;}
@@ -29,7 +29,7 @@
   .q .qt{min-width:320px;color:var(--txt);font-size:13.5px;}
   .q .opts{display:flex;gap:8px;}
   .q button{background:var(--navy);border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:7px 16px;font-family:'DM Sans';font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s;}
-  .q button.on{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+  .q button.on{background:var(--gold);border-color:var(--gold);color:#241c0b;}
   .quiz .note{color:var(--mut);font-size:12px;margin-top:10px;font-style:italic;}
 
   /* cards */
@@ -45,13 +45,13 @@
   .card .why{color:var(--mut);font-size:12px;line-height:1.5;flex:1;}
   .card .why b{color:var(--good);font-weight:700;} .card .why i{color:var(--amber);font-style:normal;font-weight:700;}
   .card .recwhy{color:var(--good);font-size:11.5px;background:var(--good-bg);border-radius:7px;padding:6px 8px;}
-  .card .go{align-self:flex-start;font-weight:700;font-size:12.5px;color:var(--navy);background:linear-gradient(135deg,var(--gold),var(--gold-bright));border-radius:8px;padding:8px 14px;}
+  .card .go{align-self:flex-start;font-weight:700;font-size:12.5px;color:#241c0b;background:linear-gradient(135deg,var(--gold),var(--gold-bright));border-radius:8px;padding:8px 14px;}
   .card .soon{align-self:flex-start;font-weight:700;font-size:11.5px;color:var(--mut);border:1px dashed var(--line);border-radius:8px;padding:7px 12px;}
-  .badge-rec{position:absolute;top:-9px;right:12px;background:var(--good);color:var(--navy);font-size:10px;font-weight:700;
+  .badge-rec{position:absolute;top:-9px;right:12px;background:var(--good);color:#241c0b;font-size:10px;font-weight:700;
     padding:3px 9px;border-radius:12px;letter-spacing:.5px;}
 
   /* mismatch warning */
-  .mis{display:none;background:var(--amber-bg);border:1px solid #5c4a12;border-radius:12px;padding:14px 18px;margin-top:18px;color:var(--amber);font-size:13.5px;line-height:1.55;}
+  .mis{display:none;background:var(--amber-bg);border:1px solid #e8d49c;border-radius:12px;padding:14px 18px;margin-top:18px;color:var(--amber);font-size:13.5px;line-height:1.55;}
   .mis.show{display:block;} .mis b{color:var(--gold-soft);}
   .mis .row{display:flex;gap:12px;align-items:flex-start;} .mis .continue{margin-top:10px;}
   .mis a{color:var(--gold-soft);font-weight:700;}
@@ -150,7 +150,7 @@
       return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
         <span style="width:150px;color:var(--mut);font-size:12.5px">${b.name}</span>
         <div style="flex:1;position:relative;height:16px;background:var(--navy2);border-radius:8px">
-          <div style="position:absolute;left:${x}%;width:${ww}%;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--gold),#f3cd63)"></div></div>
+          <div style="position:absolute;left:${x}%;width:${ww}%;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--gold),#8a6200)"></div></div>
         <span style="width:130px;font-size:12px;color:var(--gold-soft)">₹${fmt(b.low)}${b.high>b.low?" – ₹"+fmt(b.high):""}</span></div>`;};
     document.getElementById("xmodel").innerHTML=
       `<div class="quiz"><h3>Model vs model — implied value per share</h3>${bars.map(row).join("")}

@@ -426,13 +426,13 @@ function renderPeerChart(peer) {
     type: "bar",
     data: { labels: years.map(fmtPeriod), datasets: [
       { label: peer.a.name, data: years.map((y) => netRow.aPct[y] ?? null), backgroundColor: "#c9982a" },
-      { label: peer.b.name, data: years.map((y) => netRow.bPct[y] ?? null), backgroundColor: "#3ad29f" },
+      { label: peer.b.name, data: years.map((y) => netRow.bPct[y] ?? null), backgroundColor: "#157a4c" },
     ]},
     options: { responsive: true,
-      plugins: { legend: { labels: { color: "#8aa1b6" } },
-        title: { display: true, text: "Net profit margin (% of revenue)", color: "#8aa1b6" } },
-      scales: { x: { ticks: { color: "#8aa1b6" }, grid: { color: "#1c3a52" } },
-                y: { ticks: { color: "#8aa1b6", callback: (v) => v + "%" }, grid: { color: "#1c3a52" } } } },
+      plugins: { legend: { labels: { color: "#777062" } },
+        title: { display: true, text: "Net profit margin (% of revenue)", color: "#777062" } },
+      scales: { x: { ticks: { color: "#777062" }, grid: { color: "#e3dcc9" } },
+                y: { ticks: { color: "#777062", callback: (v) => v + "%" }, grid: { color: "#e3dcc9" } } } },
   });
 }
 
@@ -450,19 +450,19 @@ function renderChart() {
   const net = pick(["profit for the year", "net profit", "profit after tax"]);
   const ds = [
     { label: "COGS", data: periods.map((y) => abs(cogs[y])), backgroundColor: "#c9982a" },
-    { label: "OpEx", data: periods.map((y) => abs(opex[y])), backgroundColor: "#e0b94f" },
-    { label: "Tax", data: periods.map((y) => abs(tax[y])), backgroundColor: "#8aa1b6" },
-    { label: "Net Profit", data: periods.map((y) => abs(net[y])), backgroundColor: "#3ad29f" },
+    { label: "OpEx", data: periods.map((y) => abs(opex[y])), backgroundColor: "#8a6a15" },
+    { label: "Tax", data: periods.map((y) => abs(tax[y])), backgroundColor: "#777062" },
+    { label: "Net Profit", data: periods.map((y) => abs(net[y])), backgroundColor: "#157a4c" },
   ];
   if (canvas._chart) canvas._chart.destroy();
   canvas._chart = new window.Chart(canvas, {
     type: "bar",
     data: { labels: periods.map(fmtPeriod), datasets: ds.map((s) => ({ ...s, stack: "cs" })) },
     options: { responsive: true,
-      plugins: { legend: { labels: { color: "#8aa1b6" } },
+      plugins: { legend: { labels: { color: "#777062" } },
         tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${(+c.parsed.y).toFixed(1)}%` } } },
-      scales: { x: { stacked: true, ticks: { color: "#8aa1b6" }, grid: { color: "#1c3a52" } },
-                y: { stacked: true, ticks: { color: "#8aa1b6", callback: (v) => v + "%" }, grid: { color: "#1c3a52" } } } },
+      scales: { x: { stacked: true, ticks: { color: "#777062" }, grid: { color: "#e3dcc9" } },
+                y: { stacked: true, ticks: { color: "#777062", callback: (v) => v + "%" }, grid: { color: "#e3dcc9" } } } },
   });
 }
 

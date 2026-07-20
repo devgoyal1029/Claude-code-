@@ -50,6 +50,11 @@ const dLow = computeDCF(model, { ...I, rf: 0.02, erp: 0.03, beta: 0.5 });
 ok("low WACC -> amber warning", dLow.warnings.some((w) => /low for Indian/i.test(w)));
 const dBadG = computeDCF(model, { ...I, g: 0.20 });   // g > WACC
 ok("g > WACC -> warning + no fair value", dBadG.warnings.some((w) => /must be LESS than WACC/i.test(w)) && dBadG.ev == null);
+ok("book-equity weights -> warning", d.warnings.some((w) => /BOOK equity/i.test(w)));
+ok("market-cap weights -> no book-equity warning", !d2.warnings.some((w) => /BOOK equity/i.test(w)));
+// near-zero spread (WACC−g tiny) makes PV(TV) dominate EV -> dominance warning
+const dTv = computeDCF(model, { ...I, price: 50, shares: 100, g: computeDCF(model, I).wacc - 0.005 });
+ok("TV > 85% of EV -> dominance warning", dTv.warnings.some((w) => /Terminal value contributes/i.test(w)));
 
 console.log("\n[sensitivity]");
 ok("sensitivity grid is 5x5", d2.sensitivity.grid.length === 5 && d2.sensitivity.grid[0].length === 5);

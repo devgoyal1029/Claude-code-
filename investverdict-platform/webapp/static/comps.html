@@ -3,30 +3,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{--navy:#05111f;--navy2:#0a1c30;--gold:#c9982a;--gold-soft:#e0b94f;--mut:#9fb1c4;
+:root{--navy:#f6f3ec;--navy2:#ffffff;--gold:#c9982a;--gold-soft:#8a6a15;--mut:#6d675a;
   --sh-bg:#fff;--sh-text:#1d1d1d;--sh-head:#3c7d3f;--sh-banner:#5a9550;--sh-muted:#8a8a8a;--amber:#b08400;--amber-bg:#fff6df;}
-*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#eef3f9;font-family:'DM Sans',sans-serif;font-size:14px;}
-header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);align-items:baseline;}
-.brand{font-family:'Bebas Neue';font-size:28px;color:var(--gold);letter-spacing:1.4px;}
-header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#20272f;font-family:'DM Sans',sans-serif;font-size:14px;}
+header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #e3dcc9;background:var(--navy2);align-items:baseline;}
+.brand{font-family:'Bebas Neue';font-size:28px;color:#8a6a15;letter-spacing:1.4px;}
+header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #e3dcc9;padding:7px 14px;border-radius:8px;}
 main{max-width:1200px;margin:0 auto;padding:24px;}
-h2{font-family:'Bebas Neue';font-size:26px;margin:0 0 6px;letter-spacing:1px;color:#eef3f9;}
+h2{font-family:'Bebas Neue';font-size:26px;margin:0 0 6px;letter-spacing:1px;color:#20272f;}
 h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 8px;letter-spacing:1px;}
 .meta{color:var(--mut);font-size:13px;}
-.learn{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
+.learn{background:#fbf9f3;border:1px solid #e3dcc9;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
 .learn b{color:var(--gold-soft);}
-table,.chartbox{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+table,.chartbox{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 10px 28px -20px rgba(31,28,20,.22);}
 table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px;}
 th,td{padding:6px 10px;border-bottom:1px solid #eef1ec;text-align:right;color:var(--sh-text);}
 th:first-child,td:first-child{text-align:left;}
 thead th{background:#f3f6f3;color:#555;font-size:11px;border-bottom:2px solid var(--sh-head);}
 input,select{background:#fbfdfb;border:1px solid #c9d3c9;color:var(--sh-text);border-radius:6px;padding:4px 6px;text-align:right;font-size:12px;}
 input{width:80px;} input.name{width:100px;text-align:left;}
-button{font-family:'DM Sans';font-weight:700;border:0;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;background:var(--gold);color:var(--navy);}
-button.ghost{background:transparent;color:var(--mut);border:1px solid #1c3a52;}
-.warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
+button{font-family:'DM Sans';font-weight:700;border:0;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;background:var(--gold);color:#241c0b;}
+button.ghost{background:transparent;color:var(--mut);border:1px solid #e3dcc9;}
+.warnbox{background:var(--amber-bg);border:1px solid #7a5c10;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
 .implied{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px;}
-.ic{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;padding:12px;text-align:center;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+.ic{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;padding:12px;text-align:center;box-shadow:0 10px 28px -20px rgba(31,28,20,.22);}
 .ic .k{color:var(--sh-muted);font-size:11px;text-transform:uppercase;}
 .ic .v{font-family:'Bebas Neue';font-size:22px;color:var(--sh-head);}
 .chartbox{padding:14px;margin-top:14px;}
@@ -34,13 +34,13 @@ button.ghost{background:transparent;color:var(--mut);border:1px solid #1c3a52;}
 .step-nav{color:var(--mut);font-size:12.5px;margin-bottom:6px;}
 .step-nav b{color:var(--gold-soft);}
 .slotrow select{width:220px;text-align:left;}
-.slotrow{background:#0d2236;border:1px solid #1c3a52;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
-.slotrow .lab{color:#e0b94f;font-weight:700;font-size:12.5px;min-width:80px;}
-.slotrow .frac{color:#9fb1c4;font-size:18px;}
-.research{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold-soft,#e0b94f);border-radius:12px;padding:16px 18px;margin:16px 0;}
-.research h4{font-family:'Bebas Neue';color:#e0b94f;letter-spacing:.5px;margin:0 0 8px;font-size:16px;}
-.research ul{margin:6px 0 0;padding-left:18px;color:#9fb1c4;font-size:13px;line-height:1.7;}
-.research b{color:#eef3f9;}
+.slotrow{background:#fbf9f3;border:1px solid #e3dcc9;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.slotrow .lab{color:#8a6a15;font-weight:700;font-size:12.5px;min-width:80px;}
+.slotrow .frac{color:#6d675a;font-size:18px;}
+.research{background:#fbf9f3;border:1px solid #e3dcc9;border-left:4px solid var(--gold-soft,#8a6a15);border-radius:12px;padding:16px 18px;margin:16px 0;}
+.research h4{font-family:'Bebas Neue';color:#8a6a15;letter-spacing:.5px;margin:0 0 8px;font-size:16px;}
+.research ul{margin:6px 0 0;padding-left:18px;color:#6d675a;font-size:13px;line-height:1.7;}
+.research b{color:#20272f;}
 </style></head><body>
 <header><span class="brand">InvestVerdict</span><span class="meta">Relative Valuation (Comps)</span><a href="/valuation.html">← Choose model</a></header>
 <main id="app"><div class="empty">No data. Go to <a href="/" style="color:var(--gold-soft)">extractor</a> → confirm, then return here.</div></main>

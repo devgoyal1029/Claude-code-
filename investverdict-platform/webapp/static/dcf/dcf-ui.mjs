@@ -148,10 +148,10 @@ function gauge(up) {
   const c = Math.max(-0.5, Math.min(0.5, up));
   const x = 10 + ((c + 0.5) / 1) * 180;       // 10..190
   return `<svg class="gauge" viewBox="0 0 200 26" width="200">
-    <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#ff6b6b"/><stop offset="0.5" stop-color="#9fb1c4"/><stop offset="1" stop-color="#3ad29f"/></linearGradient></defs>
+    <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#c23a2e"/><stop offset="0.5" stop-color="#6d675a"/><stop offset="1" stop-color="#157a4c"/></linearGradient></defs>
     <rect x="10" y="10" width="180" height="6" rx="3" fill="url(#gg)"/>
-    <line x1="100" y1="6" x2="100" y2="20" stroke="#9fb1c4" stroke-width="1" stroke-dasharray="2 2"/>
-    <polygon points="${x - 5},4 ${x + 5},4 ${x},12" fill="#e0b94f"/></svg>`;
+    <line x1="100" y1="6" x2="100" y2="20" stroke="#6d675a" stroke-width="1" stroke-dasharray="2 2"/>
+    <polygon points="${x - 5},4 ${x + 5},4 ${x},12" fill="#8a6a15"/></svg>`;
 }
 
 /* ---------- WACC build-up ---------- */
@@ -190,7 +190,7 @@ function renderWaterfall(d) {
   c._chart = new window.Chart(c, {
     type: "bar",
     data: { labels, datasets: [{ label: "Present value", data,
-      backgroundColor: labels.map((l) => l === "Terminal Value" ? "#c9982a" : "#3ad29f") }] },
+      backgroundColor: labels.map((l) => l === "Terminal Value" ? "#c9982a" : "#157a4c") }] },
     options: { responsive: true,
       plugins: { legend: { display: false }, title: { display: true, text: "Present value of each cash flow (Terminal Value usually dominates)", color: "#555555" } },
       scales: { x: { ticks: { color: "#555555" }, grid: { color: "#e5e5e5" } }, y: { ticks: { color: "#555555" }, grid: { color: "#e5e5e5" } } } },

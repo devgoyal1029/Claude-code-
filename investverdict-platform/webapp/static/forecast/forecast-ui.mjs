@@ -232,14 +232,14 @@ function renderCharts(model) {
   drawChart("fc-chart1", {
     type: "bar", data: { labels, datasets: [
       { label: "Revenue", data: rev, backgroundColor: periods.map((p) => fset.has(p) ? "#c9982a" : "rgba(201,152,42,.5)") },
-      { label: "Net Profit", data: ni, backgroundColor: periods.map((p) => fset.has(p) ? "#3ad29f" : "rgba(58,210,159,.5)") },
+      { label: "Net Profit", data: ni, backgroundColor: periods.map((p) => fset.has(p) ? "#157a4c" : "rgba(58,210,159,.5)") },
     ] },
     options: chartOpts("Revenue & Net Profit (forecast solid)"),
   });
   drawChart("fc-chart2", {
     type: "line", data: { labels, datasets: [
-      { label: "Net margin %", data: nm, borderColor: "#3ad29f", backgroundColor: "transparent", tension: .3 },
-      { label: "EBITDA margin %", data: em, borderColor: "#e0b94f", backgroundColor: "transparent", tension: .3 },
+      { label: "Net margin %", data: nm, borderColor: "#157a4c", backgroundColor: "transparent", tension: .3 },
+      { label: "EBITDA margin %", data: em, borderColor: "#8a6a15", backgroundColor: "transparent", tension: .3 },
     ] },
     options: chartOpts("Margin trend", true),
   });
@@ -250,10 +250,10 @@ function drawChart(id, cfg) {
   c._chart = new window.Chart(c, cfg);
 }
 function chartOpts(title, pct) {
-  return { responsive: true, plugins: { legend: { labels: { color: "#8aa1b6" } },
-      title: { display: true, text: title, color: "#8aa1b6" } },
-    scales: { x: { ticks: { color: "#8aa1b6" }, grid: { color: "#1c3a52" } },
-      y: { ticks: { color: "#8aa1b6", callback: (v) => pct ? v + "%" : v }, grid: { color: "#1c3a52" } } } };
+  return { responsive: true, plugins: { legend: { labels: { color: "#777062" } },
+      title: { display: true, text: title, color: "#777062" } },
+    scales: { x: { ticks: { color: "#777062" }, grid: { color: "#e3dcc9" } },
+      y: { ticks: { color: "#777062", callback: (v) => pct ? v + "%" : v }, grid: { color: "#e3dcc9" } } } };
 }
 
 /* ---------- teach side panel ---------- */

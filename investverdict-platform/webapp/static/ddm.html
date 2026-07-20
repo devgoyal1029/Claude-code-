@@ -3,22 +3,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{--navy:#05111f;--navy2:#0a1c30;--gold:#c9982a;--gold-soft:#e0b94f;--mut:#9fb1c4;
+:root{--navy:#f6f3ec;--navy2:#ffffff;--gold:#c9982a;--gold-soft:#8a6a15;--mut:#6d675a;
   --sh-bg:#fff;--sh-text:#1d1d1d;--sh-head:#3c7d3f;--sh-banner:#5a9550;--sh-accent:#2f6b32;--sh-muted:#8a8a8a;--amber:#b08400;--amber-bg:#fff6df;}
-*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#eef3f9;font-family:'DM Sans',sans-serif;font-size:14px;}
-header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);align-items:baseline;}
-.brand{font-family:'Bebas Neue';font-size:28px;color:var(--gold);letter-spacing:1.4px;}
-header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#20272f;font-family:'DM Sans',sans-serif;font-size:14px;}
+header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #e3dcc9;background:var(--navy2);align-items:baseline;}
+.brand{font-family:'Bebas Neue';font-size:28px;color:#8a6a15;letter-spacing:1.4px;}
+header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #e3dcc9;padding:7px 14px;border-radius:8px;}
 main{max-width:1200px;margin:0 auto;padding:24px;}
-h2{font-family:'Bebas Neue';font-size:26px;letter-spacing:1px;margin:0 0 6px;color:#eef3f9;}
+h2{font-family:'Bebas Neue';font-size:26px;letter-spacing:1px;margin:0 0 6px;color:#20272f;}
 h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 8px;letter-spacing:1px;}
 .meta{color:var(--mut);font-size:13px;}
-.learn{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
+.learn{background:#fbf9f3;border:1px solid #e3dcc9;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
 .learn b{color:var(--gold-soft);}
 .grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start;}
 @media(max-width:900px){.grid{grid-template-columns:1fr;}}
 /* Excel-white sheets for every content block, like the Analysis screen */
-.ig,.hero,table,.chartbox{background:var(--sh-bg);color:var(--sh-text);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+.ig,.hero,table,.chartbox{background:var(--sh-bg);color:var(--sh-text);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 10px 28px -20px rgba(31,28,20,.22);}
 .ig{padding:12px 14px;margin-bottom:12px;}
 .igh{background:var(--sh-banner);color:#fff;font-size:11px;text-transform:uppercase;font-weight:700;margin:-12px -14px 10px;padding:6px 12px;}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0;}
@@ -30,7 +30,7 @@ h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 
 .hero-k{display:block;color:var(--sh-muted);text-transform:uppercase;letter-spacing:2px;font-size:11px;font-weight:700;padding:14px 22px 0;}
 .hero-v{display:block;font-family:'Bebas Neue';font-size:48px;color:var(--sh-head);padding:0 22px;}
 .hero .meta{padding:0 22px 16px;}
-.warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
+.warnbox{background:var(--amber-bg);border:1px solid #7a5c10;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
 table{width:100%;border-collapse:collapse;font-size:12.5px;}
 th,td{padding:7px 11px;border-bottom:1px solid #eef1ec;text-align:right;color:var(--sh-text);}
 th:first-child,td:first-child{text-align:left;}
@@ -71,16 +71,16 @@ el.innerHTML=`<h2>${esc(model.company_name||"Company")} <span class="meta">· Di
 <section class="ig-wrap"><h3>Inputs</h3>
 <div class="ig"><div class="igh">Model form</div><div class="row"><label>Method</label><select id="form"><option value="gordon">Gordon (single-stage)</option><option value="two">Two-Stage</option><option value="h">H-Model</option></select></div></div>
 <div class="ig"><div class="igh">Dividend &amp; rate</div>
-<div class="row"><label>D0 (last dividend/share)</label><input id="d0" type="number" step="any" value="${round(state.d0)}"></div>
-<div class="row"><label>Ke (cost of equity)</label><input id="ke" type="number" step="any" value="${round(state.ke*100)}"><span>%</span></div>
-<div class="row"><label>High growth (gh)</label><input id="gh" type="number" step="any" value="${round(state.gh*100)}"><span>%</span></div>
-<div class="row"><label>Stable growth (gs)</label><input id="gs" type="number" step="any" value="${round(state.gs*100)}"><span>%</span></div>
+<div class="row"><label>D0 (last dividend/share)</label><input id="d0" type="number" step="any" value="${numv(state.d0)}"></div>
+<div class="row"><label>Ke (cost of equity)</label><input id="ke" type="number" step="any" value="${numv(state.ke*100)}"><span>%</span></div>
+<div class="row"><label>High growth (gh)</label><input id="gh" type="number" step="any" value="${numv(state.gh*100)}"><span>%</span></div>
+<div class="row"><label>Stable growth (gs)</label><input id="gs" type="number" step="any" value="${numv(state.gs*100)}"><span>%</span></div>
 <div class="row"><label>High-growth years</label><input id="n" type="number" step="1" value="${state.n}"></div>
 <div class="row"><label>Diluted shares</label><input id="shares" type="number" step="any" value="${state.shares}"></div>
 </div>
 <div class="ig"><div class="igh">Sustainable growth check</div>
-<div class="row"><label>ROE (history)</label><input id="roe" type="number" step="any" value="${round(state.roe*100)}"><span>%</span></div>
-<div class="row"><label>Payout ratio</label><input id="payout" type="number" step="any" value="${round(state.payout*100)}"><span>%</span></div>
+<div class="row"><label>ROE (history)</label><input id="roe" type="number" step="any" value="${numv(state.roe*100)}"><span>%</span></div>
+<div class="row"><label>Payout ratio</label><input id="payout" type="number" step="any" value="${numv(state.payout*100)}"><span>%</span></div>
 </div>
 <div id="warn"></div>
 </section>
@@ -131,10 +131,11 @@ function drawChart(r){
   const c=document.getElementById("chart"); if(!c||!window.Chart) return;
   if(c._chart) c._chart.destroy();
   c._chart=new window.Chart(c,{type:"bar",data:{labels:["Value/share"],datasets:[{label:"DDM value",data:[r.value||0],backgroundColor:"#c9982a"}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{color:"#8aa1b6"}},x:{ticks:{color:"#8aa1b6"}}}}});
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{color:"#777062"}},x:{ticks:{color:"#777062"}}}}});
 }
 recompute();
 }
+function numv(x){return x==null||!isFinite(+x)?"":String(+(+x).toFixed(4));}
 function round(x){return x==null?"-":Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});}
 function pct(x){return x==null?"-":(x*100).toFixed(1)+"%";}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}

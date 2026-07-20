@@ -66,6 +66,7 @@ export function computeDCF(model, I) {
   const warnings = [];
   if (wacc < 0.10) warnings.push("WACC looks low for Indian cash flows (< 10%). Re-check the risk-free rate, equity risk premium and beta — Indian INR cash flows usually warrant ~12–18%.");
   if (I.tax < 0 || I.tax > 1) warnings.push("Tax rate should be between 0 and 100%.");
+  if (marketCap == null) warnings.push("WACC weights are using BOOK equity because market price × shares isn't set. Professionals weight by MARKET values — enter the market price and diluted shares for a defensible WACC.");
   const gValid = I.g < wacc;
   if (!gValid) warnings.push("Terminal growth (g) must be LESS than WACC, otherwise the terminal value is meaningless. Lower g or raise WACC.");
 
@@ -91,6 +92,13 @@ export function computeDCF(model, I) {
   }
 
   const base = (gValid || I.tvMethod === "exit") ? valueAt(wacc, I.g) : null;
+
+  // Terminal-value dominance: when PV(TV) carries almost the whole EV, the
+  // "valuation" is really just the perpetuity assumption — a standard
+  // professional red flag (extend the forecast or re-check g / exit multiple).
+  if (base && base.ev > 0 && base.pvTv / base.ev > 0.85) {
+    warnings.push(`Terminal value contributes ${(base.pvTv / base.ev * 100).toFixed(0)}% of the enterprise value — the answer depends almost entirely on the perpetuity assumption. Consider a longer explicit forecast, or treat the sensitivity grid (not the single number) as the result.`);
+  }
 
   // per-year PV breakdown for the table/waterfall
   const rows = series.map((s, i) => {
