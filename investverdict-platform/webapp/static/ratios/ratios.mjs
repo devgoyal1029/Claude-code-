@@ -1,0 +1,238 @@
+/**
+ * Ratio analysis engine — PURE. Consumes the forecast model (model.years has
+ * canonical values for every historical AND forecast year). Computes every ratio
+ * category-wise, each with: value per year, formula text, plain-language meaning,
+ * and the per-year plugged-in calc detail (for the click-to-expand row).
+ *
+ * Robust: divide-by-zero / missing -> null ("-"); never NaN/Infinity.
+ * Balance-sheet denominators use averages (opening+closing)/2 where standard;
+ * the first year (no prior) uses the closing value.
+ */
+
+const num = (x) => (x == null || Number.isNaN(Number(x)) ? null : Number(x));
+const R = (n, d) => (n == null || d == null || d === 0 ? null : n / d);
+const avg = (c, p) => (c == null ? null : (p == null ? c : (c + p) / 2));
+const sumOpt = (...a) => { const v = a.filter((x) => x != null); return v.length ? v.reduce((s, x) => s + x, 0) : null; };
+export const f = (x) => (x == null ? "-" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
+
+/** Build a normalised metrics object for each period. */
+export function computeMetrics(model) {
+  const out = {};
+  for (const p of model.periods) {
+    const y = model.years[p] || {};
+    const g = (k) => num(y[k]);
+    const rev = g("revenue"), cogs = g("cogs"), opex = g("operating_expenses"), otherIncome = g("other_income");
+    const dep = g("depreciation_amortisation");
+    const grossProfit = g("gross_profit") ?? (rev != null && cogs != null ? rev - cogs : null);
+    const ebitda = g("ebitda") ?? (grossProfit != null && opex != null ? grossProfit - opex + (otherIncome || 0) : null);
+    const ebit = g("ebit") ?? (ebitda != null && dep != null ? ebitda - dep : null);
+    const interest = g("interest_expense"), ebt = g("ebt"), tax = g("tax"), ni = g("net_income");
+    const cash = g("cash"), ar = g("accounts_receivable"), inv = g("inventory"), oca = g("other_current_assets");
+    const ppe = g("ppe_net"), intang = g("intangibles"), onca = g("other_noncurrent_assets"), totalAssets = g("total_assets");
+    const ap = g("accounts_payable"), std = g("short_term_debt"), ocl = g("other_current_liab");
+    const ltd = g("long_term_debt"), shareCap = g("share_capital"), re = g("retained_earnings");
+    const cfo = g("cfo"), capex = g("capex"), div = g("dividends");
+
+    const currentAssets = sumOpt(cash, ar, inv, oca);
+    const currentLiab = sumOpt(ap, std, ocl);
+    const totalDebt = sumOpt(ltd, std);
+    const totalEquity = g("total_equity") ?? sumOpt(shareCap, re);
+    const fixedAssets = sumOpt(ppe, intang, onca) ?? ppe;
+    const capitalEmployed = (totalAssets != null && currentLiab != null) ? totalAssets - currentLiab : null;
+    const workingCapital = (currentAssets != null && currentLiab != null) ? currentAssets - currentLiab : null;
+
+    let taxRate;
+    if (y._assumptions && y._assumptions.tax_rate != null) taxRate = y._assumptions.tax_rate;
+    else if (ebt && tax != null && ebt !== 0) taxRate = Math.max(0, Math.min(0.5, tax / ebt));
+    else taxRate = (model.assumptions && model.assumptions.tax_rate) || 0.25;
+    const nopat = ebit != null ? ebit * (1 - taxRate) : null;
+    const repayment = y._assumptions ? num(y._assumptions.repayment) : null;
+
+    out[p] = { rev, cogs, grossProfit, opex, otherIncome, dep, ebitda, ebit, interest, ebt, tax, ni,
+      cash, ar, inv, oca, ppe, intang, onca, totalAssets, ap, std, ocl, ltd, shareCap, re,
+      cfo, capex, div, currentAssets, currentLiab, totalDebt, totalEquity, fixedAssets,
+      capitalEmployed, workingCapital, nopat, taxRate, repayment, forecast: !!y._isForecast };
+  }
+  return out;
+}
+
+// ratio helper: build a per-year entry {v, detail}
+const det = (n, d, sym = "/") => `${f(n)} ${sym} ${f(d)}`;
+
+/** Category & ratio catalogue. Each ratio: { name, formula, meaning, fn(m, mp, ctx) -> {v, detail} } */
+const CATALOG = [
+  { cat: "Liquidity", ratios: [
+    { name: "Current Ratio", formula: "Current Assets / Current Liabilities",
+      meaning: "How many rupees of short-term assets back each rupee of short-term dues. Above 1 means current assets cover current liabilities.",
+      fn: (m) => ({ v: R(m.currentAssets, m.currentLiab), detail: det(m.currentAssets, m.currentLiab) }) },
+    { name: "Quick Ratio (Acid-Test)", formula: "(Current Assets − Inventory) / Current Liabilities",
+      meaning: "Liquidity excluding inventory (which can be slow to sell) — a stricter cover of short-term dues.",
+      fn: (m) => { const n = (m.currentAssets != null && m.inv != null) ? m.currentAssets - m.inv : null; return { v: R(n, m.currentLiab), detail: det(n, m.currentLiab) }; } },
+    { name: "Cash Ratio", formula: "Cash / Current Liabilities",
+      meaning: "The most conservative liquidity test — how much of short-term dues cash alone could pay.",
+      fn: (m) => ({ v: R(m.cash, m.currentLiab), detail: det(m.cash, m.currentLiab) }) },
+    { name: "Operating Cash Flow Ratio", formula: "CFO / Current Liabilities",
+      meaning: "How well the cash generated by operations covers short-term obligations.",
+      fn: (m) => ({ v: R(m.cfo, m.currentLiab), detail: det(m.cfo, m.currentLiab) }) },
+    { name: "Net Working Capital (₹)", formula: "Current Assets − Current Liabilities",
+      meaning: "The buffer of short-term assets over short-term dues, in absolute money.",
+      fn: (m) => ({ v: m.workingCapital, detail: det(m.currentAssets, m.currentLiab, "−") }) },
+  ] },
+  { cat: "Solvency / Leverage", ratios: [
+    { name: "Debt-to-Equity", formula: "Total Debt / Total Equity",
+      meaning: "How much debt the company uses for every rupee of owners' money. Higher = more leveraged.",
+      fn: (m) => ({ v: R(m.totalDebt, m.totalEquity), detail: det(m.totalDebt, m.totalEquity) }) },
+    { name: "Debt-to-Assets", formula: "Total Debt / Total Assets",
+      meaning: "Share of the company's assets funded by debt.",
+      fn: (m) => ({ v: R(m.totalDebt, m.totalAssets), detail: det(m.totalDebt, m.totalAssets) }) },
+    { name: "Debt-to-Capital", formula: "Total Debt / (Total Debt + Total Equity)",
+      meaning: "Debt as a share of total capital (debt + equity).",
+      fn: (m) => { const d = (m.totalDebt != null && m.totalEquity != null) ? m.totalDebt + m.totalEquity : null; return { v: R(m.totalDebt, d), detail: det(m.totalDebt, d) }; } },
+    { name: "Equity Multiplier", formula: "Avg Total Assets / Avg Total Equity",
+      meaning: "How many rupees of assets are supported by each rupee of equity — a leverage gauge.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets), e = avg(m.totalEquity, mp && mp.totalEquity); return { v: R(a, e), detail: det(a, e) }; } },
+    { name: "Equity Ratio", formula: "Total Equity / Total Assets",
+      meaning: "Share of assets owned outright by shareholders (the opposite side of leverage).",
+      fn: (m) => ({ v: R(m.totalEquity, m.totalAssets), detail: det(m.totalEquity, m.totalAssets) }) },
+    { name: "Interest Coverage (TIE)", formula: "EBIT / Interest Expense",
+      meaning: "How many times operating profit covers the interest bill. Higher = safer debt servicing.",
+      fn: (m) => ({ v: R(m.ebit, m.interest), detail: det(m.ebit, m.interest) }) },
+    { name: "CFO-to-Debt", formula: "CFO / Total Debt",
+      meaning: "How quickly operating cash flow could repay all debt.",
+      fn: (m) => ({ v: R(m.cfo, m.totalDebt), detail: det(m.cfo, m.totalDebt) }) },
+  ] },
+  { cat: "Profitability — Margins", ratios: [
+    { name: "Gross Profit Margin", formula: "Gross Profit / Revenue", pct: true,
+      meaning: "What fraction of every sales rupee is left after the direct cost of goods.",
+      fn: (m) => ({ v: R(m.grossProfit, m.rev), detail: det(m.grossProfit, m.rev) }) },
+    { name: "Operating (EBIT) Margin", formula: "EBIT / Revenue", pct: true,
+      meaning: "Profit from core operations as a share of sales, before interest and tax.",
+      fn: (m) => ({ v: R(m.ebit, m.rev), detail: det(m.ebit, m.rev) }) },
+    { name: "EBITDA Margin", formula: "EBITDA / Revenue", pct: true,
+      meaning: "Operating profitability before depreciation — a rough cash-profit margin.",
+      fn: (m) => ({ v: R(m.ebitda, m.rev), detail: det(m.ebitda, m.rev) }) },
+    { name: "Net Profit Margin", formula: "Net Profit / Revenue", pct: true,
+      meaning: "The bottom line: rupees of final profit per rupee of sales.",
+      fn: (m) => ({ v: R(m.ni, m.rev), detail: det(m.ni, m.rev) }) },
+    { name: "Pre-tax Margin", formula: "Profit Before Tax / Revenue", pct: true,
+      meaning: "Profit before tax as a share of sales.",
+      fn: (m) => ({ v: R(m.ebt, m.rev), detail: det(m.ebt, m.rev) }) },
+  ] },
+  { cat: "Profitability — Returns", ratios: [
+    { name: "ROA", formula: "Net Profit / Avg Total Assets", pct: true,
+      meaning: "How much profit the company squeezes from each rupee of assets.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets); return { v: R(m.ni, a), detail: det(m.ni, a) }; } },
+    { name: "ROE", formula: "Net Profit / Avg Shareholders' Equity", pct: true,
+      meaning: "The return generated on owners' money — a headline measure of profitability.",
+      fn: (m, mp) => { const e = avg(m.totalEquity, mp && mp.totalEquity); return { v: R(m.ni, e), detail: det(m.ni, e) }; } },
+    { name: "ROCE", formula: "EBIT / Capital Employed", pct: true,
+      meaning: "Operating return on the long-term capital (assets minus current liabilities) put to work.",
+      fn: (m) => ({ v: R(m.ebit, m.capitalEmployed), detail: det(m.ebit, m.capitalEmployed) }) },
+    { name: "ROIC", formula: "NOPAT / Invested Capital  (NOPAT = EBIT × (1 − tax))", pct: true,
+      meaning: "After-tax operating return on the capital actually invested (debt + equity).",
+      fn: (m) => { const ic = (m.totalDebt != null || m.totalEquity != null) ? (m.totalDebt || 0) + (m.totalEquity || 0) : null; return { v: R(m.nopat, ic), detail: det(m.nopat, ic) }; } },
+    { name: "Cash ROA", formula: "CFO / Avg Total Assets", pct: true,
+      meaning: "Cash-based return on assets — profit quality cross-check vs accounting ROA.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets); return { v: R(m.cfo, a), detail: det(m.cfo, a) }; } },
+  ] },
+  { cat: "Efficiency / Activity", ratios: [
+    { name: "Asset Turnover", formula: "Revenue / Avg Total Assets",
+      meaning: "How many rupees of sales each rupee of assets generates.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets); return { v: R(m.rev, a), detail: det(m.rev, a) }; } },
+    { name: "Fixed Asset Turnover", formula: "Revenue / Avg Net Fixed Assets",
+      meaning: "Sales generated per rupee of fixed assets (plant & equipment).",
+      fn: (m, mp) => { const a = avg(m.fixedAssets, mp && mp.fixedAssets); return { v: R(m.rev, a), detail: det(m.rev, a) }; } },
+    { name: "Inventory Turnover", formula: "COGS / Avg Inventory",
+      meaning: "How many times inventory is sold and replaced in a year. Higher = faster-moving stock.",
+      fn: (m, mp) => { const a = avg(m.inv, mp && mp.inv); return { v: R(m.cogs, a), detail: det(m.cogs, a) }; } },
+    { name: "Receivables Turnover", formula: "Revenue / Avg Receivables",
+      meaning: "How many times receivables are collected in a year.",
+      fn: (m, mp) => { const a = avg(m.ar, mp && mp.ar); return { v: R(m.rev, a), detail: det(m.rev, a) }; } },
+    { name: "Payables Turnover", formula: "COGS / Avg Payables",
+      meaning: "How many times the company pays off its suppliers in a year.",
+      fn: (m, mp) => { const a = avg(m.ap, mp && mp.ap); return { v: R(m.cogs, a), detail: det(m.cogs, a) }; } },
+    { name: "Days Inventory (DIO)", formula: "365 / Inventory Turnover",
+      meaning: "Average days stock sits before it's sold.",
+      fn: (m, mp) => { const a = avg(m.inv, mp && mp.inv); const t = R(m.cogs, a); return { v: R(365, t), detail: t == null ? "-" : `365 / ${f(t)}` }; } },
+    { name: "Days Sales (DSO)", formula: "365 / Receivables Turnover",
+      meaning: "Average days customers take to pay.",
+      fn: (m, mp) => { const a = avg(m.ar, mp && mp.ar); const t = R(m.rev, a); return { v: R(365, t), detail: t == null ? "-" : `365 / ${f(t)}` }; } },
+    { name: "Days Payables (DPO)", formula: "365 / Payables Turnover",
+      meaning: "Average days the company takes to pay suppliers.",
+      fn: (m, mp) => { const a = avg(m.ap, mp && mp.ap); const t = R(m.cogs, a); return { v: R(365, t), detail: t == null ? "-" : `365 / ${f(t)}` }; } },
+    { name: "Cash Conversion Cycle", formula: "DIO + DSO − DPO",
+      meaning: "Days between paying for inputs and collecting cash from sales. Lower (or negative) is more efficient.",
+      fn: (m, mp) => {
+        const dio = R(365, R(m.cogs, avg(m.inv, mp && mp.inv)));
+        const dso = R(365, R(m.rev, avg(m.ar, mp && mp.ar)));
+        const dpo = R(365, R(m.cogs, avg(m.ap, mp && mp.ap)));
+        const v = (dio != null && dso != null && dpo != null) ? dio + dso - dpo : null;
+        return { v, detail: v == null ? "-" : `${f(dio)} + ${f(dso)} − ${f(dpo)}` };
+      } },
+  ] },
+  { cat: "DuPont (ROE drivers)", ratios: [
+    { name: "Net Margin (NI/Rev)", formula: "Net Profit / Revenue", pct: true, meaning: "Profitability lever of ROE.",
+      fn: (m) => ({ v: R(m.ni, m.rev), detail: det(m.ni, m.rev) }) },
+    { name: "Asset Turnover (Rev/Assets)", formula: "Revenue / Avg Assets", meaning: "Efficiency lever of ROE.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets); return { v: R(m.rev, a), detail: det(m.rev, a) }; } },
+    { name: "Equity Multiplier", formula: "Avg Assets / Avg Equity", meaning: "Leverage lever of ROE.",
+      fn: (m, mp) => { const a = avg(m.totalAssets, mp && mp.totalAssets), e = avg(m.totalEquity, mp && mp.totalEquity); return { v: R(a, e), detail: det(a, e) }; } },
+    { name: "= ROE (3-step)", formula: "Net Margin × Asset Turnover × Equity Multiplier", pct: true,
+      meaning: "ROE rebuilt from its three drivers — shows WHAT moves it.",
+      fn: (m, mp) => { const nm = R(m.ni, m.rev), at = R(m.rev, avg(m.totalAssets, mp && mp.totalAssets)), em = R(avg(m.totalAssets, mp && mp.totalAssets), avg(m.totalEquity, mp && mp.totalEquity)); const v = (nm != null && at != null && em != null) ? nm * at * em : null; return { v, detail: v == null ? "-" : `${(nm * 100).toFixed(1)}% × ${at.toFixed(2)} × ${em.toFixed(2)}` }; } },
+    { name: "Tax Burden (NI/EBT)", formula: "Net Profit / Profit Before Tax", meaning: "How much profit survives tax (5-step lever).",
+      fn: (m) => ({ v: R(m.ni, m.ebt), detail: det(m.ni, m.ebt) }) },
+    { name: "Interest Burden (EBT/EBIT)", formula: "Profit Before Tax / EBIT", meaning: "How much operating profit survives interest (5-step lever).",
+      fn: (m) => ({ v: R(m.ebt, m.ebit), detail: det(m.ebt, m.ebit) }) },
+  ] },
+  { cat: "Cash Flow", ratios: [
+    { name: "CFO Margin", formula: "CFO / Revenue", pct: true, meaning: "Operating cash generated per rupee of sales.",
+      fn: (m) => ({ v: R(m.cfo, m.rev), detail: det(m.cfo, m.rev) }) },
+    { name: "Free Cash Flow (₹)", formula: "CFO − Capex", meaning: "Cash left after maintaining/expanding the asset base — the cash truly available to investors.",
+      fn: (m) => ({ v: (m.cfo != null && m.capex != null) ? m.cfo - m.capex : null, detail: det(m.cfo, m.capex, "−") }) },
+    { name: "FCF Margin", formula: "Free Cash Flow / Revenue", pct: true, meaning: "Free cash flow as a share of sales.",
+      fn: (m) => { const fcf = (m.cfo != null && m.capex != null) ? m.cfo - m.capex : null; return { v: R(fcf, m.rev), detail: det(fcf, m.rev) }; } },
+    { name: "Capex-to-Sales", formula: "Capex / Revenue", pct: true, meaning: "How much of sales is reinvested into assets.",
+      fn: (m) => ({ v: R(m.capex, m.rev), detail: det(m.capex, m.rev) }) },
+    { name: "Capex-to-Depreciation", formula: "Capex / Depreciation", meaning: "Above 1 means the company is investing more than it's wearing out (growing its asset base).",
+      fn: (m) => ({ v: R(m.capex, m.dep), detail: det(m.capex, m.dep) }) },
+  ] },
+  { cat: "Valuation / Market", needsMarket: true, ratios: [
+    { name: "EPS (₹)", formula: "Net Profit / Shares Outstanding", meaning: "Profit attributable to each share.",
+      fn: (m, mp, c) => ({ v: R(m.ni, c.shares), detail: c.shares ? det(m.ni, c.shares) : "enter shares" }) },
+    { name: "Book Value / Share (₹)", formula: "Total Equity / Shares Outstanding", meaning: "Net assets backing each share.",
+      fn: (m, mp, c) => ({ v: R(m.totalEquity, c.shares), detail: c.shares ? det(m.totalEquity, c.shares) : "enter shares" }) },
+    { name: "P/E", formula: "Price / EPS", meaning: "How many rupees the market pays per rupee of earnings.",
+      fn: (m, mp, c) => { const eps = R(m.ni, c.shares); return { v: R(c.price, eps), detail: (c.price && eps) ? det(c.price, eps) : "enter price & shares" }; } },
+    { name: "P/B", formula: "Price / Book Value per Share", meaning: "Market price relative to net asset value per share.",
+      fn: (m, mp, c) => { const bvps = R(m.totalEquity, c.shares); return { v: R(c.price, bvps), detail: (c.price && bvps) ? det(c.price, bvps) : "enter price & shares" }; } },
+    { name: "Dividend Payout", formula: "Dividends / Net Profit", pct: true, meaning: "Share of profit paid out to shareholders as dividends.",
+      fn: (m) => ({ v: R(m.div != null ? Math.abs(m.div) : null, m.ni), detail: det(m.div != null ? Math.abs(m.div) : null, m.ni) }) },
+  ] },
+];
+
+export function computeRatios(model, market = {}) {
+  const metrics = computeMetrics(model);
+  const periods = model.periods;
+  const ctx = { price: num(market.price), shares: num(market.shares) };
+  const categories = CATALOG.map((c) => ({
+    name: c.cat, needsMarket: !!c.needsMarket,
+    ratios: c.ratios.map((r) => {
+      const perYear = {};
+      periods.forEach((p, i) => {
+        const m = metrics[p], mp = i > 0 ? metrics[periods[i - 1]] : null;
+        const res = r.fn(m, mp, ctx);
+        perYear[p] = { v: res.v, detail: res.detail, firstYear: i === 0 };
+      });
+      return { name: r.name, formula: r.formula, meaning: r.meaning, pct: !!r.pct, perYear };
+    }),
+  }));
+  return { periods, forecastPeriods: model.forecastPeriods, categories,
+    company: model.company_name, units: model.units };
+}
+
+/** format a ratio value for display (pct ratios as %, days/turns/x as number). */
+export function fmtRatio(v, pct) {
+  if (v == null || !Number.isFinite(v)) return "-";
+  return pct ? (v * 100).toFixed(1) + "%" : (Math.abs(v) >= 1000 ? f(v) : v.toFixed(2));
+}

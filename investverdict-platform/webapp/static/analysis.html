@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Common-Size & Linking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#05111f; --navy2:#0a1c30; --panel:#0d2236; --line:#1c3a52;
+    --gold:#c9982a; --gold-soft:#e0b94f;
+    --txt:#eaf1f8; --mut:#8aa1b6; --amber:#f4b740; --amber-bg:#3a2f0e;
+    --good:#3ad29f; --good-bg:#0e2e22; --bad:#ff6b6b; --bad-bg:#2e1010;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--navy);color:var(--txt);
+       font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
+  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;
+         border-bottom:1px solid var(--line);background:var(--navy2);flex-wrap:wrap;}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  header .sub{color:var(--mut);font-size:13px;}
+  header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;
+           border:1px solid var(--line);padding:7px 14px;border-radius:8px;}
+  main{max-width:1340px;margin:0 auto;padding:24px;}
+  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:26px;margin:0 0 14px;}
+  h2 .meta,h3 .meta{font-family:'DM Sans';font-weight:400;color:var(--mut);font-size:13px;letter-spacing:0;}
+  h3{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;color:var(--gold);font-size:19px;margin:24px 0 8px;}
+
+  /* report header block (Dabur-style) */
+  .reporthdr{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+             padding:16px 20px;margin-bottom:16px;border-left:4px solid var(--gold);}
+  .reporthdr .company{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;color:var(--txt);line-height:1;}
+  .reporthdr .subline{display:flex;gap:22px;flex-wrap:wrap;color:var(--mut);font-size:13px;margin:8px 0 6px;}
+  .reporthdr .metaedit{background:var(--navy);border:1px solid var(--line);color:var(--gold-soft);
+        border-radius:6px;padding:3px 8px;font-size:13px;width:140px;font-family:'DM Sans';}
+  .reporthdr .metaedit:focus{outline:none;border-color:var(--gold);}
+  .reporthdr .title{color:var(--gold-soft);font-weight:700;font-size:15px;margin-top:4px;}
+  .reporthdr .units{color:var(--mut);font-size:12px;margin-top:4px;}
+
+  .flags{color:var(--amber);background:var(--amber-bg);border:1px solid #5c4a12;
+         border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;}
+
+  .vbar{border-radius:10px;padding:12px 16px;font-weight:700;display:flex;align-items:center;gap:10px;}
+  .vbar.good{background:var(--good-bg);color:var(--good);border:1px solid #1c5c46;}
+  .vbar.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #5c1c1c;}
+  .vlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  .vlist li{font-size:12.5px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);}
+  .vlist li.fail{color:var(--bad);background:var(--bad-bg);border-color:#5c1c1c;}
+  .vlist li.warn{color:var(--amber);background:var(--amber-bg);border-color:#5c4a12;}
+  .vlist li.pass{color:var(--good);}
+  .vlist li.note{color:var(--mut);}
+  .vlist .tag{font-weight:700;margin-right:6px;}
+  details.passes{margin-top:8px;} details.passes summary{cursor:pointer;color:var(--mut);font-size:12.5px;}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--panel);
+        border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th,td{padding:7px 11px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:var(--navy2);color:var(--mut);font-weight:700;font-size:11px;
+           text-transform:uppercase;letter-spacing:.4px;}
+  /* Dabur layout: value row then margin (%) row */
+  table.dabur tr.val td{border-bottom:0;}
+  table.dabur tr.val td:first-child{font-weight:500;}
+  table.dabur tr.val.base td{font-weight:700;color:var(--gold-soft);background:var(--navy2);}
+  table.dabur tr.margin td{color:var(--gold-soft);font-size:11.5px;padding-top:1px;
+        border-bottom:1px solid var(--line);}
+  table.dabur tr.margin td:first-child{padding-left:22px;font-style:italic;color:var(--mut);}
+  td.neg{color:var(--bad);}
+  tr:last-child td{border-bottom:0;}
+  .empty-row{color:var(--mut);padding:10px 2px;}
+
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .empty{color:var(--mut);padding:40px;text-align:center;}
+
+  /* control bar */
+  .controlbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+        background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:10px 14px;margin-bottom:14px;}
+  .cb-group{display:flex;gap:6px;align-items:center;}
+  .cb-right{margin-left:auto;}
+  .cb-label{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.4px;}
+  .seg{background:var(--navy);border:1px solid var(--line);color:var(--mut);border-radius:7px;
+       padding:6px 12px;font-size:12.5px;cursor:pointer;font-family:'DM Sans';font-weight:700;}
+  .seg.on{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+  .seg:hover{border-color:var(--gold);}
+  .cb-check{color:var(--mut);font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer;}
+  .cb-file{color:var(--gold-soft);font-size:12.5px;border:1px dashed var(--line);border-radius:7px;
+           padding:6px 12px;cursor:pointer;}
+  .cb-file:hover{border-color:var(--gold);}
+
+  /* base selector inside statement headers */
+  .baseselect{font-family:'DM Sans';font-weight:400;font-size:12.5px;color:var(--mut);letter-spacing:0;}
+  .baseselect select{background:var(--navy);border:1px solid var(--line);color:var(--gold-soft);
+       border-radius:6px;padding:3px 6px;font-size:12.5px;font-family:'DM Sans';}
+  .baseselect select:focus{outline:none;border-color:var(--gold);}
+  .linklike{background:none;border:0;color:var(--gold-soft);cursor:pointer;font-size:12px;text-decoration:underline;}
+  .warnsmall{color:var(--amber);font-size:12px;}
+
+  /* insights panel */
+  .insights{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--gold);
+        border-radius:10px;padding:14px 18px;margin:14px 0;}
+  .insights h3{margin:0 0 8px;}
+  .insights ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;}
+  .insights li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.45;}
+  .dot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto;}
+  .dot-up{background:var(--good);} .dot-down{background:var(--bad);} .dot-neutral{background:var(--mut);}
+  .insights .disclaimer{color:var(--mut);font-size:11px;margin-top:10px;font-style:italic;}
+
+  /* peer table */
+  table.peer th.grpA{background:#14331f;color:var(--gold-soft);text-align:center;}
+  table.peer th.grpB{background:#1a2a3a;color:var(--good);text-align:center;}
+  .stmt{margin-bottom:4px;}
+
+  /* ===== white Excel-style sheet (Dabur model) — themable via CSS vars ===== */
+  :root{ --sh-bg:#ffffff; --sh-text:#1d1d1d; --sh-head:#3c7d3f; --sh-banner:#5a9550;
+         --sh-accent:#2f6b32; --sh-muted:#9a9a9a; }
+  .sheet{background:var(--sh-bg); color:var(--sh-text); border:1px solid #d6dce4; border-radius:8px;
+    padding:24px 26px 30px; margin:0 0 44px; box-shadow:0 18px 50px -26px rgba(0,0,0,.6);
+    font-family:'DM Sans',Arial,sans-serif;}                     /* margin = gap between statements */
+  .sheet:last-of-type{margin-bottom:8px;}
+  .sheet-hdr .co{font-family:Georgia,'Times New Roman',serif; font-size:24px; font-weight:700; color:var(--sh-text);}
+  .sheet-hdr .meta{color:var(--sh-muted); font-size:12.5px; margin-top:3px;}
+  .metaedit{border:0; border-bottom:1px dashed #b9b9b9; background:transparent;
+    font-family:inherit; font-size:12.5px; color:var(--sh-head); padding:1px 3px;}
+  .metaedit:focus{outline:none; border-bottom-color:var(--sh-head);}
+  .sheet-title{background:var(--sh-head); color:#fff; text-align:center; font-weight:700; font-size:14px;
+    letter-spacing:.3px; padding:7px 10px; margin-top:16px;}
+  .sheet-title .units-note{font-weight:400; opacity:.85; font-size:12px;}
+  .xl-banner{background:var(--sh-banner); color:#fff; text-align:center; font-weight:700; font-size:13px;
+    padding:6px 10px; position:relative; border-bottom:1px solid var(--sh-accent);}
+  .xl-banner .baseselect{position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    color:#eef6ec; font-weight:400; font-size:11px; letter-spacing:0;}
+  .xl-banner .baseselect select{background:var(--sh-accent); color:#fff; border:1px solid var(--sh-accent);
+    border-radius:5px; font-size:11px; padding:2px 4px;}
+  .xl-banner .baseselect .linklike{color:#fff; text-decoration:underline; font-size:11px; background:none; border:0; cursor:pointer;}
+  .xl-banner .baseselect .warnsmall{color:#ffe08a;}
+
+  /* force the sheet's own theme — override the app's generic dark table rules */
+  .sheet table.xl{width:100%; border-collapse:collapse; font-size:12.5px; color:var(--sh-text);
+    background:var(--sh-bg); border:0; border-radius:0;}
+  .sheet table.xl th{background:var(--sh-bg); color:var(--sh-text); font-weight:700; font-size:11.5px;
+    text-align:right; padding:6px 12px; border-bottom:2px solid var(--sh-head);}
+  .sheet table.xl th.lbl{text-align:left;}
+  .sheet table.xl th.notes{text-align:center; width:58px; color:var(--sh-muted); font-weight:600;}
+  .sheet table.xl td{padding:3px 12px; text-align:right; color:var(--sh-text); background:transparent;
+    border-bottom:0; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  /* long particulars wrap instead of forcing the table wider than the sheet */
+  .sheet table.xl td.lbl, .sheet table.xl th.lbl{text-align:left; white-space:normal; min-width:230px;}
+  .sheet table.xl td.lbl{font-weight:600;}
+  /* keep the table INSIDE the white card; scroll horizontally if still too wide */
+  .sheet .xl-scroll{overflow-x:auto; max-width:100%;}
+  .sheet table.xl td.notes{text-align:center; color:var(--sh-muted); font-weight:400;}
+  .sheet tr.xl-val.xbase td.lbl{color:var(--sh-head);}
+  .sheet tr.xl-val.xtot td{font-weight:700; border-top:2px solid var(--sh-accent); border-bottom:2px solid var(--sh-accent);}
+  .sheet tr.xl-sub td{color:var(--sh-muted); font-style:italic; font-weight:400; font-size:11px; padding-top:0; padding-bottom:5px;}
+  .sheet tr.xl-sub td.lbl{padding-left:16px;}
+  .sheet tr.xl-group td{color:var(--sh-head); font-weight:700; font-size:13px; padding:9px 12px 2px; background:var(--sh-bg); text-align:left;}
+  /* nested parent line (e.g. "Financial assets") — bold, keeps empty cells so structure holds */
+  .sheet tr.xl-parent td{color:var(--sh-text); font-weight:700; padding-top:7px; background:var(--sh-bg);}
+  .sheet .empty-row{color:#888; padding:12px;}
+
+  /* theme colour pickers (control bar) */
+  .cb-theme{gap:4px;}
+  .cb-theme label{display:inline-flex; align-items:center; gap:4px; color:var(--mut); font-size:11.5px; margin-left:6px;}
+  .cb-theme input[type=color]{width:26px; height:22px; border:1px solid var(--line); border-radius:5px; background:none; padding:0; cursor:pointer;}
+
+  /* "How the statements connect" educational panel */
+  .connwrap{margin:16px 0;}
+  .conn-intro{color:var(--mut); font-size:13.5px; max-width:780px; margin:4px 0 14px; line-height:1.55;}
+  .conn-intro b{color:var(--gold-soft); font-weight:700;}
+  .conn-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  @media(max-width:960px){.conn-grid{grid-template-columns:1fr;}}
+  .conn-card{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--gold);
+    border-radius:12px; padding:16px;}
+  .conn-flow{display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .cf-box{background:var(--navy2); border:1px solid var(--line); border-radius:8px; padding:6px 10px;
+    display:flex; flex-direction:column; line-height:1.3;}
+  .cf-box span{font-size:10.5px; color:var(--mut); text-transform:uppercase; letter-spacing:.4px;}
+  .cf-box b{color:var(--gold-soft); font-size:12.5px;}
+  .cf-arrow{color:var(--gold); font-size:18px;}
+  .conn-title{font-weight:700; font-size:14px; margin-bottom:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .conn-badge{font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px;}
+  .conn-badge.ok{background:var(--good-bg); color:var(--good);}
+  .conn-badge.warn{background:var(--amber-bg); color:var(--amber);}
+  .conn-badge.bad{background:var(--bad-bg); color:var(--bad);}
+  .conn-sec{font-size:13px; line-height:1.55; margin-bottom:9px; color:var(--txt);}
+  .conn-k{display:block; color:var(--gold-soft); font-size:10.5px; text-transform:uppercase; letter-spacing:.5px; font-weight:700; margin-bottom:2px;}
+  .conn-formula{font-family:ui-monospace,monospace; font-size:11.5px; color:var(--gold-soft);
+    background:var(--navy); border:1px solid var(--line); border-radius:7px; padding:7px 10px; margin:4px 0 4px;}
+  .conn-num{font-size:12px; color:var(--mut); margin-top:8px; border-top:1px solid var(--line); padding-top:8px;}
+  .conn-num b{color:var(--txt);}
+  .conn-num.muted{font-style:italic;}
+
+  /* "What is this?" info button + slide-in side panel */
+  .infobtn{margin-left:6px; border:0; background:none; cursor:pointer; color:#1f7a3d;
+    font-size:12px; line-height:1; opacity:.55; transition:opacity .15s; vertical-align:middle;}
+  .infobtn:hover{opacity:1;}
+  .sheet tr:hover .infobtn{opacity:.85;}
+  .term-overlay{position:fixed; inset:0; background:rgba(2,8,15,.45); opacity:0; pointer-events:none;
+    transition:opacity .25s; z-index:80;}
+  .term-overlay.show{opacity:1; pointer-events:auto;}
+  .term-panel{position:fixed; top:0; right:0; height:100vh; width:min(400px,92vw); z-index:90;
+    background:var(--navy2); border-left:1px solid var(--line); box-shadow:-24px 0 60px -20px rgba(0,0,0,.7);
+    transform:translateX(100%); transition:transform .3s cubic-bezier(.22,.61,.36,1);
+    display:flex; flex-direction:column; padding:22px 22px 24px;}
+  .term-panel.open{transform:translateX(0);}
+  .tp-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding-bottom:14px;}
+  .tp-title{font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.5px; color:var(--gold-soft); line-height:1.05;}
+  .tp-close{background:none; border:0; color:var(--mut); font-size:26px; line-height:1; cursor:pointer;}
+  .tp-close:hover{color:var(--txt);}
+  .tp-body{flex:1; overflow:auto; padding:16px 0; color:var(--txt); font-size:14.5px; line-height:1.6; white-space:pre-wrap;}
+  .tp-body .tp-err{color:var(--amber);}
+  .tp-loading{display:flex; align-items:center; gap:10px; color:var(--mut);}
+  .tp-spin{width:16px; height:16px; border:2px solid var(--line); border-top-color:var(--gold); border-radius:50%; animation:tpspin .8s linear infinite;}
+  @keyframes tpspin{to{transform:rotate(360deg);}}
+  .tp-google{display:block; text-align:center; background:transparent; border:1px solid var(--gold);
+    color:var(--gold-soft); border-radius:9px; padding:11px; font-weight:700; font-size:14px; text-decoration:none;}
+  .tp-google:hover{background:rgba(201,152,42,.12);}
+  .tp-src{color:var(--mut); font-size:11px; margin-top:8px;}
+
+  /* print stylesheet (PDF export) */
+  @media print{
+    body{background:#fff;color:#000;}
+    header,.controlbar,.noprint-chart,.cb-file{display:none !important;}
+    .reporthdr,.insights,table{border-color:#bbb;background:#fff;}
+    .reporthdr .company,.title,h3,.baseselect{color:#000 !important;}
+    thead th{background:#eee;color:#333;}
+    tr.val.base td{background:#f3ead0;color:#000;}
+    table.dabur tr.margin td{color:#555;}
+    .vbar.good{background:#e7f7ef;color:#0a6;border-color:#0a6;}
+    .dot-up{background:#0a6;}.dot-down{background:#c33;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">InvestVerdict</span>
+  <span class="sub">Common-Size Analysis &amp; Statement Linking</span>
+  <a href="/" style="margin-left:auto">← Back to extractor</a>
+  <a href="/forecast.html" style="margin-left:10px">Forecast →</a>
+</header>
+<main id="app">
+  <div class="empty" id="empty">
+    No confirmed financial data found.<br>
+    Go to the <a href="/" style="color:var(--gold-soft)">extractor</a>, confirm a statement, then click “Analyse”.
+  </div>
+</main>
+
+<!-- "What is this?" side panel -->
+<div class="term-overlay" id="term-overlay"></div>
+<aside class="term-panel" id="term-panel" aria-hidden="true" role="dialog" aria-label="Term explanation">
+  <div class="tp-head">
+    <span class="tp-title" id="tp-title"></span>
+    <button class="tp-close" id="tp-close" aria-label="Close">&times;</button>
+  </div>
+  <div class="tp-body" id="tp-body"></div>
+  <a class="tp-google" id="tp-google" target="_blank" rel="noopener">Search on Google for more ↗</a>
+</aside>
+
+<script type="module">
+  import { renderAnalysisApp } from "./analysis/analysis-ui.mjs";
+  const raw = sessionStorage.getItem("iv_confirmed");
+  if (raw) {
+    document.getElementById("empty").remove();
+    renderAnalysisApp(document.getElementById("app"), JSON.parse(raw));
+  }
+</script>
+</body>
+</html>

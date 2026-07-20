@@ -1,3 +1,10 @@
 .DS_Store
 __MACOSX/
 node_modules/
+
+# InvestVerdict platform — generated/local artifacts
+investverdict-platform/webapp/terms.db
+investverdict-platform/test_inputs/*.json
+__pycache__/
+investverdict-platform/.claude/settings.local.json
+.claude/settings.local.json

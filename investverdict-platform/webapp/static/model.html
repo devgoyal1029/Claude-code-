@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Three-Statement Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#05111f; --navy2:#0a1c30; --panel:#0d2236; --line:#1c3a52;
+    --gold:#c9982a; --gold-soft:#e0b94f; --gold-tint:#1a2a1e;
+    --txt:#eaf1f8; --mut:#8aa1b6; --amber:#f4b740; --amber-bg:#3a2f0e;
+    --good:#3ad29f; --good-bg:#0e2e22; --bad:#ff6b6b; --bad-bg:#2e1010;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--navy);color:var(--txt);
+       font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
+  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;
+         border-bottom:1px solid var(--line);background:var(--navy2);flex-wrap:wrap;}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  header .sub{color:var(--mut);font-size:13px;}
+  header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;
+           border:1px solid var(--line);padding:7px 14px;border-radius:8px;}
+  main{max-width:1280px;margin:0 auto;padding:24px;}
+  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;color:var(--txt);
+     font-size:24px;margin:0 0 4px;}
+  h3{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;color:var(--gold);
+     font-size:19px;margin:24px 0 8px;}
+
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+  @media(max-width:900px){.layout{grid-template-columns:1fr;}}
+
+  /* assumptions panel */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+         padding:16px;position:sticky;top:16px;}
+  .panel h3{margin-top:0;}
+  .ctrl{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:9px 0;}
+  .ctrl label{color:var(--mut);font-size:12.5px;flex:1;}
+  .ctrl input,.ctrl select{width:84px;background:var(--navy);border:1px solid var(--line);
+     color:var(--txt);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right;
+     font-family:'DM Sans';}
+  .ctrl input:focus{outline:none;border-color:var(--gold);}
+  .ctrl .unit{color:var(--mut);font-size:11px;width:30px;text-align:left;}
+  .panel .seeded{color:var(--mut);font-size:11px;margin-top:4px;}
+  .yeartabs{display:flex;gap:6px;margin:6px 0 12px;flex-wrap:wrap;}
+  .yeartabs button{background:var(--navy);border:1px solid var(--line);color:var(--mut);
+     border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans';font-weight:700;}
+  .yeartabs button.active{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+
+  /* validation bar */
+  .vbar{border-radius:10px;padding:12px 16px;margin-bottom:8px;font-weight:700;
+        display:flex;align-items:center;gap:10px;}
+  .vbar.good{background:var(--good-bg);color:var(--good);border:1px solid #1c5c46;}
+  .vbar.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #5c1c1c;}
+  .vlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  .vlist li{font-size:12.5px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);}
+  .vlist li.fail{color:var(--bad);background:var(--bad-bg);border-color:#5c1c1c;}
+  .vlist li.warn{color:var(--amber);background:var(--amber-bg);border-color:#5c4a12;}
+  .vlist .tag{font-weight:700;margin-right:6px;}
+
+  /* statement tables */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--panel);
+        border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th,td{padding:7px 11px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:var(--navy2);color:var(--mut);font-weight:700;font-size:11px;
+           text-transform:uppercase;letter-spacing:.4px;}
+  thead th.fc{background:#14331f;color:var(--gold-soft);}      /* forecast column */
+  td.fc{background:rgba(201,152,42,.05);}
+  tr.sub td{font-weight:700;background:var(--navy2);}
+  td.neg{color:var(--bad);}
+  tr:last-child td{border-bottom:0;}
+  .unmapped{color:var(--amber);font-size:12.5px;margin:6px 0;}
+
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;}
+  @media(max-width:760px){.charts{grid-template-columns:1fr;}}
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .chartbox h4{margin:0 0 8px;color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;}
+  .empty{color:var(--mut);padding:40px;text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">InvestVerdict</span>
+  <span class="sub">Three-Statement Model — forecast &amp; validate</span>
+  <a href="/">← Back to extractor</a>
+</header>
+<main id="app">
+  <div class="empty" id="empty">
+    No confirmed financial data found.<br>
+    Go to the <a href="/" style="color:var(--gold-soft)">extractor</a>, confirm a statement, then click “Build 3-Statement Model”.
+  </div>
+</main>
+<script type="module">
+  import { renderModelApp } from "./model/ui.mjs";
+  const raw = sessionStorage.getItem("iv_confirmed");
+  if (raw) {
+    document.getElementById("empty").remove();
+    renderModelApp(document.getElementById("app"), JSON.parse(raw));
+  }
+</script>
+</body>
+</html>

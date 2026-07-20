@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ivstatic",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5061", "--directory", "webapp/static"],
+      "port": 5061
+    }
+  ]
+}

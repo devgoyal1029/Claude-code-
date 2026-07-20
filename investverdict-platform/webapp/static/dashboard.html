@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Master Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#05111f; --navy2:#0a1c30; --card:#0d2033; --line:#1c3a52; --gold:#c9982a;
+    --gold-soft:#e0b94f; --mut:#9fb1c4; --txt:#e8eef5; --good:#3ddc84; --bad:#ff6b6b; --amber:#ffcf5c; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:
+      radial-gradient(1100px 500px at 85% -10%, rgba(201,152,42,.10), transparent 60%),
+      radial-gradient(900px 480px at -10% 110%, rgba(32,88,140,.16), transparent 60%),
+      var(--navy);
+    color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;min-height:100vh;}
+  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);
+    background:rgba(10,28,48,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5;}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  header .sub{color:var(--mut);font-size:13px;}
+  header nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  header nav a{color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid var(--line);
+    padding:7px 14px;border-radius:8px;transition:.15s;}
+  header nav a:hover{border-color:var(--gold);color:#fff;}
+  main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
+  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1.2px;font-size:30px;margin:4px 0 2px;color:#eef3f9;}
+  h2 .meta{font-family:'DM Sans';font-weight:400;color:var(--mut);font-size:13px;letter-spacing:0;}
+  h3{font-family:'Bebas Neue',sans-serif;letter-spacing:1.2px;color:var(--gold-soft);font-size:17px;margin:28px 0 12px;
+    display:flex;align-items:center;gap:10px;}
+  h3::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);}
+
+  /* ---- journey tracker ---- */
+  .journey{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+  @media(max-width:980px){.journey{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:560px){.journey{grid-template-columns:repeat(2,1fr);}}
+  .step{position:relative;display:block;text-decoration:none;color:var(--txt);background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;transition:.15s;overflow:hidden;}
+  .step:hover{transform:translateY(-2px);border-color:var(--gold);}
+  .step .n{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--mut);}
+  .step .t{font-weight:700;font-size:14.5px;margin:3px 0 6px;}
+  .step .s{font-size:12px;color:var(--mut);min-height:16px;}
+  .step .badge{position:absolute;top:10px;right:10px;font-size:11px;padding:2px 9px;border-radius:20px;
+    border:1px solid var(--line);color:var(--mut);}
+  .step.done{border-color:rgba(61,220,132,.4);}
+  .step.done .badge{color:var(--good);border-color:rgba(61,220,132,.4);}
+  .step.next{border-color:rgba(224,185,79,.55);box-shadow:0 0 0 1px rgba(224,185,79,.25), 0 12px 30px -18px rgba(201,152,42,.45);}
+  .step.next .badge{color:var(--gold-soft);border-color:rgba(224,185,79,.5);}
+
+  /* ---- stat cards ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+  .stat{background:linear-gradient(160deg,var(--card),#0a1a2b);border:1px solid var(--line);border-radius:12px;padding:16px 16px 13px;}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--mut);font-weight:700;}
+  .stat .v{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.5px;margin-top:4px;color:#f2f6fb;line-height:1;}
+  .stat .d{font-size:12px;margin-top:6px;color:var(--mut);}
+  .up{color:var(--good);} .dn{color:var(--bad);}
+
+  /* ---- health checks ---- */
+  .checks{display:flex;flex-direction:column;gap:8px;}
+  .chk{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:10px 14px;font-size:13px;}
+  .chk .ico{font-weight:700;} .chk.pass .ico{color:var(--good);} .chk.fail .ico{color:var(--bad);}
+  .chk.warn .ico{color:var(--amber);} .chk .det{color:var(--mut);font-size:12px;margin-top:2px;}
+  .chk.fail{border-color:rgba(255,107,107,.4);} .chk.warn{border-color:rgba(255,207,92,.35);}
+
+  /* ---- valuation summary ---- */
+  .vals{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;position:relative;}
+  .vcard .m{font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--mut);font-weight:700;}
+  .vcard .fv{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-soft);margin-top:4px;line-height:1;}
+  .vcard .fv small{font-size:15px;color:var(--mut);}
+  .vcard .u{font-size:12.5px;margin-top:6px;}
+  .field{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .field svg{width:100%;height:auto;display:block;}
+  .empty-inline{color:var(--mut);font-size:13px;background:var(--card);border:1px dashed var(--line);
+    border-radius:10px;padding:16px;text-align:center;}
+  .empty-inline a{color:var(--gold-soft);}
+
+  /* ---- global empty state ---- */
+  .hero-empty{margin:60px auto;max-width:560px;text-align:center;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;padding:44px 36px;}
+  .hero-empty .big{font-family:'Bebas Neue',sans-serif;font-size:34px;color:var(--gold-soft);letter-spacing:1px;}
+  .hero-empty p{color:var(--mut);line-height:1.6;}
+  .cta{display:inline-block;margin-top:12px;background:linear-gradient(135deg,var(--gold),var(--gold-soft));
+    color:#12100a;font-weight:700;text-decoration:none;padding:11px 22px;border-radius:10px;}
+  footer{color:var(--mut);font-size:11.5px;text-align:center;padding:26px;border-top:1px solid var(--line);margin-top:40px;}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">InvestVerdict</span>
+  <span class="sub">Master Dashboard — everything about this company, one screen</span>
+  <nav>
+    <a href="index.html">Extractor</a><a href="analysis.html">Analysis</a><a href="forecast.html">Forecast</a>
+    <a href="ratios.html">Ratios</a><a href="valuation.html">Valuation</a>
+  </nav>
+</header>
+<main id="main"></main>
+<footer>Educational and analytical only — never investment advice. All figures come from your own confirmed statements.</footer>
+
+<script type="module">
+import { normaliseHistoricals } from "./model/normalise.mjs";
+import { buildModel, seedAssumptions } from "./model/engine.mjs";
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const inr = (x, dp = 0) => x == null || !isFinite(x) ? "—" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: dp, minimumFractionDigits: 0 });
+const pct = (x, dp = 1) => x == null || !isFinite(x) ? "—" : (x * 100).toFixed(dp) + "%";
+const read = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch { return null; } };
+
+const confirmed = read("iv_confirmed");
+const savedModel = read("iv_forecast");
+const market = read("iv_market") || {};
+const valuations = read("iv_valuations") || {};
+
+const STEPS = [
+  { href: "index.html",     n: "Step 1", t: "Extract",   s: "Upload & confirm statements" },
+  { href: "analysis.html",  n: "Step 2", t: "Analyse",   s: "Common-size & statement links" },
+  { href: "forecast.html",  n: "Step 3", t: "Forecast",  s: "Guided assumptions" },
+  { href: "model.html",     n: "Step 4", t: "3-Stmt Model", s: "Linked & validated" },
+  { href: "ratios.html",    n: "Step 5", t: "Ratios",    s: "45+ ratios explained" },
+  { href: "valuation.html", n: "Step 6", t: "Valuation", s: "DCF · DDM · Comps · Bank · IPO" },
+];
+
+function journeyState() {
+  const hasData = !!confirmed;
+  const hasForecast = !!savedModel;
+  const hasVal = Object.keys(valuations).length > 0;
+  // Steps 2–5 unlock together once data is confirmed; forecast marks 3–4 done.
+  const done = [hasData, hasData, hasForecast, hasForecast, hasData && hasForecast, hasVal];
+  const nextIdx = done.findIndex((d) => !d);
+  return { done, nextIdx };
+}
+
+function renderJourney() {
+  const { done, nextIdx } = journeyState();
+  return `<h3>Your journey</h3><div class="journey">` + STEPS.map((st, i) => {
+    const cls = done[i] ? "done" : (i === nextIdx ? "next" : "");
+    const badge = done[i] ? "✓ done" : (i === nextIdx ? "→ next" : "·");
+    return `<a class="step ${cls}" href="${st.href}">
+      <span class="badge">${badge}</span>
+      <div class="n">${esc(st.n)}</div><div class="t">${esc(st.t)}</div><div class="s">${esc(st.s)}</div></a>`;
+  }).join("") + `</div>`;
+}
+
+// ---------- no data at all: guide to the extractor, nothing fake ----------
+if (!confirmed) {
+  $("#main").innerHTML = renderJourney() + `
+    <div class="hero-empty">
+      <div class="big">No company loaded yet</div>
+      <p>The dashboard fills itself in as you work: extract a company's statements,
+         confirm them, and every screen — analysis, forecast, ratios, valuation —
+         reports its progress back here.</p>
+      <a class="cta" href="index.html">Start — upload statements →</a>
+    </div>`;
+} else {
+  // ---------- build (or reuse) the model ----------
+  let model = savedModel;
+  let hist = null;
+  try {
+    hist = normaliseHistoricals(confirmed);
+    if (!model) model = buildModel(hist, { ...seedAssumptions(hist) }, 3);
+  } catch (e) { /* renders what it can below */ }
+
+  const co = esc(confirmed.company_name || "Unknown Company");
+  const units = esc(confirmed.units || "");
+  const histP = model ? model.historicalPeriods : (confirmed.periods || []);
+  const last = histP[histP.length - 1], first = histP[0], prev = histP[histP.length - 2];
+  const g = (k, p) => { const r = hist && hist.values[k]; const v = r ? r[p] : null; return v == null ? null : +v; };
+
+  // ---------- headline stats ----------
+  const rev = g("revenue", last), revPrev = g("revenue", prev);
+  const pat = g("net_income", last), patPrev = g("net_income", prev);
+  const nYears = histP.length - 1;
+  const revC = rev != null && g("revenue", first) > 0 && nYears > 0 ? Math.pow(rev / g("revenue", first), 1 / nYears) - 1 : null;
+  const margin = rev > 0 && pat != null ? pat / rev : null;
+  const marginPrev = revPrev > 0 && patPrev != null ? patPrev / revPrev : null;
+  const equity = (g("total_equity", last) ?? ((g("share_capital", last) || 0) + (g("retained_earnings", last) || 0))) || null;
+  const roe = equity > 0 && pat != null ? pat / equity : null;
+  const debt = (g("long_term_debt", last) || 0) + (g("short_term_debt", last) || 0);
+  const de = equity > 0 ? debt / equity : null;
+  const cash = g("cash", last);
+  const yoy = (cur, pv) => cur != null && pv ? `<span class="${cur >= pv ? "up" : "dn"}">${cur >= pv ? "▲" : "▼"} ${pct(Math.abs(cur / pv - 1))}</span> vs ${esc(prev || "")}` : "";
+
+  const stats = `
+    <h3>${co} <span style="font-family:'DM Sans';font-size:12px;color:var(--mut);letter-spacing:0;">· ${units} · ${esc(first || "")}–${esc(last || "")}</span></h3>
+    <div class="stats">
+      <div class="stat"><div class="k">Revenue (${esc(last || "")})</div><div class="v">₹${inr(rev)}</div><div class="d">${yoy(rev, revPrev)}</div></div>
+      <div class="stat"><div class="k">Net Profit</div><div class="v">₹${inr(pat)}</div><div class="d">${yoy(pat, patPrev)}</div></div>
+      <div class="stat"><div class="k">Revenue CAGR</div><div class="v">${pct(revC)}</div><div class="d">${nYears > 0 ? nYears + "-year history" : ""}</div></div>
+      <div class="stat"><div class="k">Net Margin</div><div class="v">${pct(margin)}</div><div class="d">${margin != null && marginPrev != null ? `<span class="${margin >= marginPrev ? "up" : "dn"}">${(Math.abs(margin - marginPrev) * 100).toFixed(1)} pp ${margin >= marginPrev ? "better" : "worse"}</span>` : ""}</div></div>
+      <div class="stat"><div class="k">ROE</div><div class="v">${pct(roe)}</div><div class="d">on book equity ₹${inr(equity)}</div></div>
+      <div class="stat"><div class="k">Debt / Equity</div><div class="v">${de == null ? "—" : de.toFixed(2) + "×"}</div><div class="d">cash ₹${inr(cash)}</div></div>
+    </div>`;
+
+  // ---------- model health ----------
+  let health = `<h3>Model health</h3>`;
+  const checks = model && model.checks ? model.checks : [];
+  const fails = checks.filter((c) => c.status === "fail");
+  const warns = checks.filter((c) => c.status === "warn");
+  const unmapped = (hist && hist.unmapped) || [];
+  const items = [];
+  items.push(fails.length === 0
+    ? { cls: "pass", ico: "✓", t: "All hard checks pass — the three statements tie out.", d: `${checks.length} checks run across ${model ? model.forecastPeriods.length : 0} forecast year(s).` }
+    : { cls: "fail", ico: "✗", t: `${fails.length} hard check(s) FAIL — fix before trusting any valuation.`, d: fails.slice(0, 3).map((f) => f.detail || f.name).join(" · ") });
+  if (warns.length) items.push({ cls: "warn", ico: "⚠", t: `${warns.length} warning(s)`, d: warns.slice(0, 3).map((w) => w.detail || w.name).join(" · ") });
+  if (unmapped.length) items.push({ cls: "warn", ico: "⚠", t: `${unmapped.length} line item(s) not mapped into the model`, d: unmapped.slice(0, 4).map((u) => `“${u.line_item}”${u.collision ? " (collision: " + u.collision + ")" : ""}`).join(", ") + " — open the Model screen to review." });
+  if (!items.length) items.push({ cls: "pass", ico: "✓", t: "Nothing to flag.", d: "" });
+  health += `<div class="checks">` + items.map((i) =>
+    `<div class="chk ${i.cls}"><span class="ico">${i.ico}</span><div><div>${esc(i.t)}</div>${i.d ? `<div class="det">${esc(i.d)}</div>` : ""}</div></div>`).join("") + `</div>`;
+
+  // ---------- valuation summary ----------
+  let vals = `<h3>Valuation verdicts</h3>`;
+  const price = market.price != null ? +market.price : null;
+  const entries = [];
+  if (valuations.dcf != null) entries.push({ m: "DCF — intrinsic", v: valuations.dcf });
+  if (valuations.ddm != null) entries.push({ m: "DDM — dividends", v: valuations.ddm });
+  if (valuations.bank != null) entries.push({ m: "Excess return — bank", v: valuations.bank });
+  if (valuations.comps && (valuations.comps.low != null)) entries.push({ m: "Comps — peer range", v: null, lo: valuations.comps.low, hi: valuations.comps.high });
+
+  if (!entries.length) {
+    vals += `<div class="empty-inline">No valuations saved yet — run <a href="dcf.html">DCF</a>,
+      <a href="ddm.html">DDM</a>, <a href="comps.html">Comps</a> or the <a href="bank.html">bank model</a>
+      and their fair values will collect here automatically.</div>`;
+  } else {
+    vals += `<div class="vals">` + entries.map((e) => {
+      const fv = e.v != null ? `₹${inr(e.v, 1)} <small>/ share</small>` : `₹${inr(e.lo, 0)}–₹${inr(e.hi, 0)} <small>/ share</small>`;
+      const mid = e.v != null ? e.v : (e.lo + e.hi) / 2;
+      const up = price ? mid / price - 1 : null;
+      const uHtml = up == null ? `<span style="color:var(--mut)">enter market price for upside</span>`
+        : `<span class="${up >= 0 ? "up" : "dn"}">${up >= 0 ? "▲" : "▼"} ${pct(Math.abs(up))} vs market ₹${inr(price, 1)}</span>`;
+      return `<div class="vcard"><div class="m">${esc(e.m)}</div><div class="fv">${fv}</div><div class="u">${uHtml}</div></div>`;
+    }).join("") + `</div>`;
+
+    // football field — pure SVG, no external libs
+    const bars = entries.map((e) => e.v != null ? { m: e.m, lo: e.v, hi: e.v } : { m: e.m, lo: e.lo, hi: e.hi });
+    const all = bars.flatMap((b) => [b.lo, b.hi]).concat(price ? [price] : []).filter((x) => x != null && isFinite(x));
+    if (all.length) {
+      const min = Math.min(...all) * 0.92, max = Math.max(...all) * 1.08 || 1;
+      const W = 860, H = bars.length * 34 + 40, X = (v) => 150 + (v - min) / (max - min) * (W - 190);
+      let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Valuation football field">`;
+      bars.forEach((b, i) => {
+        const y = 24 + i * 34;
+        const x1 = X(b.lo), x2 = Math.max(X(b.hi), x1 + 4);
+        svg += `<text x="0" y="${y + 4}" fill="#9fb1c4" font-size="11.5" font-family="DM Sans">${esc(b.m)}</text>` +
+               `<rect x="${x1}" y="${y - 7}" width="${x2 - x1}" height="14" rx="7" fill="#c9982a" opacity="0.85"/>`;
+      });
+      if (price) svg += `<line x1="${X(price)}" y1="10" x2="${X(price)}" y2="${H - 22}" stroke="#e8eef5" stroke-dasharray="4 3"/>` +
+        `<text x="${X(price) + 5}" y="${H - 10}" fill="#e8eef5" font-size="11" font-family="DM Sans">market ₹${inr(price, 1)}</text>`;
+      vals += `<div class="field">${svg}</svg></div>`;
+    }
+  }
+
+  $("#main").innerHTML = renderJourney() + stats + health + vals;
+}
+</script>
+</body>
+</html>

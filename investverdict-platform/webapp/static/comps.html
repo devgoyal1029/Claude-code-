@@ -1,0 +1,232 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Comps</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{--navy:#05111f;--navy2:#0a1c30;--gold:#c9982a;--gold-soft:#e0b94f;--mut:#9fb1c4;
+  --sh-bg:#fff;--sh-text:#1d1d1d;--sh-head:#3c7d3f;--sh-banner:#5a9550;--sh-muted:#8a8a8a;--amber:#b08400;--amber-bg:#fff6df;}
+*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#eef3f9;font-family:'DM Sans',sans-serif;font-size:14px;}
+header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);align-items:baseline;}
+.brand{font-family:'Bebas Neue';font-size:28px;color:var(--gold);letter-spacing:1.4px;}
+header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+main{max-width:1200px;margin:0 auto;padding:24px;}
+h2{font-family:'Bebas Neue';font-size:26px;margin:0 0 6px;letter-spacing:1px;color:#eef3f9;}
+h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 8px;letter-spacing:1px;}
+.meta{color:var(--mut);font-size:13px;}
+.learn{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
+.learn b{color:var(--gold-soft);}
+table,.chartbox{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px;}
+th,td{padding:6px 10px;border-bottom:1px solid #eef1ec;text-align:right;color:var(--sh-text);}
+th:first-child,td:first-child{text-align:left;}
+thead th{background:#f3f6f3;color:#555;font-size:11px;border-bottom:2px solid var(--sh-head);}
+input,select{background:#fbfdfb;border:1px solid #c9d3c9;color:var(--sh-text);border-radius:6px;padding:4px 6px;text-align:right;font-size:12px;}
+input{width:80px;} input.name{width:100px;text-align:left;}
+button{font-family:'DM Sans';font-weight:700;border:0;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;background:var(--gold);color:var(--navy);}
+button.ghost{background:transparent;color:var(--mut);border:1px solid #1c3a52;}
+.warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
+.implied{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px;}
+.ic{background:var(--sh-bg);border:1px solid #d6dce4;border-radius:8px;padding:12px;text-align:center;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+.ic .k{color:var(--sh-muted);font-size:11px;text-transform:uppercase;}
+.ic .v{font-family:'Bebas Neue';font-size:22px;color:var(--sh-head);}
+.chartbox{padding:14px;margin-top:14px;}
+.empty{color:var(--mut);padding:50px;text-align:center;}
+.step-nav{color:var(--mut);font-size:12.5px;margin-bottom:6px;}
+.step-nav b{color:var(--gold-soft);}
+.slotrow select{width:220px;text-align:left;}
+.slotrow{background:#0d2236;border:1px solid #1c3a52;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.slotrow .lab{color:#e0b94f;font-weight:700;font-size:12.5px;min-width:80px;}
+.slotrow .frac{color:#9fb1c4;font-size:18px;}
+.research{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold-soft,#e0b94f);border-radius:12px;padding:16px 18px;margin:16px 0;}
+.research h4{font-family:'Bebas Neue';color:#e0b94f;letter-spacing:.5px;margin:0 0 8px;font-size:16px;}
+.research ul{margin:6px 0 0;padding-left:18px;color:#9fb1c4;font-size:13px;line-height:1.7;}
+.research b{color:#eef3f9;}
+</style></head><body>
+<header><span class="brand">InvestVerdict</span><span class="meta">Relative Valuation (Comps)</span><a href="/valuation.html">← Choose model</a></header>
+<main id="app"><div class="empty">No data. Go to <a href="/" style="color:var(--gold-soft)">extractor</a> → confirm, then return here.</div></main>
+<script type="module">
+import { normaliseHistoricals } from "./model/normalise.mjs";
+import { seedAssumptions, buildModel } from "./model/engine.mjs";
+
+// ---- financial-statement denominators available to build a custom multiple ----
+// key -> {label, get(y)} where y = model.years[latest historical period]
+const DENOMS = {
+  revenue:   { label:"Revenue",              get:y=>y.revenue },
+  grossProfit:{label:"Gross Profit",         get:y=>y.gross_profit },
+  ebitda:    { label:"EBITDA",               get:y=>y.ebitda },
+  ebit:      { label:"EBIT",                 get:y=>y.ebit },
+  pbt:       { label:"Profit Before Tax (PBT)", get:y=>y.ebt },
+  pat:       { label:"Net Profit (PAT)",      get:y=>y.net_income },
+  bookValue: { label:"Book Value of Equity",  get:y=>y.total_equity },
+  totalAssets:{label:"Total Assets",         get:y=>y.total_assets },
+  cash:      { label:"Cash &amp; Equivalents",get:y=>y.cash },
+};
+const NUMS = {
+  price:{ label:"Price (per share)" },
+  ev:   { label:"Enterprise Value (EV)" },
+};
+
+let model=null;
+const fc=sessionStorage.getItem("iv_forecast");
+if(fc){try{model=JSON.parse(fc);}catch(e){}}
+if(!model){const cf=sessionStorage.getItem("iv_confirmed");if(cf){const c=JSON.parse(cf);const h=normaliseHistoricals(c);model=buildModel(h,{...seedAssumptions(h)},3);}}
+if(model){
+const hist = model.historicalPeriods && model.historicalPeriods.length ? model.historicalPeriods : model.periods.filter(p=>!(model.forecastPeriods||[]).includes(p));
+const last = hist[hist.length-1]||model.periods[0];
+const y=model.years[last]||{};
+const MKT=JSON.parse(sessionStorage.getItem("iv_market")||"{}");
+const target={shares:MKT.shares||100,netDebt:((y.long_term_debt||0)+(y.short_term_debt||0)-(y.cash||0))};
+let peers=[{name:"Peer A",price:0,shares:0,netDebt:0},{name:"Peer B",price:0,shares:0,netDebt:0},{name:"Peer C",price:0,shares:0,netDebt:0}];
+let slots=[{num:"",den:""},{num:"",den:""},{num:"",den:""},{num:"",den:""}];  // 4 customisable multiples
+let step=1;
+
+const el=document.getElementById("app");
+
+// company-type guide: which numerator/denominator combo tends to fit, and why
+const GUIDE=[
+  {type:"Stable, consistently profitable (FMCG, consumer, established IT/pharma)",combo:"Price / PAT",why:"Earnings are meaningful and comparable across peers — this is the classic P/E."},
+  {type:"Capital-intensive or leveraged (manufacturing, telecom, infra, cement)",combo:"EV / EBITDA",why:"Strips out differences in debt and depreciation policy across peers, which distort P/E."},
+  {type:"Banks, NBFCs, insurers, asset-heavy financials",combo:"Price / Book Value",why:"Earnings are volatile/regulated; net worth (book value) is the more stable yardstick."},
+  {type:"Loss-making, early-stage or high-growth",combo:"EV / Revenue",why:"PAT/EBITDA may be negative or n/m — revenue is usually the only reliable common denominator."},
+];
+
+// live mismatch checks for a chosen (numerator, denominator) pair
+function slotWarning(s){
+  if(!s.num||!s.den) return null;
+  const val=DENOMS[s.den].get(y);
+  if(val==null||val<=0)
+    return `This company's ${DENOMS[s.den].label} is ${val==null?"unavailable":"negative or zero"} — this multiple will be not-meaningful (n/m) for the target. A loss-making/early-stage company is usually better valued on EV/Revenue.`;
+  if(s.num==="ev"&&(s.den==="bookValue"||s.den==="cash"))
+    return `EV (a whole-firm, debt+equity measure) paired with ${DENOMS[s.den].label} (an equity-only figure) mixes concepts. Consider Price instead of EV here.`;
+  if(s.num==="price"&&s.den==="totalAssets")
+    return `Price (equity value) vs Total Assets (a firm-wide figure) isn't a standard pairing — try EV/Total Assets, or Price/Book Value for an equity-side comparison.`;
+  return null;
+}
+
+function renderStep1(){
+  const numOpts=(v)=>Object.entries(NUMS).map(([k,n])=>`<option value="${k}" ${v===k?"selected":""}>${n.label}</option>`).join("");
+  const denOpts=(v)=>Object.entries(DENOMS).map(([k,d])=>`<option value="${k}" ${v===k?"selected":""}>${d.label}</option>`).join("");
+  el.innerHTML=`<h2>${esc(model.company_name||"Company")} <span class="meta">· Relative Valuation</span></h2>
+  <div class="learn"><b>Step 1 of 2 — learn, then build your own multiple(s).</b> A multiple is Numerator ÷ Denominator. Different industries need different multiples — the biggest real-world comps mistake is using the wrong one for a company's type. Choose the numerator (Price for a per-share multiple, or Enterprise Value for a firm-value multiple) and the denominator (any line from the financial statements). Fill 1 to 4 slots to cross-check several multiples. Once you pick a denominator, <b>this company's own value for it is fetched automatically</b> — only peer data needs researching.</div>
+  <h3>Which multiple fits this company?</h3>
+  <table><thead><tr><th>Company type</th><th style="text-align:left">Typical multiple</th><th style="text-align:left">Why</th></tr></thead><tbody>
+    ${GUIDE.map(g=>`<tr><td style="text-align:left">${g.type}</td><td style="text-align:left"><b>${g.combo}</b></td><td style="text-align:left">${g.why}</td></tr>`).join("")}
+  </tbody></table>
+  <h3>Build your multiple(s)</h3>
+  ${[0,1,2,3].map(i=>{const w=slotWarning(slots[i]);return `<div class="slotrow"><span class="lab">Multiple ${i+1}${i===0?" *":""}</span>
+    <select data-i="${i}" data-f="num"><option value="">— numerator —</option>${numOpts(slots[i].num)}</select>
+    <span class="frac">/</span>
+    <select data-i="${i}" data-f="den"><option value="">— denominator —</option>${denOpts(slots[i].den)}</select>
+    ${(slots[i].num&&slots[i].den&&!w)?`<span class="meta">= ${NUMS[slots[i].num].label} / ${DENOMS[slots[i].den].label} — company's ${DENOMS[slots[i].den].label}: ₹${round(DENOMS[slots[i].den].get(y))}</span>`:""}
+    </div>${w?`<div class="warnbox">⚠ ${esc(w)}</div>`:""}`;}).join("")}
+  <div style="margin-top:14px;display:flex;gap:14px;align-items:center">
+    <button id="proceed" ${valid()?"":"disabled"}>Proceed to research &amp; modelling →</button>
+    <span class="meta">${slots.filter(s=>s.num&&s.den).length} multiple(s) configured</span>
+  </div>`;
+  document.querySelectorAll("select[data-i]").forEach(sel=>sel.onchange=()=>{
+    slots[+sel.dataset.i][sel.dataset.f]=sel.value; renderStep1();
+  });
+  const btn=document.getElementById("proceed");
+  if(btn) btn.onclick=()=>{ if(valid()){ step=2; renderStep2(); } };
+}
+function valid(){ return slots[0].num && slots[0].den; }
+function activeSlots(){ return slots.filter(s=>s.num&&s.den); }
+function needsEV(){ return activeSlots().some(s=>s.num==="ev"); }
+
+function renderStep2(){
+  const as=activeSlots();
+  el.innerHTML=`<h2>${esc(model.company_name||"Company")} <span class="meta">· Relative Valuation</span></h2>
+  <div class="step-nav"><button class="ghost" id="back">← back to multiples</button> &nbsp; Using: <b>${as.map(s=>NUMS[s.num].label+" / "+DENOMS[s.den].label).join("  ·  ")}</b></div>
+  <div class="research"><h4>Do this first — research these peers before entering numbers</h4>
+    <ul>
+      <li><b>Price:</b> current market price of each peer (Screener.in / Moneycontrol / NSE-BSE).</li>
+      ${needsEV()?`<li><b>Enterprise Value:</b> also need each peer's shares outstanding and net debt (total debt − cash) to compute EV = market cap + net debt.</li>`:`<li><b>Shares outstanding</b> for each peer, to convert to a per-share basis.</li>`}
+      ${as.map(s=>`<li><b>${DENOMS[s.den].label}:</b> get each peer's ${DENOMS[s.den].label} from their P&amp;L / balance sheet / annual report.</li>`).join("")}
+    </ul>
+    <div class="meta" style="margin-top:8px">Find 3–6 true peers — same sector, similar size/growth/margins. Mixing unrelated business models breaks the comparison.</div>
+  </div>
+  <h3>Target company — auto-fetched from your data</h3>
+  <table><tr><td>Shares</td><td><input id="tshares" value="${target.shares}"></td>${needsEV()?`<td>Net Debt</td><td>${round(target.netDebt)}</td>`:""}
+    ${as.map(s=>`<td>${DENOMS[s.den].label}</td><td>${round(DENOMS[s.den].get(y))}</td>`).join("")}</tr></table>
+  <h3>Peer set <button id="addPeer" style="margin-left:10px">+ Add peer</button></h3>
+  <table id="peertbl"></table>
+  <div id="warn"></div>
+  <h3>Implied value per share</h3>
+  <div class="implied" id="implied"></div>
+  <div class="chartbox"><canvas id="chart" height="110"></canvas></div>`;
+  document.getElementById("back").onclick=()=>{ step=1; renderStep1(); };
+  document.getElementById("tshares").oninput=()=>{ target.shares=parseFloat(document.getElementById("tshares").value)||1; recompute(); };
+  renderPeers(); recompute();
+}
+
+function peerFields(){
+  const f=["price","shares"]; if(needsEV()) f.push("netDebt");
+  activeSlots().forEach(s=>{ if(!f.includes(s.den)) f.push(s.den); });
+  return f;
+}
+const FLABEL={price:"Price",shares:"Shares",netDebt:"Net Debt"};
+function flabel(f){ return FLABEL[f]||DENOMS[f].label; }
+
+function renderPeers(){
+  const fields=peerFields();
+  let h=`<thead><tr><th>Peer</th>${fields.map(f=>`<th>${flabel(f)}</th>`).join("")}<th></th></tr></thead><tbody>`;
+  peers.forEach((p,i)=>{
+    h+=`<tr><td><input class="name" data-i="${i}" data-k="name" value="${p.name}"></td>`
+      +fields.map(f=>`<td><input data-i="${i}" data-k="${f}" value="${p[f]||0}"></td>`).join("")
+      +`<td><button data-rm="${i}" style="background:none;color:var(--mut);border:0;cursor:pointer">×</button></td></tr>`;
+  });
+  h+=`</tbody>`;
+  document.getElementById("peertbl").innerHTML=h;
+  document.querySelectorAll("#peertbl input").forEach(inp=>inp.oninput=()=>{
+    const i=+inp.dataset.i,k=inp.dataset.k;
+    peers[i][k]=k==="name"?inp.value:parseFloat(inp.value)||0;
+    recompute();
+  });
+  document.querySelectorAll("#peertbl [data-rm]").forEach(b=>b.onclick=()=>{peers.splice(+b.dataset.rm,1);renderPeers();recompute();});
+}
+document.body.addEventListener("click",e=>{ if(e.target&&e.target.id==="addPeer"){ const f={name:"Peer "+(peers.length+1)}; peerFields().forEach(k=>f[k]=0); peers.push(f); renderPeers(); } });
+
+// median helper (median > mean for peer multiples — one wild peer shouldn't drag the answer)
+function median(a){ const v=a.filter(x=>x!=null&&Number.isFinite(x)).sort((x,y)=>x-y); if(!v.length)return null; const m=Math.floor(v.length/2); return v.length%2?v[m]:(v[m-1]+v[m])/2; }
+function mean(a){ const v=a.filter(x=>x!=null&&Number.isFinite(x)&&x>0); return v.length?v.reduce((s,x)=>s+x,0)/v.length:null; }
+
+function recompute(){
+  if(step!==2) return;
+  const checks=[];
+  if(peers.length<3) checks.push("Fewer than 3 peers — the median is fragile. Add more peers from the same sector.");
+  const cards=[]; const chartLabels=[]; const chartVals=[];
+  activeSlots().forEach(s=>{
+    const peerMults=peers.map(p=>{
+      const denomVal=p[s.den]; if(!denomVal||denomVal<=0||!p.price||!p.shares) return null;
+      if(s.num==="price"){ const perShareDenom=denomVal/p.shares; return perShareDenom>0?p.price/perShareDenom:null; }
+      const mcap=p.price*p.shares, ev=mcap+(p.netDebt||0); return denomVal>0?ev/denomVal:null;
+    });
+    const med=median(peerMults), avg=mean(peerMults);
+    if(med!=null && Math.max(...peerMults.filter(x=>x!=null))>2*Math.min(...peerMults.filter(x=>x!=null||1)))
+      checks.push(`${NUMS[s.num].label}/${DENOMS[s.den].label}: peer multiples range more than 2× apart — the peer set may be inconsistent.`);
+    const targetVal=DENOMS[s.den].get(y);
+    let implied=null;
+    if(med!=null && targetVal!=null){
+      if(s.num==="price") implied = med * (targetVal/target.shares);
+      else { const impliedEV=med*targetVal; const impliedEquity=impliedEV-target.netDebt; implied = target.shares?impliedEquity/target.shares:null; }
+    }
+    const label=`${NUMS[s.num].label.split(" ")[0]}/${DENOMS[s.den].label}`;
+    cards.push(`<div class="ic"><div class="k">${label}</div><div class="v">${implied==null?"-":"₹"+round(implied)}</div>${med!=null?`<div class="k" style="margin-top:4px">median ${med.toFixed(1)}×${avg!=null?" · mean "+avg.toFixed(1)+"×":""}</div>`:""}</div>`);
+    if(implied!=null){ chartLabels.push(label); chartVals.push(implied); }
+  });
+  document.getElementById("warn").innerHTML=checks.length?`<div class="warnbox">${checks.map(c=>`⚠ ${esc(c)}`).join("<br>")}</div>`:"";
+  document.getElementById("implied").innerHTML=cards.length?cards.join(""):`<div class="meta">Fill peer data to see implied values.</div>`;
+  sessionStorage.setItem("iv_market",JSON.stringify({...MKT,shares:target.shares}));
+  if(chartVals.length){ const V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}"); V.comps={low:Math.min(...chartVals),high:Math.max(...chartVals)}; sessionStorage.setItem("iv_valuations",JSON.stringify(V)); }
+  const c=document.getElementById("chart");
+  if(c&&window.Chart){ if(c._chart) c._chart.destroy();
+    c._chart=new window.Chart(c,{type:"bar",data:{labels:chartLabels,datasets:[{label:"Implied value/share",data:chartVals,backgroundColor:"#c9982a"}]},
+      options:{responsive:true,plugins:{legend:{display:false},title:{display:true,text:"Football field — implied value by multiple",color:"#555555"}},scales:{y:{ticks:{color:"#555555"}},x:{ticks:{color:"#555555"}}}}});
+  }
+}
+
+renderStep1();
+}
+function round(x){return x==null?"-":Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+</script></body></html>

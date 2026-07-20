@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reliance Industries — Stock Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #05111f;
+    --navy-2: #0a1c30;
+    --navy-3: #0e2540;
+    --gold: #c9982a;
+    --gold-soft: rgba(201, 152, 42, 0.15);
+    --text: #e8eef5;
+    --muted: #8299b0;
+    --green: #22c55e;
+    --red: #ef4444;
+    --border: rgba(201, 152, 42, 0.20);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: "DM Sans", system-ui, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--gold); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  /* ---- Header ---- */
+  .topbar {
+    display: flex; align-items: baseline; gap: 12px;
+    border-bottom: 2px solid var(--gold); padding-bottom: 8px; margin-bottom: 24px;
+  }
+  .topbar h1 {
+    font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 1.5px;
+    color: var(--gold); font-weight: 400;
+  }
+  .topbar .tag { color: var(--muted); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .header-card {
+    background: linear-gradient(135deg, var(--navy-2), var(--navy-3));
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 26px; margin-bottom: 26px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 26px 40px;
+  }
+  .hc-name { flex: 1 1 260px; }
+  .hc-name .co { font-family: "Bebas Neue", sans-serif; font-size: 30px; letter-spacing: 1px; }
+  .hc-name .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .hc-price .big { font-size: 34px; font-weight: 700; }
+  .hc-price .chg { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .hc-stat { text-align: left; }
+  .hc-stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .hc-stat .v { font-size: 18px; font-weight: 600; margin-top: 2px; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+
+  /* ---- Tabs ---- */
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: none; border: none; color: var(--muted);
+    font-family: "DM Sans", sans-serif; font-size: 14px; font-weight: 600;
+    padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--navy-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 22px;
+  }
+  .card h2 {
+    font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 22px;
+    letter-spacing: 1px; color: var(--gold); margin-bottom: 14px;
+  }
+  .card h3 { font-size: 14px; color: var(--muted); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ---- Tables ---- */
+  .table-scroll { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { padding: 9px 14px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; }
+  thead th {
+    background: var(--navy-3); color: var(--gold); font-weight: 600;
+    border-bottom: 2px solid var(--gold); position: sticky; top: 0;
+  }
+  thead th:first-child { z-index: 2; }
+  tbody td:first-child { background: var(--navy-2); color: var(--text); font-weight: 500; }
+  tbody tr:nth-child(even) td { background: rgba(255,255,255,0.025); }
+  tbody tr:nth-child(even) td:first-child { background: var(--navy-3); }
+  tbody tr:hover td { background: var(--gold-soft); }
+  .num-neg { color: var(--red); }
+
+  /* ---- Profile grid ---- */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .stat-box { background: var(--navy-3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .stat-box .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-box .v { font-size: 17px; font-weight: 600; margin-top: 4px; }
+  .summary { color: #c7d3e0; font-size: 14px; margin-top: 6px; }
+
+  /* ---- Chart range buttons ---- */
+  .ranges { display: flex; gap: 6px; margin-bottom: 14px; }
+  .range-btn {
+    background: var(--navy-3); border: 1px solid var(--border); color: var(--muted);
+    padding: 5px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+    font-family: "DM Sans", sans-serif;
+  }
+  .range-btn.active { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+  .chart-box { position: relative; height: 360px; }
+
+  /* ---- States ---- */
+  .spinner {
+    width: 26px; height: 26px; border: 3px solid var(--border); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin .7s linear infinite; margin: 24px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .msg { color: var(--muted); padding: 16px; text-align: center; font-size: 14px; }
+  .msg.err { color: var(--red); }
+  .news-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .news-item:last-child { border-bottom: none; }
+  .news-item .t { font-weight: 600; font-size: 15px; }
+  .news-item .m { color: var(--muted); font-size: 12px; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>InvestVerdict</h1>
+    <span class="tag">Stock Dashboard</span>
+  </div>
+
+  <!-- Company header -->
+  <div class="header-card" id="header">
+    <div class="hc-name">
+      <div class="co" id="h-name">Reliance Industries</div>
+      <div class="sub" id="h-sub">{{ ticker }} · NSE</div>
+    </div>
+    <div class="hc-price">
+      <div class="big" id="h-price">—</div>
+      <div class="chg" id="h-change">—</div>
+    </div>
+    <div class="hc-stat"><div class="k">Market Cap</div><div class="v" id="h-mcap">—</div></div>
+    <div class="hc-stat"><div class="k">Day Range</div><div class="v" id="h-range">—</div></div>
+    <div class="hc-stat"><div class="k">52W Range</div><div class="v" id="h-range52">—</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- Panels -->
+  <div class="panel active" data-panel="overview">
+    <div class="card">
+      <h2>Price History</h2>
+      <div class="ranges" id="ranges"></div>
+      <div class="chart-box"><canvas id="priceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Company Profile</h2>
+      <div id="profile-body"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" data-panel="income">
+    <div class="card"><h2>Income Statement (Annual)</h2><div id="income-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="balance">
+    <div class="card"><h2>Balance Sheet (Annual)</h2><div id="balance-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="cashflow">
+    <div class="card"><h2>Cash Flow (Annual)</h2><div id="cashflow-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="ratios">
+    <div class="card"><h2>Key Financial Ratios</h2><div id="ratios-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="shareholding">
+    <div class="card"><h2>Shareholding</h2><div id="shareholding-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="dividends">
+    <div class="card"><h2>Dividends &amp; Splits</h2><div id="dividends-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="recommendations">
+    <div class="card"><h2>Analyst Recommendations</h2><div id="recommendations-body"><div class="spinner"></div></div></div>
+  </div>
+  <div class="panel" data-panel="news">
+    <div class="card"><h2>Latest News</h2><div id="news-body"><div class="spinner"></div></div></div>
+  </div>
+
+</div>
+
+<script>
+const API = "";  // same origin
+
+// ---------- Formatting helpers ----------
+function fmtIndianNumber(n, decimals = 2) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  const neg = n < 0;
+  let x = Math.abs(Number(n)).toFixed(decimals);
+  let [int, dec] = x.split(".");
+  // Indian grouping: last 3 digits, then groups of 2.
+  let last3 = int.slice(-3);
+  let rest = int.slice(0, -3);
+  if (rest) last3 = "," + last3;
+  rest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+  let out = rest + last3;
+  if (dec && Number(dec) !== 0) out += "." + dec;
+  return (neg ? "-" : "") + out;
+}
+function rupee(n, decimals = 2) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return "₹" + fmtIndianNumber(n, decimals);
+}
+// Large money -> Cr / Lakh with ₹.
+function rupeeCr(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1e7) return "₹" + fmtIndianNumber(n / 1e7, 2) + " Cr";
+  if (abs >= 1e5) return "₹" + fmtIndianNumber(n / 1e5, 2) + " L";
+  return rupee(n, 2);
+}
+// Statement cells: values already in absolute INR, show in Cr.
+function cr(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return fmtIndianNumber(n / 1e7, 2);
+}
+function pct(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return fmtIndianNumber(n, 2) + "%";
+}
+function num(n, d = 2) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return fmtIndianNumber(n, d);
+}
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+}
+
+async function getJSON(path) {
+  const r = await fetch(API + path);
+  return r.json();
+}
+function setErr(el, msg) { el.innerHTML = `<div class="msg err">${msg || "No data available."}</div>`; }
+
+// ---------- Tabs ----------
+const TABS = [
+  ["overview", "Overview"], ["income", "Income Statement"], ["balance", "Balance Sheet"],
+  ["cashflow", "Cash Flow"], ["ratios", "Ratios"], ["shareholding", "Shareholding"],
+  ["dividends", "Dividends & Splits"], ["recommendations", "Analyst"], ["news", "News"],
+];
+const loaded = {};
+const tabsEl = document.getElementById("tabs");
+TABS.forEach(([id, label], i) => {
+  const b = document.createElement("button");
+  b.className = "tab" + (i === 0 ? " active" : "");
+  b.textContent = label; b.dataset.tab = id;
+  b.onclick = () => selectTab(id);
+  tabsEl.appendChild(b);
+});
+function selectTab(id) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === id));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.dataset.panel === id));
+  lazyLoad(id);
+}
+function lazyLoad(id) {
+  if (loaded[id]) return;
+  loaded[id] = true;
+  ({
+    income: loadIncome, balance: loadBalance, cashflow: loadCashflow,
+    ratios: loadRatios, shareholding: loadShareholding, dividends: loadDividends,
+    recommendations: loadRecommendations, news: loadNews,
+  })[id]?.();
+}
+
+// ---------- Statement table renderer ----------
+// Format one cell according to the row's unit (set by the backend).
+function fmtStatementCell(v, unit) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  switch (unit) {
+    case "pershare": return rupee(v, 2);       // EPS: ₹ per share
+    case "ratio":    return pct(v * 100);      // tax rate: 0.19 -> 19%
+    case "shares":   return fmtIndianNumber(v, 0); // share counts
+    default:         return cr(v);             // money in ₹ Crore
+  }
+}
+function renderStatement(el, data, unitNote = "All monetary figures in ₹ Crore · EPS in ₹/share · rates in %") {
+  if (!data || data.error) return setErr(el, data && data.error);
+  if (!data.columns || !data.rows || !data.rows.length) return setErr(el, "No data available.");
+  let h = `<div class="msg" style="text-align:left;padding:0 0 10px">${unitNote}</div>`;
+  h += `<div class="table-scroll"><table><thead><tr><th>Line Item</th>`;
+  data.columns.forEach(c => h += `<th>${fmtDate(c)}</th>`);
+  h += `</tr></thead><tbody>`;
+  data.rows.forEach(row => {
+    h += `<tr><td>${row.label}</td>`;
+    row.values.forEach(v => {
+      const cls = (v !== null && v < 0) ? " class=\"num-neg\"" : "";
+      h += `<td${cls}>${fmtStatementCell(v, row.unit)}</td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  el.innerHTML = h;
+}
+
+// ---------- Profile + header ----------
+async function loadProfile() {
+  const el = document.getElementById("profile-body");
+  const d = await getJSON("/api/profile");
+  if (!d || d.error) { setErr(el, d && d.error); setErr(document.getElementById("header"), ""); return; }
+
+  // Header
+  document.getElementById("h-name").textContent = d.longName || "Reliance Industries";
+  document.getElementById("h-sub").textContent = `${d.ticker} · ${d.exchange || "NSE"}`;
+  document.getElementById("h-price").textContent = rupee(d.currentPrice);
+  const chgEl = document.getElementById("h-change");
+  if (d.currentPrice != null && d.previousClose != null) {
+    const diff = d.currentPrice - d.previousClose;
+    const p = (diff / d.previousClose) * 100;
+    const up = diff >= 0;
+    chgEl.className = "chg " + (up ? "up" : "down");
+    chgEl.textContent = `${up ? "▲" : "▼"} ${rupee(Math.abs(diff))} (${pct(Math.abs(p))})`;
+  } else chgEl.textContent = "—";
+  document.getElementById("h-mcap").textContent = rupeeCr(d.marketCap);
+  document.getElementById("h-range").textContent =
+    (d.dayLow != null && d.dayHigh != null) ? `${rupee(d.dayLow)} – ${rupee(d.dayHigh)}` : "—";
+  document.getElementById("h-range52").textContent =
+    (d.fiftyTwoWeekLow != null && d.fiftyTwoWeekHigh != null)
+      ? `${rupee(d.fiftyTwoWeekLow)} – ${rupee(d.fiftyTwoWeekHigh)}` : "—";
+
+  // Profile body
+  const divYield = d.dividendYield != null
+    ? (d.dividendYield < 1 ? pct(d.dividendYield * 100) : pct(d.dividendYield)) : "—";
+  const stats = [
+    ["Sector", d.sector || "—"], ["Industry", d.industry || "—"],
+    ["Current Price", rupee(d.currentPrice)], ["Previous Close", rupee(d.previousClose)],
+    ["Open", rupee(d.open)], ["Day High", rupee(d.dayHigh)], ["Day Low", rupee(d.dayLow)],
+    ["52W High", rupee(d.fiftyTwoWeekHigh)], ["52W Low", rupee(d.fiftyTwoWeekLow)],
+    ["Market Cap", rupeeCr(d.marketCap)], ["P/E (TTM)", num(d.trailingPE)],
+    ["Forward P/E", num(d.forwardPE)], ["EPS (TTM)", rupee(d.trailingEps)],
+    ["Dividend Yield", divYield], ["Beta", num(d.beta)],
+    ["Volume", d.volume != null ? fmtIndianNumber(d.volume, 0) : "—"],
+  ];
+  let h = `<div class="stat-grid">`;
+  stats.forEach(([k, v]) => h += `<div class="stat-box"><div class="k">${k}</div><div class="v">${v}</div></div>`);
+  h += `</div>`;
+  if (d.website) h += `<div class="summary" style="margin-top:14px"><strong>Website:</strong> <a href="${d.website}" target="_blank" rel="noopener">${d.website}</a></div>`;
+  if (d.summary) h += `<h3>Business Summary</h3><div class="summary">${d.summary}</div>`;
+  el.innerHTML = h;
+}
+
+// ---------- Price chart ----------
+let chart = null, allPrices = [];
+const RANGES = [["1M", 30], ["6M", 182], ["1Y", 365], ["5Y", 1825], ["MAX", null]];
+function buildRangeButtons() {
+  const box = document.getElementById("ranges");
+  RANGES.forEach(([label], i) => {
+    const b = document.createElement("button");
+    b.className = "range-btn" + (label === "1Y" ? " active" : "");
+    b.textContent = label; b.dataset.range = label;
+    b.onclick = () => { document.querySelectorAll(".range-btn").forEach(x => x.classList.remove("active")); b.classList.add("active"); drawChart(label); };
+    box.appendChild(b);
+  });
+}
+function drawChart(label) {
+  const days = RANGES.find(r => r[0] === label)[1];
+  let data = allPrices;
+  if (days) {
+    const cutoff = Date.now() - days * 864e5;
+    data = allPrices.filter(p => new Date(p.date).getTime() >= cutoff);
+  }
+  const labels = data.map(p => p.date);
+  const closes = data.map(p => p.close);
+  const ctx = document.getElementById("priceChart");
+  if (chart) chart.destroy();
+  const up = closes.length > 1 && closes[closes.length - 1] >= closes[0];
+  const line = up ? "#22c55e" : "#ef4444";
+  chart = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [{
+      data: closes, borderColor: "#c9982a", borderWidth: 1.6,
+      pointRadius: 0, tension: 0.15, fill: true,
+      backgroundColor: (c) => {
+        const g = c.chart.ctx.createLinearGradient(0, 0, 0, 360);
+        g.addColorStop(0, "rgba(201,152,42,0.25)"); g.addColorStop(1, "rgba(201,152,42,0)");
+        return g;
+      },
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (i) => fmtDate(i[0].label),
+            label: (i) => "Close: " + rupee(i.raw),
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: "#8299b0", maxTicksLimit: 8, maxRotation: 0 }, grid: { color: "rgba(255,255,255,0.04)" } },
+        y: { ticks: { color: "#8299b0", callback: (v) => "₹" + fmtIndianNumber(v, 0) }, grid: { color: "rgba(255,255,255,0.06)" } },
+      },
+    },
+  });
+}
+async function loadHistory() {
+  const d = await getJSON("/api/history");
+  const box = document.getElementById("ranges");
+  if (!d || d.error || !d.prices || !d.prices.length) {
+    document.querySelector(".chart-box").innerHTML = `<div class="msg err">${(d && d.error) || "No price history available."}</div>`;
+    return;
+  }
+  allPrices = d.prices;
+  buildRangeButtons();
+  drawChart("1Y");
+}
+
+// ---------- Other sections ----------
+async function loadIncome()   { renderStatement(document.getElementById("income-body"),   await getJSON("/api/income")); }
+async function loadBalance()  { renderStatement(document.getElementById("balance-body"),  await getJSON("/api/balance")); }
+async function loadCashflow() { renderStatement(document.getElementById("cashflow-body"), await getJSON("/api/cashflow")); }
+
+async function loadRatios() {
+  const el = document.getElementById("ratios-body");
+  const d = await getJSON("/api/ratios");
+  if (!d || d.error || !d.ratios) return setErr(el, d && d.error);
+  let h = `<div class="table-scroll"><table><thead><tr><th>Ratio</th><th>Value</th></tr></thead><tbody>`;
+  for (const [k, v] of Object.entries(d.ratios)) {
+    let disp = "—";
+    if (v !== null && v !== undefined && !isNaN(v)) {
+      disp = k.includes("%") ? pct(v) : num(v);
+    }
+    h += `<tr><td>${k}</td><td>${disp}</td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+  el.innerHTML = h;
+}
+
+async function loadShareholding() {
+  const el = document.getElementById("shareholding-body");
+  const d = await getJSON("/api/shareholding");
+  if (!d || d.error) return setErr(el, d && d.error);
+  let h = "";
+  if (d.major && d.major.length) {
+    h += `<h3>Major Holders</h3><div class="table-scroll"><table><tbody>`;
+    d.major.forEach(m => {
+      let v = m.value;
+      if (typeof v === "number" && v <= 1) v = pct(v * 100);
+      h += `<tr><td>${m.label}</td><td>${v ?? "—"}</td></tr>`;
+    });
+    h += `</table></div>`;
+  }
+  if (d.institutional && d.institutional.length) {
+    const cols = Object.keys(d.institutional[0]);
+    h += `<h3>Institutional Holders</h3><div class="table-scroll"><table><thead><tr>`;
+    cols.forEach(c => h += `<th>${c}</th>`);
+    h += `</tr></thead><tbody>`;
+    d.institutional.forEach(r => {
+      h += `<tr>`;
+      cols.forEach(c => {
+        let v = r[c];
+        if (c.toLowerCase().includes("date")) v = fmtDate(v);
+        else if (c.toLowerCase().includes("value")) v = rupeeCr(v);
+        else if (typeof v === "number" && c.toLowerCase().includes("out")) v = pct(v * 100);
+        else if (typeof v === "number") v = fmtIndianNumber(v, 0);
+        h += `<td>${v ?? "—"}</td>`;
+      });
+      h += `</tr>`;
+    });
+    h += `</tbody></table></div>`;
+  }
+  el.innerHTML = h || `<div class="msg">No shareholding data available.</div>`;
+}
+
+async function loadDividends() {
+  const el = document.getElementById("dividends-body");
+  const d = await getJSON("/api/dividends");
+  if (!d || d.error) return setErr(el, d && d.error);
+  let h = "";
+  if (d.dividends && d.dividends.length) {
+    const recent = d.dividends.slice().reverse();
+    h += `<h3>Dividends (most recent first)</h3><div class="table-scroll" style="max-height:340px"><table><thead><tr><th>Date</th><th>Amount / Share</th></tr></thead><tbody>`;
+    recent.forEach(x => h += `<tr><td>${fmtDate(x.date)}</td><td>${rupee(x.amount)}</td></tr>`);
+    h += `</tbody></table></div>`;
+  }
+  if (d.splits && d.splits.length) {
+    const recent = d.splits.slice().reverse();
+    h += `<h3>Stock Splits</h3><div class="table-scroll"><table><thead><tr><th>Date</th><th>Ratio</th></tr></thead><tbody>`;
+    recent.forEach(x => h += `<tr><td>${fmtDate(x.date)}</td><td>${num(x.ratio, 2)} : 1</td></tr>`);
+    h += `</tbody></table></div>`;
+  }
+  el.innerHTML = h || `<div class="msg">No dividend or split history available.</div>`;
+}
+
+async function loadRecommendations() {
+  const el = document.getElementById("recommendations-body");
+  const d = await getJSON("/api/recommendations");
+  if (!d || d.error || !d.recommendations || !d.recommendations.length)
+    return setErr(el, (d && d.error) || "No analyst recommendations available.");
+  const rows = d.recommendations;
+  const cols = Object.keys(rows[0]).filter(c => c !== "index");
+  let h = `<div class="table-scroll"><table><thead><tr>`;
+  cols.forEach(c => h += `<th>${c}</th>`);
+  h += `</tr></thead><tbody>`;
+  rows.forEach(r => {
+    h += `<tr>`;
+    cols.forEach(c => { let v = r[c]; if (typeof v === "number") v = fmtIndianNumber(v, 0); h += `<td>${v ?? "—"}</td>`; });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  el.innerHTML = h;
+}
+
+async function loadNews() {
+  const el = document.getElementById("news-body");
+  const d = await getJSON("/api/news");
+  if (!d || d.error || !d.news || !d.news.length)
+    return setErr(el, (d && d.error) || "No news available.");
+  let h = "";
+  d.news.forEach(n => {
+    h += `<div class="news-item">
+      <div class="t">${n.link ? `<a href="${n.link}" target="_blank" rel="noopener">${n.title}</a>` : n.title}</div>
+      <div class="m">${n.publisher || ""}${n.date ? " · " + fmtDate(n.date) : ""}</div>
+    </div>`;
+  });
+  el.innerHTML = h;
+}
+
+// ---------- Init ----------
+loadProfile();
+loadHistory();
+</script>
+</body>
+</html>

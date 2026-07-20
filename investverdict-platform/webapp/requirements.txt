@@ -1,0 +1,7 @@
+# InvestVerdict web app (extractor + modelling suite)
+#   python3 webapp/server.py     -> http://127.0.0.1:5050
+flask>=3.0
+
+# Extraction calls the Gemini REST API with the stdlib (urllib) — no SDK needed.
+# Optional: certifi fixes missing CA stores on macOS python.org builds.
+# certifi>=2024.0

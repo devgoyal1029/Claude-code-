@@ -1,0 +1,125 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Bank Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{--navy:#05111f;--navy2:#0a1c30;--gold:#c9982a;--gold-soft:#e0b94f;--mut:#9fb1c4;
+  --sh-bg:#fff;--sh-text:#1d1d1d;--sh-head:#3c7d3f;--sh-banner:#5a9550;--sh-muted:#8a8a8a;--amber:#b08400;--amber-bg:#fff6df;}
+*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#eef3f9;font-family:'DM Sans',sans-serif;font-size:14px;}
+header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);align-items:baseline;}
+.brand{font-family:'Bebas Neue';font-size:28px;color:var(--gold);letter-spacing:1.4px;}
+header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+main{max-width:1200px;margin:0 auto;padding:24px;}
+h2{font-family:'Bebas Neue';font-size:26px;margin:0 0 6px;letter-spacing:1px;color:#eef3f9;}
+h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 8px;letter-spacing:1px;}
+.meta{color:var(--mut);font-size:13px;}
+.learn{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
+.learn b{color:var(--gold-soft);}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start;}
+@media(max-width:900px){.grid{grid-template-columns:1fr;}}
+.ig,.hero,table,.pbcard{background:var(--sh-bg);color:var(--sh-text);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+.ig{padding:12px 14px;margin-bottom:12px;}
+.igh{background:var(--sh-banner);color:#fff;font-size:11px;text-transform:uppercase;font-weight:700;margin:-12px -14px 10px;padding:6px 12px;}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0;}
+.row label{color:#555;font-size:12.5px;}
+.row input{width:90px;background:#fbfdfb;border:1px solid #c9d3c9;color:var(--sh-text);border-radius:6px;padding:5px 7px;text-align:right;font-size:13px;}
+.hero{padding:0;overflow:hidden;margin-bottom:16px;}
+.hero::before{content:"Bank / Financials — Excess Return Value";display:block;background:var(--sh-head);color:#fff;font-weight:700;font-size:13px;text-align:center;padding:7px 10px;}
+.hero-k{display:block;color:var(--sh-muted);text-transform:uppercase;letter-spacing:2px;font-size:11px;font-weight:700;padding:14px 22px 0;}
+.hero-v{display:block;font-family:'Bebas Neue';font-size:44px;color:var(--sh-head);padding:0 22px;}
+.hero .meta{padding:0 22px 16px;}
+.warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th,td{padding:6px 10px;border-bottom:1px solid #eef1ec;text-align:right;color:var(--sh-text);}
+th:first-child,td:first-child{text-align:left;}
+thead th{background:#f3f6f3;color:#555;font-size:11px;border-bottom:2px solid var(--sh-head);}
+.sens td{text-align:center;} .sens td.base{outline:2px solid var(--gold);outline-offset:-2px;font-weight:700;}
+.pbcard{padding:14px;margin-top:12px;}
+.empty{color:var(--mut);padding:50px;text-align:center;}
+</style></head><body>
+<header><span class="brand">InvestVerdict</span><span class="meta">Bank / Financials — Excess Return</span><a href="/valuation.html">← Choose model</a></header>
+<main id="app"><div class="empty">No data. Go to <a href="/" style="color:var(--gold-soft)">extractor</a> → confirm → forecast, then return here.</div></main>
+<script type="module">
+import { bank } from "./valuation/engines.mjs";
+import { normaliseHistoricals } from "./model/normalise.mjs";
+import { seedAssumptions, buildModel } from "./model/engine.mjs";
+
+let model=null;
+const fc=sessionStorage.getItem("iv_forecast");
+if(fc){try{model=JSON.parse(fc);}catch(e){}}
+if(!model){const cf=sessionStorage.getItem("iv_confirmed");if(cf){const c=JSON.parse(cf);const h=normaliseHistoricals(c);model=buildModel(h,{...seedAssumptions(h)},3);}}
+if(model){
+const hist = model.historicalPeriods && model.historicalPeriods.length ? model.historicalPeriods : model.periods.filter(p=>!(model.forecastPeriods||[]).includes(p));
+const last = hist[hist.length-1]||model.periods[0];
+const y=model.years[last]||{};
+const bv0=y.total_equity||1000;
+const roe0=(y.net_income&&y.total_equity)?y.net_income/y.total_equity:0.14;
+const MKT=JSON.parse(sessionStorage.getItem("iv_market")||"{}");
+const state={bv0,ke:0.145,roe:roe0,roeEnd:roe0,years:5,payout:0.3,gs:0.045,fade:true,shares:MKT.shares||0};
+
+const el=document.getElementById("app");
+el.innerHTML=`<h2>${esc(model.company_name||"Company")} <span class="meta">· Excess Return Model</span></h2>
+<div class="learn"><b>Why a separate model:</b> standard FCFF DCF breaks for banks — interest is their operating cost (not financing), debt is raw material, and capex/working-capital are meaningless. Banks are valued on the EQUITY side using excess returns: <b>Value = Book Value + PV(future ROE−Ke spreads) × Book Value</b>. When a bank earns more than its cost of equity, that spread creates value above book; competition should erode it over time (fade to Ke is the conservative default).</div>
+<div id="hero"></div>
+<div class="grid">
+<section><h3>Inputs</h3>
+<div class="ig"><div class="igh">Starting point (from your data)</div>
+<div class="row"><label>Book value of equity</label><input id="bv0" type="number" step="any" value="${round(bv0)}"></div>
+<div class="row"><label>Ke (cost of equity)</label><input id="ke" type="number" step="any" value="${round(state.ke*100)}"><span>%</span></div>
+</div>
+<div class="ig"><div class="igh">Forecast</div>
+<div class="row"><label>ROE — year 1</label><input id="roe" type="number" step="any" value="${round(state.roe*100)}"><span>%</span></div>
+<div class="row"><label>ROE — final year (fades linearly)</label><input id="roeEnd" type="number" step="any" value="${round(state.roeEnd*100)}"><span>%</span></div>
+<div class="row"><label>Forecast years</label><input id="years" type="number" step="1" value="${state.years}"></div>
+<div class="row"><label>Payout ratio</label><input id="payout" type="number" step="any" value="${round(state.payout*100)}"><span>%</span></div>
+<div class="row"><label>Stable growth (terminal)</label><input id="gs" type="number" step="any" value="${round(state.gs*100)}"><span>%</span></div>
+<div class="row"><label>Fade excess returns to zero (conservative — competition erodes super-normal returns)</label><input id="fade" type="checkbox" checked style="width:auto"></div>
+<div class="row"><label>Shares outstanding (for ₹/share)</label><input id="shares" type="number" step="any" value="${state.shares||""}"></div>
+</div>
+<div id="warn"></div>
+</section>
+<section><h3>Excess return by year</h3><div id="tbl"></div>
+<h3>Justified P/B cross-check</h3><div class="pbcard" id="pb"></div>
+<h3>Sensitivity — Ke × terminal ROE</h3><div id="sens"></div>
+</section></div>`;
+
+function readInputs(){
+  state.bv0=parseFloat(document.getElementById("bv0").value)||0;
+  state.ke=parseFloat(document.getElementById("ke").value)/100;
+  state.roe=parseFloat(document.getElementById("roe").value)/100;
+  state.roeEnd=parseFloat(document.getElementById("roeEnd").value)/100;
+  state.years=parseInt(document.getElementById("years").value)||5;
+  state.payout=parseFloat(document.getElementById("payout").value)/100;
+  state.gs=parseFloat(document.getElementById("gs").value)/100;
+  state.fade=document.getElementById("fade").checked;
+  state.shares=parseFloat(document.getElementById("shares").value)||0;
+}
+["bv0","ke","roe","roeEnd","years","payout","gs","fade","shares"].forEach(id=>{const e=document.getElementById(id);e.addEventListener("input",recompute);e.addEventListener("change",recompute);});
+
+function recompute(){
+  readInputs();
+  // linear ROE fade from year-1 ROE to final-year ROE (more realistic than flat)
+  const n=state.years;
+  const roePath=Array.from({length:n},(_,i)=>n>1?state.roe+(state.roeEnd-state.roe)*i/(n-1):state.roe);
+  const r=bank({bv0:state.bv0,ke:state.ke,roePath,payout:state.payout,gs:state.gs,fadeToKe:state.fade});
+  const perSh=state.shares>0?r.value/state.shares:null;
+  if(perSh!=null){const V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}");V.bank=perSh;sessionStorage.setItem("iv_valuations",JSON.stringify(V));}
+  document.getElementById("hero").innerHTML=`<div class="hero"><div class="hero-k">Value of Equity</div><div class="hero-v">₹${round(r.value)}${perSh!=null?` <span style="font-size:20px;color:var(--mut)">(₹${round(perSh)}/share)</span>`:""}</div><div class="meta">Book ${round(state.bv0)} + PV(excess returns)${state.fade?" · excess returns fade to 0 (conservative)":" + PV(terminal)"} · Ke ${pct(state.ke)}</div></div>`;
+  document.getElementById("warn").innerHTML=r.checks.length?`<div class="warnbox">${r.checks.map(c=>`⚠ ${esc(c.msg)}`).join("<br>")}</div>`:"";
+  let h=`<table><thead><tr><th>Year</th><th>BV (opening)</th><th>ROE</th><th>Net Income</th><th>Excess Return</th><th>PV</th></tr></thead><tbody>`;
+  r.rows.forEach(row=>{h+=`<tr><td>Y${row.t}</td><td>${round(row.bv)}</td><td>${pct(row.roe)}</td><td>${round(row.ni)}</td><td>${round(row.er)}</td><td>${round(row.pv)}</td></tr>`;});
+  h+=`<tr><td colspan="5"><b>PV of Terminal Excess Return</b></td><td><b>${round(r.tv)}</b></td></tr></tbody></table>`;
+  document.getElementById("tbl").innerHTML=h;
+  document.getElementById("pb").innerHTML=`Justified P/B = (ROE − g) / (Ke − g) = <b>${r.justifiedPB==null?"-":r.justifiedPB.toFixed(2)}×</b> book value. Compare this to the bank's actual traded P/B to see if the market is paying more or less than the excess-return math implies.`;
+  const s=r.sens;
+  let sh=`<table class="sens"><thead><tr><th>Ke \\ ROE</th>${s.cols.map(g=>`<th>${pct(g)}</th>`).join("")}</tr></thead><tbody>`;
+  s.rows.forEach((ke,ri)=>{sh+=`<tr><th>${pct(ke)}</th>${s.cols.map((g,ci)=>{const v=s.grid[ri][ci];const b=ri===s.baseRow&&ci===s.baseCol?" base":"";return `<td class="${b}">${v==null?"-":round(v)}</td>`;}).join("")}</tr>`;});
+  sh+=`</tbody></table>`;
+  document.getElementById("sens").innerHTML=sh;
+}
+recompute();
+}
+function round(x){return x==null?"-":Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});}
+function pct(x){return x==null?"-":(x*100).toFixed(1)+"%";}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+</script></body></html>

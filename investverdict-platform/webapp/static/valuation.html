@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Choose Your Valuation Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#05111f; --navy2:#0a1c30; --panel:#0d2236; --line:#1c3a52;
+    --gold:#c9982a; --gold-soft:#e0b94f; --gold-bright:#f3cd63; --txt:#eef3f9; --mut:#9fb1c4;
+    --good:#3ad29f; --good-bg:#0e2e22; --amber:#f4b740; --amber-bg:#3a2f0e; --ease:cubic-bezier(.22,.61,.36,1); }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--navy);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;}
+  header{display:flex;align-items:baseline;gap:14px;padding:18px 26px;border-bottom:1px solid var(--line);background:var(--navy2);}
+  .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.4px;color:var(--gold);}
+  header .sub{color:var(--mut);font-size:13px;}
+  header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 14px;border-radius:8px;}
+  main{max-width:1180px;margin:0 auto;padding:26px 24px 60px;}
+  h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:clamp(28px,4.5vw,42px);margin:6px 0 8px;}
+  .intro{color:var(--mut);font-size:14.5px;line-height:1.6;max-width:760px;}
+  .intro b{color:var(--gold-soft);}
+
+  /* recommender */
+  .quiz{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:14px;padding:18px 20px;margin:22px 0;}
+  .quiz h3{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;color:var(--gold);font-size:17px;margin:0 0 12px;}
+  .q{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:10px 0;}
+  .q .qt{min-width:320px;color:var(--txt);font-size:13.5px;}
+  .q .opts{display:flex;gap:8px;}
+  .q button{background:var(--navy);border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:7px 16px;font-family:'DM Sans';font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s;}
+  .q button.on{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+  .quiz .note{color:var(--mut);font-size:12px;margin-top:10px;font-style:italic;}
+
+  /* cards */
+  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:8px;}
+  @media(max-width:1020px){.cards{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:560px){.cards{grid-template-columns:1fr;}}
+  .card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 16px;
+    transition:transform .25s var(--ease),border-color .25s,box-shadow .25s;cursor:pointer;display:flex;flex-direction:column;gap:8px;}
+  .card:hover{transform:translateY(-5px);border-color:rgba(201,152,42,.55);box-shadow:0 26px 55px -30px rgba(0,0,0,.8);}
+  .card.rec{border-color:var(--good);box-shadow:0 0 0 1px var(--good), 0 20px 50px -30px rgba(0,0,0,.8);}
+  .card .ic{font-size:26px;}
+  .card h4{margin:0;font-family:'Bebas Neue',sans-serif;letter-spacing:.6px;font-size:19px;}
+  .card .why{color:var(--mut);font-size:12px;line-height:1.5;flex:1;}
+  .card .why b{color:var(--good);font-weight:700;} .card .why i{color:var(--amber);font-style:normal;font-weight:700;}
+  .card .recwhy{color:var(--good);font-size:11.5px;background:var(--good-bg);border-radius:7px;padding:6px 8px;}
+  .card .go{align-self:flex-start;font-weight:700;font-size:12.5px;color:var(--navy);background:linear-gradient(135deg,var(--gold),var(--gold-bright));border-radius:8px;padding:8px 14px;}
+  .card .soon{align-self:flex-start;font-weight:700;font-size:11.5px;color:var(--mut);border:1px dashed var(--line);border-radius:8px;padding:7px 12px;}
+  .badge-rec{position:absolute;top:-9px;right:12px;background:var(--good);color:var(--navy);font-size:10px;font-weight:700;
+    padding:3px 9px;border-radius:12px;letter-spacing:.5px;}
+
+  /* mismatch warning */
+  .mis{display:none;background:var(--amber-bg);border:1px solid #5c4a12;border-radius:12px;padding:14px 18px;margin-top:18px;color:var(--amber);font-size:13.5px;line-height:1.55;}
+  .mis.show{display:block;} .mis b{color:var(--gold-soft);}
+  .mis .row{display:flex;gap:12px;align-items:flex-start;} .mis .continue{margin-top:10px;}
+  .mis a{color:var(--gold-soft);font-weight:700;}
+  .disclaimer{color:var(--mut);font-size:11.5px;font-style:italic;margin-top:26px;}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">InvestVerdict</span>
+  <span class="sub">Valuation — choose your model</span>
+  <a href="/ratios.html">← Ratios</a>
+</header>
+<main>
+  <h2>What is this company worth?</h2>
+  <p class="intro">There isn't one valuation model — there are <b>families</b>. Intrinsic models (DCF, DDM, Excess-Return) value the company from its <b>own cash flows</b>; relative models (Comps) value it from <b>what the market pays for peers</b>. The most common real-world error is running the wrong model on the wrong company — so picking the model is the first lesson.</p>
+
+  <div class="quiz">
+    <h3>3 quick questions — we'll recommend a model</h3>
+    <div class="q"><span class="qt">Is it a bank, NBFC or insurance company?</span>
+      <span class="opts" data-q="financial"><button data-v="true">Yes</button><button data-v="false">No</button></span></div>
+    <div class="q"><span class="qt">Is it IPO-ing now / listed only recently?</span>
+      <span class="opts" data-q="ipo"><button data-v="true">Yes</button><button data-v="false">No</button></span></div>
+    <div class="q"><span class="qt">Does it pay steady, meaningful dividends?</span>
+      <span class="opts" data-q="dividends"><button data-v="true">Yes</button><button data-v="false">No</button></span></div>
+    <div class="note">Recommendations light up in green below — but the choice is always yours. Picking a mismatched model shows what professionals would do instead (and why), never a block.</div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+  <div class="mis" id="mismatch"></div>
+  <div id="xmodel" style="margin-top:26px"></div>
+
+  <p class="disclaimer">All models are educational and analytical — none of this is buy/sell advice. Every model ends in a sensitivity range, never a single "true" number.</p>
+</main>
+
+<script type="module">
+  import { MODELS, recommend, mismatchWarning } from "./valuation/selector.mjs";
+
+  const answers = { financial: null, ipo: null, dividends: null };
+  const cardsEl = document.getElementById("cards");
+  const misEl = document.getElementById("mismatch");
+
+  document.querySelectorAll(".opts").forEach((grp) => {
+    grp.querySelectorAll("button").forEach((b) => b.onclick = () => {
+      grp.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      answers[grp.dataset.q] = b.dataset.v === "true";
+      render();
+    });
+  });
+
+  function render() {
+    const anyAnswered = Object.values(answers).some((v) => v != null);
+    const { recommended, reasons } = anyAnswered ? recommend(answers) : { recommended: [], reasons: {} };
+    cardsEl.innerHTML = MODELS.map((m) => {
+      const rec = recommended.includes(m.key);
+      return `<div class="card ${rec ? "rec" : ""}" data-key="${m.key}">
+        ${rec ? `<span class="badge-rec">RECOMMENDED</span>` : ""}
+        <span class="ic">${m.icon}</span><h4>${m.name}</h4>
+        <div class="why"><b>Best for:</b> ${m.bestFor}<br><i>Avoid when:</i> ${m.avoidWhen}</div>
+        ${rec && reasons[m.key] ? `<div class="recwhy">${reasons[m.key]}</div>` : ""}
+        ${m.live ? `<span class="go">Open model →</span>` : `<span class="soon">Coming in the next stage</span>`}
+      </div>`;
+    }).join("");
+    cardsEl.querySelectorAll(".card").forEach((c) => c.onclick = () => pick(c.dataset.key));
+  }
+
+  function pick(key) {
+    const m = MODELS.find((x) => x.key === key);
+    const warnMsg = mismatchWarning(key, answers);
+    if (warnMsg) {
+      misEl.className = "mis show";
+      misEl.innerHTML = `<div class="row"><span>⚠</span><span><b>Heads-up — likely mismatch:</b> ${warnMsg}</span></div>
+        <div class="continue">${m.live ? `<a href="${m.href}">I understand — continue to ${m.name} anyway →</a>` : `<span style="color:var(--mut)">(${m.name} arrives in the next build stage.)</span>`}</div>`;
+      misEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    misEl.className = "mis";
+    if (m.live) location.href = m.href;
+    else { misEl.className = "mis show"; misEl.innerHTML = `<div class="row"><span>🛠</span><span><b>${m.name}</b> is being built next — it'll appear here as soon as it's ready. DCF is live today.</span></div>`; }
+  }
+
+  render();
+
+  // ---- cross-model summary (football field) — appears once 2+ models saved a value
+  (function xmodel(){
+    let V={}; try{V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}");}catch(e){}
+    const bars=[];
+    if(V.dcf!=null) bars.push({name:"DCF",low:V.dcf,high:V.dcf});
+    if(V.ddm!=null) bars.push({name:"DDM",low:V.ddm,high:V.ddm});
+    if(V.bank!=null) bars.push({name:"Bank (Excess Return)",low:V.bank,high:V.bank});
+    if(V.comps&&V.comps.low!=null) bars.push({name:"Comps (range)",low:V.comps.low,high:V.comps.high});
+    if(bars.length<2) return;
+    const min=Math.min(...bars.map(b=>b.low)), max=Math.max(...bars.map(b=>b.high)), span=(max-min)||1;
+    const pad=span*0.1, lo=min-pad, w=span+2*pad;
+    const row=(b)=>{const x=((b.low-lo)/w*100).toFixed(1), ww=Math.max(1.5,((b.high-b.low)/w*100)).toFixed(1);
+      return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <span style="width:150px;color:var(--mut);font-size:12.5px">${b.name}</span>
+        <div style="flex:1;position:relative;height:16px;background:var(--navy2);border-radius:8px">
+          <div style="position:absolute;left:${x}%;width:${ww}%;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--gold),#f3cd63)"></div></div>
+        <span style="width:130px;font-size:12px;color:var(--gold-soft)">₹${fmt(b.low)}${b.high>b.low?" – ₹"+fmt(b.high):""}</span></div>`;};
+    document.getElementById("xmodel").innerHTML=
+      `<div class="quiz"><h3>Model vs model — implied value per share</h3>${bars.map(row).join("")}
+       <div class="note">Methods differ because they measure different things: DCF prices the company's own cash generation, DDM only the cash paid out, Comps what the market pays for peers, and the Bank model book-value economics. A tight cluster = more confidence; a wide spread = interrogate the assumptions. Neutral comparison — not advice.</div></div>`;
+    function fmt(v){return Number(v).toLocaleString("en-IN",{maximumFractionDigits:1});}
+  })();
+</script>
+</body>
+</html>

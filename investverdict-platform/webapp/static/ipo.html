@@ -1,0 +1,107 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — IPO Valuation</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#05111f;--navy2:#0a1c30;--gold:#c9982a;--gold-soft:#e0b94f;--mut:#9fb1c4;
+  --sh-bg:#fff;--sh-text:#1d1d1d;--sh-head:#3c7d3f;--sh-banner:#5a9550;--sh-muted:#8a8a8a;--amber:#b08400;--amber-bg:#fff6df;--good:#1f7a3d;}
+*{box-sizing:border-box;}body{margin:0;background:var(--navy);color:#eef3f9;font-family:'DM Sans',sans-serif;font-size:14px;}
+header{display:flex;gap:14px;padding:18px 26px;border-bottom:1px solid #1c3a52;background:var(--navy2);align-items:baseline;}
+.brand{font-family:'Bebas Neue';font-size:28px;color:var(--gold);letter-spacing:1.4px;}
+header a{margin-left:auto;color:var(--gold-soft);text-decoration:none;font-size:13px;border:1px solid #1c3a52;padding:7px 14px;border-radius:8px;}
+main{max-width:1100px;margin:0 auto;padding:24px;}
+h2{font-family:'Bebas Neue';font-size:26px;margin:0 0 6px;letter-spacing:1px;color:#eef3f9;}
+h3{font-family:'Bebas Neue';color:var(--gold-soft);font-size:16px;margin:20px 0 8px;letter-spacing:1px;}
+.meta{color:var(--mut);font-size:13px;}
+.learn{background:#0d2236;border:1px solid #1c3a52;border-left:4px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0;font-size:13px;color:var(--mut);line-height:1.6;}
+.learn b{color:var(--gold-soft);}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start;}
+@media(max-width:900px){.grid{grid-template-columns:1fr;}}
+.ig,table,.card{background:var(--sh-bg);color:var(--sh-text);border:1px solid #d6dce4;border-radius:8px;box-shadow:0 14px 34px -22px rgba(0,0,0,.5);}
+.ig{padding:12px 14px;margin-bottom:12px;}
+.igh{background:var(--sh-banner);color:#fff;font-size:11px;text-transform:uppercase;font-weight:700;margin:-12px -14px 10px;padding:6px 12px;}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0;}
+.row label{color:#555;font-size:12.5px;}
+.row input{width:100px;background:#fbfdfb;border:1px solid #c9d3c9;color:var(--sh-text);border-radius:6px;padding:5px 7px;text-align:right;font-size:13px;}
+.warnbox{background:var(--amber-bg);border:1px solid #e3cf8a;border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12.5px;margin-top:10px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th,td{padding:7px 11px;border-bottom:1px solid #eef1ec;text-align:right;color:var(--sh-text);}
+th:first-child,td:first-child{text-align:left;}
+thead th{background:#f3f6f3;color:#555;font-size:11px;border-bottom:2px solid var(--sh-head);}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.card{padding:16px;}
+.card h4{font-family:'Bebas Neue';color:var(--sh-head);margin:0 0 8px;letter-spacing:.5px;}
+.empty{color:var(--mut);padding:50px;text-align:center;}
+</style></head><body>
+<header><span class="brand">InvestVerdict</span><span class="meta">IPO Valuation</span><a href="/valuation.html">← Choose model</a></header>
+<main id="app"><div class="empty">No data. Go to <a href="/" style="color:var(--gold-soft)">extractor</a> → confirm, then return here.</div></main>
+<script type="module">
+import { ipo } from "./valuation/engines.mjs";
+import { normaliseHistoricals } from "./model/normalise.mjs";
+import { seedAssumptions, buildModel } from "./model/engine.mjs";
+
+let model=null;
+const fc=sessionStorage.getItem("iv_forecast");
+if(fc){try{model=JSON.parse(fc);}catch(e){}}
+if(!model){const cf=sessionStorage.getItem("iv_confirmed");if(cf){const c=JSON.parse(cf);const h=normaliseHistoricals(c);model=buildModel(h,{...seedAssumptions(h)},3);}}
+if(model){
+const hist = model.historicalPeriods && model.historicalPeriods.length ? model.historicalPeriods : model.periods.filter(p=>!(model.forecastPeriods||[]).includes(p));
+const last = hist[hist.length-1]||model.periods[0];
+const y=model.years[last]||{};
+// EPS on POST-issue share count — fresh shares dilute earnings, so band P/E must use it
+const state={bandLow:0,bandHigh:0,freshIssue:0,ofs:0,preShares:100,postShares:110,eps:(y.net_income?y.net_income/110:0),ebitda:y.ebitda||0,netDebt:((y.long_term_debt||0)+(y.short_term_debt||0)-(y.cash||0)),peerPE:0,peerEvEbitda:0};
+
+const el=document.getElementById("app");
+el.innerHTML=`<h2>${esc(model.company_name||"Company")} <span class="meta">· IPO Valuation</span></h2>
+<div class="learn"><b>Reality check:</b> an IPO price is a NEGOTIATED, MARKETED number — this model's job is judging whether the band is reasonable, not predicting the "true" price. It's mostly relative valuation (peer multiples) sanity-checked by DCF, plus IPO-specific mechanics: <b>Post-money = Pre-money + Fresh issue proceeds</b>. A Fresh Issue creates NEW shares (dilutive); an Offer-for-Sale (OFS) does not (existing holders just sell). Find all these inputs in the RHP (Red Herring Prospectus) — sections: capital structure, objects of the issue, basis for issue price, peer comparison. <b>Grey-market premium is deliberately excluded — it's noise, not valuation.</b></div>
+<div class="grid">
+<section><h3>Inputs (from the RHP)</h3>
+<div class="ig"><div class="igh">Price band</div>
+<div class="row"><label>Band low (₹)</label><input id="bandLow" type="number" step="any" value="0"></div>
+<div class="row"><label>Band high (₹)</label><input id="bandHigh" type="number" step="any" value="0"></div>
+</div>
+<div class="ig"><div class="igh">Issue structure</div>
+<div class="row"><label>Fresh issue (₹)</label><input id="freshIssue" type="number" step="any" value="0"></div>
+<div class="row"><label>OFS (₹) — info only: OFS creates no new shares, so it doesn't dilute</label><input id="ofs" type="number" step="any" value="0"></div>
+<div class="row"><label>Pre-issue shares</label><input id="preShares" type="number" step="any" value="${state.preShares}"></div>
+<div class="row"><label>Post-issue shares</label><input id="postShares" type="number" step="any" value="${state.postShares}"></div>
+</div>
+<div class="ig"><div class="igh">Company &amp; peers</div>
+<div class="row"><label>EPS (post-issue basis)</label><input id="eps" type="number" step="any" value="${round(state.eps)}"></div>
+<div class="row"><label>EBITDA</label><input id="ebitda" type="number" step="any" value="${round(state.ebitda)}"></div>
+<div class="row"><label>Net debt</label><input id="netDebt" type="number" step="any" value="${round(state.netDebt)}"></div>
+<div class="row"><label>Peer median P/E</label><input id="peerPE" type="number" step="any" value="0"></div>
+</div>
+<div id="warn"></div>
+</section>
+<section><h3>The ask — implied metrics at the band</h3>
+<div class="cards" id="cards"></div>
+<h3>Dilution</h3><table id="dilTbl"></table>
+</section></div>`;
+
+function readInputs(){
+  ["bandLow","bandHigh","freshIssue","ofs","preShares","postShares","eps","ebitda","netDebt","peerPE"].forEach(k=>{
+    state[k]=parseFloat(document.getElementById(k).value)||0;
+  });
+}
+["bandLow","bandHigh","freshIssue","ofs","preShares","postShares","eps","ebitda","netDebt","peerPE"].forEach(id=>document.getElementById(id).addEventListener("input",recompute));
+
+function recompute(){
+  readInputs();
+  const r=ipo(state);
+  document.getElementById("warn").innerHTML=r.checks.length?`<div class="warnbox">${r.checks.map(c=>`⚠ ${esc(c.msg)}`).join("<br>")}</div>`:"";
+  const mk=(side,d)=>`<div class="card"><h4>At band ${side}</h4>
+    <table><tr><td>Market cap</td><td>${d?round(d.mcap):"-"}</td></tr>
+    <tr><td>Implied P/E</td><td>${d&&d.pe!=null?d.pe.toFixed(1)+"×":"n/m"}</td></tr>
+    <tr><td>Implied EV/EBITDA</td><td>${d&&d.evEbitda!=null?d.evEbitda.toFixed(1)+"×":"n/m"}</td></tr></table></div>`;
+  document.getElementById("cards").innerHTML = mk("Low",r.low)+mk("High",r.high);
+  const premTxt=(p)=>p==null?"peer P/E not entered":`${p>=0?"premium":"discount"} of ${Math.abs(p*100).toFixed(0)}% vs peer median P/E`;
+  document.getElementById("dilTbl").innerHTML=`<tr><td>Fresh shares issued</td><td>${r.freshShares==null?"-":round(r.freshShares)}</td></tr>
+    <tr><td>Dilution %</td><td>${r.dilution==null?"-":(r.dilution*100).toFixed(1)+"%"}</td></tr>
+    <tr><td>Pricing at band low</td><td>${premTxt(r.premLow)}</td></tr>
+    <tr><td>Pricing at band high</td><td>${premTxt(r.premHigh)}</td></tr>`;
+}
+recompute();
+}
+function round(x){return x==null?"-":Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+</script></body></html>

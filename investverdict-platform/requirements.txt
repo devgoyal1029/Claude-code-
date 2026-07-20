@@ -1,0 +1,17 @@
+# --- Core (required) -------------------------------------------------------
+pdfplumber>=0.11        # digital PDF text + positional table extraction
+flask>=3.0              # webapp/server.py (extractor + modelling suite)
+
+# --- Optional: OCR path for scanned PDFs / images --------------------------
+# Also requires the `tesseract` binary:  brew install tesseract
+# pytesseract>=0.3.10
+# pdf2image>=1.17         # also needs `poppler`:  brew install poppler
+# pillow>=10.0
+# opencv-python>=4.9      # deskew / enhance
+
+# --- Optional: LLM label-reconciliation pass (--llm) -----------------------
+# Requires ANTHROPIC_API_KEY in the environment.
+# anthropic>=0.40
+
+# --- Dev / sample generation ----------------------------------------------
+# reportlab>=4.0          # only to generate the sample test PDF

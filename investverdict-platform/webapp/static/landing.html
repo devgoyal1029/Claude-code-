@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestVerdict — Clarity Before You Invest</title>
+<meta name="description" content="InvestVerdict turns confusing financial statements into clear, common-size analysis for Indian retail investors.">
+<script>document.documentElement.classList.add('js');</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./landing/landing.css">
+
+<!-- 3D + smooth-scroll libs: landing page only, lazy, capable devices only. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "lenis": "https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.mjs"
+  }
+}
+</script>
+</head>
+<body>
+  <!-- ===== continuous background (one element behind the WHOLE site) ===== -->
+  <div class="bg-gradient" id="bg-gradient"></div>
+  <div class="bg-canvas" id="bg-canvas" aria-hidden="true">
+    <div class="fallback-orb" id="fallback-orb"></div>
+  </div>
+
+  <!-- moving FX layer: smoke + floating finance tiles + dust. All animated with
+       compositor-only transforms; two parallax groups move at different rates. -->
+  <div class="fx" id="fx" aria-hidden="true">
+    <div class="fx-par" id="fxA">
+      <div class="smoke s1"></div>
+      <div class="smoke s2"></div>
+      <div class="dust dust1"></div>
+      <span class="tile" style="top:18%;left:12%">₹</span>
+      <span class="tile" style="top:30%;left:80%">+12.4%</span>
+      <span class="tile wide" style="top:64%;left:8%">EBITDA 20%</span>
+      <span class="tile chart" style="top:74%;left:72%"><i></i><i></i><i></i><i></i></span>
+      <span class="tile" style="top:46%;left:90%">FY-25</span>
+    </div>
+    <div class="fx-par" id="fxB">
+      <div class="smoke s3"></div>
+      <div class="dust dust2"></div>
+      <span class="tile wide" style="top:22%;left:68%">ROE 18%</span>
+      <span class="tile" style="top:58%;left:84%">P/E</span>
+      <span class="tile down" style="top:38%;left:6%">−4.1%</span>
+      <span class="tile pill" style="top:82%;left:30%">Cash ↑</span>
+      <span class="tile" style="top:12%;left:44%">60.0%</span>
+      <span class="tile chart up" style="top:50%;left:20%"><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+  </div>
+
+  <div class="bg-vignette"></div>
+
+  <!-- ===== nav ===== -->
+  <header class="nav" id="nav">
+    <a class="brand" href="/landing.html">InvestVerdict</a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a class="btn btn-ghost" href="/">Open the tool</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. HERO -->
+    <section class="hero section" id="hero">
+      <div class="hero-content">
+        <div class="kicker reveal-on-scroll">For Indian retail investors</div>
+        <h1 class="hero-title reveal-on-scroll">Clarity Before<br>You Invest.</h1>
+        <p class="hero-sub reveal-on-scroll">
+          Upload a company's financial statements. Get a clean, common-size view —
+          the numbers that matter, explained in plain language.
+        </p>
+        <div class="hero-cta reveal-on-scroll">
+          <a class="btn btn-gold magnetic" href="/">Analyse a company →</a>
+          <a class="btn btn-text" href="#problem">See how it works</a>
+        </div>
+      </div>
+      <div class="scroll-hint" aria-hidden="true"><span></span>scroll</div>
+    </section>
+
+    <!-- 2. PROBLEM -> CLARITY (scroll-pinned cross-fade) -->
+    <section class="pinwrap" id="problem">
+      <div class="pin">
+        <div class="pin-stage">
+          <!-- messy state -->
+          <div class="state state-messy" id="state-messy">
+            <div class="messy-card">
+              <div class="messy-line">Revenue from operations 12,34,567  (1,23,456)</div>
+              <div class="messy-line">Other income 9,87  Exceptional 4,5,6  ??</div>
+              <div class="messy-line">Finance costs (45,123)  Dr  Note 24</div>
+              <div class="messy-line">Reserves &amp; surplus 8,76,540  regrouped*</div>
+              <div class="messy-line">Total ... ... ... 30,00,000  ≠ ?</div>
+              <div class="messy-scribble"></div>
+            </div>
+          </div>
+          <!-- clear state -->
+          <div class="state state-clear" id="state-clear">
+            <div class="clear-card">
+              <div class="cc-head"><span>Particulars</span><span>FY-2025</span><span>%</span></div>
+              <div class="cc-row"><span>Revenue from Operations</span><span>10,000</span><b>100.0%</b></div>
+              <div class="cc-row"><span>Cost of Goods Sold</span><span>6,000</span><b>60.0%</b></div>
+              <div class="cc-row"><span>EBITDA</span><span>2,000</span><b>20.0%</b></div>
+              <div class="cc-row sub"><span>Net Profit</span><span>1,430</span><b>14.3%</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="pin-copy">
+          <h2 class="pin-title"><span class="t-from">From confusion</span><span class="t-to">to clarity.</span></h2>
+          <p class="pin-sub">Raw statements are dense, inconsistent, and easy to misread. We turn them into a single, comparable, common-size view.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TOOL SHOWCASE -->
+    <section class="section showcase" id="showcase">
+      <div class="showcase-inner">
+        <div class="showcase-copy reveal-on-scroll">
+          <div class="kicker">The tool</div>
+          <h2 class="h2">Clean. Flat. Fast.<br>Like a spreadsheet — but understood.</h2>
+          <p class="lead">The analysis itself is deliberately plain: an Excel-like, common-size statement you can read in seconds. No theatrics where it counts.</p>
+          <a class="btn btn-gold magnetic" href="/">Analyse a company →</a>
+        </div>
+        <div class="showcase-frame tilt reveal-on-scroll" id="tool-frame">
+          <div class="frame-bar"><span></span><span></span><span></span></div>
+          <div class="mock">
+            <div class="mock-head"><b>Dabur India Ltd</b><span>INR (Cr.) · FY-2023 – FY-2025</span></div>
+            <table class="mock-table">
+              <thead><tr><th>Particulars</th><th>FY-23</th><th>FY-24</th><th>FY-25</th></tr></thead>
+              <tbody>
+                <tr><td>Revenue from Operations</td><td>9,000</td><td>9,500</td><td>10,000</td></tr>
+                <tr class="m"><td>% of revenue</td><td>100%</td><td>100%</td><td>100%</td></tr>
+                <tr><td>Cost of Goods Sold</td><td>5,400</td><td>5,600</td><td>6,000</td></tr>
+                <tr class="m"><td>% of revenue</td><td>60.0%</td><td>58.9%</td><td>60.0%</td></tr>
+                <tr><td>Net Profit</td><td>1,280</td><td>1,350</td><td>1,430</td></tr>
+                <tr class="m"><td>% of revenue</td><td>14.2%</td><td>14.2%</td><td>14.3%</td></tr>
+              </tbody>
+            </table>
+            <div class="mock-badge">✓ Statements tie out</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. FEATURES -->
+    <section class="section features" id="features">
+      <h2 class="h2 center reveal-on-scroll">Everything you need to read a company.</h2>
+      <div class="feature-grid">
+        <article class="fcard reveal-on-scroll"><div class="fic">📄</div><h3>AI Extraction</h3><p>Upload a PDF or photo — even a scan. AI reads it into an editable table you confirm.</p></article>
+        <article class="fcard reveal-on-scroll"><div class="fic">📊</div><h3>Common-Size Analysis</h3><p>Every line as a % of its base, per year — the Dabur-style layout analysts trust.</p></article>
+        <article class="fcard reveal-on-scroll"><div class="fic">🔗</div><h3>Statement Linking</h3><p>We tie out P&amp;L, Balance Sheet and Cash Flow, and flag anything that doesn't.</p></article>
+        <article class="fcard reveal-on-scroll"><div class="fic">💡</div><h3>Auto Insights</h3><p>Plain-English observations on margins, cash and debt — no jargon, no advice.</p></article>
+        <article class="fcard reveal-on-scroll"><div class="fic">⚖️</div><h3>Peer Comparison</h3><p>Stack two companies side by side, aligned line-by-line.</p></article>
+        <article class="fcard reveal-on-scroll"><div class="fic">⬇️</div><h3>Export</h3><p>Download a clean Excel or PDF that mirrors exactly what you see.</p></article>
+      </div>
+    </section>
+
+    <!-- moving ticker (compositor-only marquee) -->
+    <div class="ticker-band" aria-hidden="true">
+      <div class="ticker-track">
+        <span>Revenue ▲ 12% CAGR</span><span>EBITDA margin 20.0%</span><span>Net profit ₹1,430 Cr</span>
+        <span>Cash ▲ ₹1,000 Cr</span><span>Debt ▼ 25%</span><span>ROE 18%</span><span>Statements tie out ✓</span>
+        <span>Revenue ▲ 12% CAGR</span><span>EBITDA margin 20.0%</span><span>Net profit ₹1,430 Cr</span>
+        <span>Cash ▲ ₹1,000 Cr</span><span>Debt ▼ 25%</span><span>ROE 18%</span><span>Statements tie out ✓</span>
+      </div>
+    </div>
+
+    <!-- 5. HOW IT WORKS -->
+    <section class="section how" id="how">
+      <h2 class="h2 center reveal-on-scroll">Three steps to clarity.</h2>
+      <div class="steps">
+        <div class="step-line" aria-hidden="true"><i id="step-progress"></i></div>
+        <div class="step reveal-on-scroll"><div class="snum">1</div><h3>Upload statements</h3><p>PDF, JPG or PNG — 2 to 3 years, standalone or consolidated.</p></div>
+        <div class="step reveal-on-scroll"><div class="snum">2</div><h3>AI extracts &amp; you confirm</h3><p>Numbers land in an editable table. Fix anything flagged, then confirm.</p></div>
+        <div class="step reveal-on-scroll"><div class="snum">3</div><h3>Get clarity</h3><p>Common-size view, tie-out checks, insights and peer comparison.</p></div>
+      </div>
+    </section>
+
+    <!-- 6. TRUST -->
+    <section class="section trust" id="trust">
+      <div class="trust-inner reveal-on-scroll">
+        <div class="kicker">Why trust it</div>
+        <h2 class="h2">Built by a financial advisor —<br>for people who don't read balance sheets for a living.</h2>
+        <p class="lead">InvestVerdict exists to make company financials legible to ordinary investors. It explains the numbers; it never tells you what to buy or sell.</p>
+      </div>
+    </section>
+
+    <!-- 7. FINAL CTA + FOOTER -->
+    <section class="section final" id="final">
+      <div class="final-inner reveal-on-scroll">
+        <h2 class="final-title">See any company,<br>clearly.</h2>
+        <a class="btn btn-gold btn-xl magnetic" href="/">Analyse a company →</a>
+      </div>
+      <footer class="footer">
+        <div class="f-brand">InvestVerdict</div>
+        <nav class="f-links">
+          <a href="/">Open the tool</a><a href="#features">Features</a><a href="#how">How it works</a>
+        </nav>
+        <div class="f-legal">For information only — not investment advice. © 2026 InvestVerdict.</div>
+      </footer>
+    </section>
+  </main>
+
+  <noscript><div class="noscript">InvestVerdict — Clarity Before You Invest. <a href="/">Open the tool →</a></div></noscript>
+  <script type="module" src="./landing/main.mjs"></script>
+</body>
+</html>
