@@ -26,6 +26,7 @@ sys.path.insert(0, ROOT)
 
 from webapp.gemini_extractor import extract_with_gemini, explain_term, GeminiError  # noqa: E402
 from webapp import term_store  # noqa: E402
+from webapp import supa_store  # noqa: E402
 
 term_store.init()
 
@@ -70,7 +71,25 @@ def api_extract():
             tmp_paths.append(tmp.name)
             names.append(f.filename)
 
+        # Dedupe: identical uploaded bytes (across ALL users) -> serve the
+        # cached extraction instantly, zero Gemini cost. Fail-open: any cloud
+        # trouble and we just extract normally.
+        pdf_hash = None
+        try:
+            pdf_hash = supa_store.files_hash(tmp_paths)
+            cached = supa_store.get_extraction(pdf_hash)
+            if cached is not None:
+                return jsonify({"ok": True, "filenames": names,
+                                "result": cached, "cached": True})
+        except Exception:
+            pdf_hash = None
+
         result = extract_with_gemini(tmp_paths, filenames=names)
+        if pdf_hash:
+            try:
+                supa_store.put_extraction(pdf_hash, names, result)
+            except Exception:
+                pass
         return jsonify({"ok": True, "filenames": names, "result": result})
     except GeminiError as e:
         return jsonify({"ok": False, "error": str(e)}), 502

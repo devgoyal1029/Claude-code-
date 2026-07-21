@@ -102,6 +102,7 @@
 <script type="module">
 import { normaliseHistoricals } from "./model/normalise.mjs";
 import { buildModel, seedAssumptions } from "./model/engine.mjs";
+import { listAnalyses, hydrateSession, deleteAnalysis, profileId, toast } from "./lib/supa.mjs";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -144,9 +145,51 @@ function renderJourney() {
   }).join("") + `</div>`;
 }
 
+// ---------- cloud library (Supabase) ----------
+function fmtWhen(ts) {
+  try { const d = new Date(ts); return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }); }
+  catch { return ""; }
+}
+async function renderCloud() {
+  const box = document.getElementById("cloud");
+  if (!box) return;
+  const pid = profileId();
+  const head = `<h3>Cloud library ${pid ? `<span style="font-family:'DM Sans';font-size:11px;color:var(--mut);letter-spacing:0;">· profile ${esc(pid.slice(0, 8))}…</span>` : ""}</h3>`;
+  const res = await listAnalyses();
+  if (!res.ok) {
+    box.innerHTML = head + `<div class="empty-inline">Cloud not reachable — saves are off until the Supabase tables exist
+      (run <b>supabase/schema.sql</b> once in the SQL editor). The tool keeps working locally.</div>`;
+    return;
+  }
+  if (!res.data || !res.data.length) {
+    box.innerHTML = head + `<div class="empty-inline">Nothing saved yet — confirm an extraction and it lands here automatically.</div>`;
+    return;
+  }
+  box.innerHTML = head + `<div class="vals">` + res.data.map((r, i) => {
+    const badges = [r.statements && "statements", r.forecast && "forecast", r.valuations && "valuations"]
+      .filter(Boolean).join(" · ") || "empty";
+    return `<div class="vcard"><div class="m">${esc(r.company_name)}</div>
+      <div class="u" style="margin-top:4px;color:var(--mut)">${esc(badges)}<br>updated ${esc(fmtWhen(r.updated_at))}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="cta" style="margin:0;padding:7px 14px;font-size:12.5px;cursor:pointer;border:0;" data-load="${i}">Load →</button>
+        <button style="padding:7px 12px;font-size:12px;cursor:pointer;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--mut);" data-del="${i}">Delete</button>
+      </div></div>`;
+  }).join("") + `</div>`;
+  box.querySelectorAll("[data-load]").forEach((b) => b.onclick = () => {
+    const row = res.data[+b.dataset.load];
+    if (hydrateSession(row)) { toast(`Loaded ${row.company_name}`); location.href = "dashboard.html"; }
+  });
+  box.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+    const row = res.data[+b.dataset.del];
+    if (!window.confirm(`Delete the saved analysis for “${row.company_name}” from the cloud?`)) return;
+    await deleteAnalysis(row.company_key);
+    renderCloud();
+  });
+}
+
 // ---------- no data at all: guide to the extractor, nothing fake ----------
 if (!confirmed) {
-  $("#main").innerHTML = renderJourney() + `
+  $("#main").innerHTML = renderJourney() + `<section id="cloud"></section>` + `
     <div class="hero-empty">
       <div class="big">No company loaded yet</div>
       <p>The dashboard fills itself in as you work: extract a company's statements,
@@ -154,6 +197,7 @@ if (!confirmed) {
          reports its progress back here.</p>
       <a class="cta" href="index.html">Start — upload statements →</a>
     </div>`;
+  renderCloud();
 } else {
   // ---------- build (or reuse) the model ----------
   let model = savedModel;
@@ -252,7 +296,8 @@ if (!confirmed) {
     }
   }
 
-  $("#main").innerHTML = renderJourney() + stats + health + vals;
+  $("#main").innerHTML = renderJourney() + stats + health + vals + `<section id="cloud"></section>`;
+  renderCloud();
 }
 </script>
 </body>

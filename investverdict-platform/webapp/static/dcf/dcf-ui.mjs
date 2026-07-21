@@ -109,6 +109,7 @@ function recompute() {
   try {
     sessionStorage.setItem("iv_market", JSON.stringify({ price: state.inputs.price, shares: state.inputs.shares }));
     if (d.fairValue != null) { const V = JSON.parse(sessionStorage.getItem("iv_valuations") || "{}"); V.dcf = d.fairValue; sessionStorage.setItem("iv_valuations", JSON.stringify(V)); }
+    import("../lib/supa.mjs").then((m) => m.saveValuations()).catch(() => {});
   } catch (e) {}
   renderHero(d);
   renderWacc(d);

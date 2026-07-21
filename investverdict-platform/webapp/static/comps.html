@@ -218,6 +218,7 @@ function recompute(){
   document.getElementById("implied").innerHTML=cards.length?cards.join(""):`<div class="meta">Fill peer data to see implied values.</div>`;
   sessionStorage.setItem("iv_market",JSON.stringify({...MKT,shares:target.shares}));
   if(chartVals.length){ const V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}"); V.comps={low:Math.min(...chartVals),high:Math.max(...chartVals)}; sessionStorage.setItem("iv_valuations",JSON.stringify(V)); }
+  import("./lib/supa.mjs").then(m=>m.saveValuations()).catch(()=>{});
   const c=document.getElementById("chart");
   if(c&&window.Chart){ if(c._chart) c._chart.destroy();
     c._chart=new window.Chart(c,{type:"bar",data:{labels:chartLabels,datasets:[{label:"Implied value/share",data:chartVals,backgroundColor:"#c9982a"}]},

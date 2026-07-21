@@ -448,6 +448,8 @@ function onConfirm(){
       const final = d.confirmed || r;
       // Hand the confirmed historicals to the three-statement model screen.
       sessionStorage.setItem("iv_confirmed", JSON.stringify(final));
+      // Cloud auto-save (fail-open: extraction flow never depends on it).
+      import("./lib/supa.mjs").then(m=>m.saveStatements(final)).catch(()=>{});
       $("#confirmed").innerHTML=
         `<h3 style="color:var(--good)">✓ Confirmed</h3>
          <div class="confirm-row">

@@ -129,6 +129,7 @@ function recompute() {
   state.model = model;
   // hand the built model forward to the Ratio + DCF screens
   try { sessionStorage.setItem("iv_forecast", JSON.stringify(model)); } catch (e) { /* ignore */ }
+  import("../lib/supa.mjs").then((m) => m.saveForecast(model)).catch(() => {});
   renderTables(model);
   renderBadge(model);
   renderCharts(model);

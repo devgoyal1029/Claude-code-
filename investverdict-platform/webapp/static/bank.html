@@ -104,6 +104,7 @@ function recompute(){
   const r=bank({bv0:state.bv0,ke:state.ke,roePath,payout:state.payout,gs:state.gs,fadeToKe:state.fade});
   const perSh=state.shares>0?r.value/state.shares:null;
   if(perSh!=null){const V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}");V.bank=perSh;sessionStorage.setItem("iv_valuations",JSON.stringify(V));}
+  import("./lib/supa.mjs").then(m=>m.saveValuations()).catch(()=>{});
   document.getElementById("hero").innerHTML=`<div class="hero"><div class="hero-k">Value of Equity</div><div class="hero-v">₹${round(r.value)}${perSh!=null?` <span style="font-size:20px;color:var(--mut)">(₹${round(perSh)}/share)</span>`:""}</div><div class="meta">Book ${round(state.bv0)} + PV(excess returns)${state.fade?" · excess returns fade to 0 (conservative)":" + PV(terminal)"} · Ke ${pct(state.ke)}</div></div>`;
   document.getElementById("warn").innerHTML=r.checks.length?`<div class="warnbox">${r.checks.map(c=>`⚠ ${esc(c.msg)}`).join("<br>")}</div>`:"";
   let h=`<table><thead><tr><th>Year</th><th>BV (opening)</th><th>ROE</th><th>Net Income</th><th>Excess Return</th><th>PV</th></tr></thead><tbody>`;

@@ -112,6 +112,7 @@ function recompute(){
   const perShare = r.value!=null ? r.value : null;
   sessionStorage.setItem("iv_market",JSON.stringify({...MKT,shares:state.shares}));
   if(perShare!=null){const V=JSON.parse(sessionStorage.getItem("iv_valuations")||"{}");V.ddm=perShare;sessionStorage.setItem("iv_valuations",JSON.stringify(V));}
+  import("./lib/supa.mjs").then(m=>m.saveValuations()).catch(()=>{});
   document.getElementById("hero").innerHTML = `<div class="hero"><div class="hero-k">Intrinsic Value</div><div class="hero-v">₹${perShare==null?"—":round(perShare)} <span style="font-size:18px;color:var(--mut)">/ share</span></div><div class="meta">Ke ${pct(state.ke)} · stable g ${pct(state.gs)} · form: ${state.form}</div></div>`;
   document.getElementById("warn").innerHTML = r.checks.length ? `<div class="warnbox">${r.checks.map(c=>`⚠ ${esc(c.msg)}`).join("<br>")}</div>` : "";
   document.getElementById("tbl").innerHTML = `<table><tbody>
