@@ -1,0 +1,175 @@
+/* =============================================================================
+ * terminal.css — the workspace. Amber-on-black, dense, keyboard-first.
+ * ========================================================================== */
+
+.term {
+  --t-bg: #050505;
+  --t-panel: #0b0b0c;
+  --t-rule: #262622;
+  --t-amber: #ffb000;
+  --t-amber-dim: #a97400;
+  --t-white: #e8e8e4;
+  --t-cyan: #4ec9e8;
+  --t-green: #2ee06a;
+  --t-red: #ff4d43;
+  --t-blue: #3b6fd4;
+  --up: #2ee06a;
+  --down: #ff4d43;
+  --chart-line: #ffb000;
+  --chart-grid: rgba(255, 176, 0, .12);
+  --chart-axis: rgba(255, 176, 0, .5);
+  --chart-text: #a97400;
+  --chart-cross: rgba(255, 255, 255, .5);
+  --hm-flat: #333;
+
+  background: var(--t-bg);
+  color: var(--t-white);
+  font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 12.5px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.term a { color: var(--t-cyan); }
+.term ::-webkit-scrollbar { width: 9px; height: 9px; }
+.term ::-webkit-scrollbar-thumb { background: #2c2c28; }
+.term ::-webkit-scrollbar-track { background: #101010; }
+
+/* -------------------------------------------------------------- topbar --- */
+.t-top {
+  display: flex; align-items: center; gap: 14px; padding: 6px 10px;
+  background: #000; border-bottom: 1px solid var(--t-rule);
+}
+.t-logo { color: var(--t-amber); font-weight: 800; letter-spacing: .12em; }
+.t-status { display: flex; gap: 14px; margin-left: auto; color: var(--t-amber-dim); font-size: 11.5px; }
+.t-status b { color: var(--t-white); font-weight: 600; }
+.t-exit { color: var(--t-cyan); border: 1px solid var(--t-rule); background: transparent; padding: 3px 9px; font-size: 11px; }
+
+/* ------------------------------------------------------------- cmdline --- */
+.t-cmdwrap { position: relative; background: #000; border-bottom: 1px solid var(--t-rule); padding: 5px 10px; }
+.t-cmd { display: flex; align-items: center; gap: 8px; }
+.t-cmd .prompt { color: var(--t-amber); font-weight: 700; }
+.t-cmd input {
+  flex: 1; background: #111; border: 1px solid var(--t-rule); color: var(--t-amber);
+  font: inherit; padding: 6px 9px; text-transform: uppercase; letter-spacing: .06em;
+}
+.t-cmd input:focus { outline: 1px solid var(--t-amber); }
+.t-go {
+  background: var(--t-amber); color: #000; border: 0; font-weight: 800; padding: 6px 12px;
+  letter-spacing: .06em;
+}
+.t-ac {
+  position: absolute; left: 90px; right: 10px; top: 100%; z-index: 40;
+  background: #0d0d0c; border: 1px solid var(--t-rule); max-height: 300px; overflow: auto; display: none;
+}
+.t-ac.open { display: block; }
+.t-ac div { padding: 5px 10px; display: flex; gap: 12px; cursor: pointer; }
+.t-ac div span:first-child { color: var(--t-amber); min-width: 88px; font-weight: 700; }
+.t-ac div span:last-child { color: #9a9a94; }
+.t-ac div.on, .t-ac div:hover { background: #1d1d18; }
+
+/* --------------------------------------------------------------- panels -- */
+/* The grid owns all remaining vertical space; every track is minmax(0,1fr) so a
+   panel's content can never push the row taller (which would feed back into the
+   canvases that size themselves from their parent). */
+.t-grid {
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  display: grid; gap: 4px; padding: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.t-grid.g1 { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.t-grid.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.t-grid.g6 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+
+.t-panel {
+  background: var(--t-panel); border: 1px solid var(--t-rule); display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden;
+}
+.t-panel.focus { border-color: var(--t-amber); }
+.t-head {
+  display: flex; align-items: center; gap: 8px; padding: 4px 8px;
+  background: #141410; border-bottom: 1px solid var(--t-rule); font-size: 11.5px;
+}
+.t-head .fn { color: #000; background: var(--t-amber); padding: 0 6px; font-weight: 800; letter-spacing: .06em; }
+.t-head .ttl { color: var(--t-white); text-transform: uppercase; letter-spacing: .05em; }
+.t-head .sp { margin-left: auto; display: flex; gap: 6px; }
+.t-head button { background: transparent; border: 1px solid var(--t-rule); color: #8b8b85; font-size: 10px; padding: 1px 6px; }
+.t-head button:hover { color: var(--t-amber); border-color: var(--t-amber); }
+.t-body { flex: 1 1 auto; overflow: auto; padding: 6px 8px; min-height: 0; display: flex; flex-direction: column; }
+.t-body > * { flex: 0 0 auto; }
+.t-body.pad0 { padding: 0; }
+
+/* ---------------------------------------------------------- table/prims -- */
+.t-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.t-tbl th {
+  text-align: right; color: var(--t-amber-dim); font-weight: 600; padding: 3px 6px;
+  border-bottom: 1px solid var(--t-rule); position: sticky; top: 0; background: var(--t-panel);
+  text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+}
+.t-tbl td { text-align: right; padding: 2px 6px; white-space: nowrap; border-bottom: 1px solid #16160f; }
+.t-tbl th:first-child, .t-tbl td:first-child { text-align: left; }
+.t-tbl tr:hover td { background: #1a1a14; }
+.t-tbl .sym { color: var(--t-amber); font-weight: 700; }
+.t-tbl .nm { color: #85857e; }
+.t-up { color: var(--t-green); }
+.t-dn { color: var(--t-red); }
+.t-flat { color: #85857e; }
+.t-k { color: var(--t-amber-dim); }
+.t-v { color: var(--t-white); }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 11.5px; }
+.kv .t-k { padding: 1px 0; }
+.kv .t-v { text-align: right; }
+/* Canvases are absolutely positioned so they measure their parent but never
+   contribute to its height. */
+.t-chart { position: relative; flex: 1 1 auto !important; min-height: 120px; }
+.t-chart > canvas { position: absolute; inset: 0; }
+.t-note { color: #6d6d68; font-size: 11px; }
+
+.t-wire li { list-style: none; padding: 2px 0; display: grid; grid-template-columns: 42px 1fr; gap: 6px; }
+.t-wire { margin: 0; padding: 0; }
+.t-wire .w-t { color: var(--t-amber-dim); }
+.t-wire li.pr1 .w-h { color: var(--t-red); font-weight: 700; }
+.t-wire li.pr2 .w-h { color: var(--t-amber); }
+.t-wire li.pr3 .w-h { color: #cfcfc8; }
+
+.t-msg { display: grid; gap: 6px; }
+.t-msg .m { border-left: 2px solid var(--t-blue); padding-left: 8px; }
+.t-msg .m b { color: var(--t-cyan); }
+.t-input {
+  width: 100%; background: #111; border: 1px solid var(--t-rule); color: var(--t-white);
+  font: inherit; padding: 4px 7px;
+}
+
+/* --------------------------------------------------------------- footer -- */
+.t-fkeys {
+  display: flex; gap: 3px; padding: 4px; background: #000; border-top: 1px solid var(--t-rule);
+  overflow-x: auto;
+}
+.t-fkeys button {
+  background: #16160f; border: 1px solid var(--t-rule); color: #c9c9c2; font-size: 10.5px;
+  padding: 3px 9px; white-space: nowrap;
+}
+.t-fkeys button:hover { border-color: var(--t-amber); color: var(--t-amber); }
+.t-fkeys button b { color: var(--t-amber); }
+.t-foot {
+  display: flex; gap: 16px; padding: 3px 10px; background: #000; color: #6d6d68;
+  font-size: 10.5px; border-top: 1px solid var(--t-rule);
+}
+
+.heat-in-term { position: relative; flex: 1 1 auto !important; min-height: 140px; }
+
+@media (max-width: 900px) {
+  .term { height: auto; overflow: auto; }
+  .t-cmd { flex-wrap: wrap; }
+  .t-cmd input { min-width: 140px; }
+  .t-ac { left: 10px; }
+  .t-top { flex-wrap: wrap; }
+  .t-grid, .t-grid.g1, .t-grid.g3, .t-grid.g6 {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible;
+  }
+  .t-panel { height: 320px; }
+  .t-status { display: none; }
+}

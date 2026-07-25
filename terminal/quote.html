@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <section class="quote-head">
+    <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px">
+        <div class="eyebrow" id="qCls"></div>
+        <h1 style="font-family:var(--serif);font-size:32px" id="qName"></h1>
+        <div class="quote-px">
+          <span class="px" id="qPx">—</span>
+          <span class="chg" id="qChg"></span>
+          <span class="tag" id="qState">MARKET OPEN</span>
+        </div>
+        <div class="quote-meta" id="qMeta"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-sm btn-ghost" id="wlBtn">☆ Watch</button>
+        <button class="btn btn-sm btn-ghost" id="alBtn">Set alert</button>
+        <a class="btn btn-sm btn-ghost" id="termBtn">Open in Terminal</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <div>
+      <!-- chart -->
+      <section>
+        <div class="chart-toolbar">
+          <div class="seg" id="ranges"></div>
+          <div class="seg" id="types">
+            <button data-t="area" class="on">Area</button>
+            <button data-t="line">Line</button>
+            <button data-t="candle">Candle</button>
+            <button data-t="ohlc">OHLC</button>
+          </div>
+          <label style="font-size:12px;display:flex;gap:5px;align-items:center;color:var(--ink-3)">
+            <input type="checkbox" id="volToggle" checked> Volume</label>
+          <span class="mono" id="hoverInfo" style="margin-left:auto;font-size:12px;color:var(--ink-3)"></span>
+        </div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
+      </section>
+
+      <!-- key stats -->
+      <section style="margin-top:22px">
+        <div class="strip-head"><h2>Key Statistics</h2></div>
+        <div class="stat-grid" id="stats"></div>
+        <div style="margin-top:14px">
+          <div class="disclaimer" id="rangeLabels"></div>
+          <div class="range-bar" id="rangeBar"><i></i></div>
+        </div>
+      </section>
+
+      <!-- fundamentals -->
+      <section style="margin-top:26px" id="faWrap">
+        <div class="strip-head"><h2>Financial Analysis</h2><span class="disclaimer" style="margin-left:auto">Placeholder fundamentals</span></div>
+        <div class="grid-2">
+          <div class="stat-grid" id="faGrid"></div>
+          <div>
+            <div class="disclaimer" style="margin-bottom:6px">Revenue by fiscal year (USD)</div>
+            <div style="height:170px"><canvas id="faBars"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:18px">
+          <div>
+            <div class="widget-title">Analyst Consensus</div>
+            <div id="ratings"></div>
+          </div>
+          <div>
+            <div class="widget-title">Order Book</div>
+            <div class="tbl-wrap"><table class="tbl" id="depth"></table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- news -->
+      <section style="margin-top:30px">
+        <div class="strip-head"><h2>News on this security</h2></div>
+        <div id="qNews"></div>
+      </section>
+    </div>
+
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Peers</div>
+        <div id="peers"></div>
+      </section>
+      <section>
+        <div class="widget-title">Related Indexes</div>
+        <div id="rel"></div>
+      </section>
+      <section>
+        <div class="widget-title"><span class="live-dot"></span> Wire</div>
+        <ul class="wire-list" id="wire"></ul>
+      </section>
+      <section>
+        <div class="widget-title">Company Profile</div>
+        <p class="disclaimer" id="profile"></p>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('markets');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  const sym = (new URLSearchParams(location.search).get('s') || 'AAPL').toUpperCase();
+  const q = Market.quote(sym);
+  if (!q) { document.querySelector('main').innerHTML = '<p style="padding:60px 0">Unknown symbol: ' + UI.esc(sym) + '</p>'; return; }
+  document.title = `${sym} · ${q.name} — VERDICT`;
+
+  /* ---- header ---- */
+  const clsLabel = { equity: 'Equity', index: 'Index', fx: 'Currency', commodity: 'Commodity', rate: 'Government Bond', crypto: 'Digital Asset' }[q.cls];
+  $('#qCls').textContent = `${sym} · ${clsLabel}${q.meta.exch ? ' · ' + q.meta.exch : ''}`;
+  $('#qName').textContent = q.name;
+  $('#termBtn').href = 'terminal.html?cmd=' + encodeURIComponent(sym + ' DES');
+  function paintHead() {
+    $('#qPx').textContent = UI.fmt(q.last, q.decimals);
+    $('#qChg').textContent = `${UI.signed(q.chg, q.decimals)}  ${UI.pctStr(q.pct)}`;
+    $('#qChg').className = 'chg ' + UI.cls(q.pct);
+    $('#qMeta').textContent =
+      `${q.ccy}${q.meta.unit ? ' · ' + q.meta.unit : ''} · Bid ${UI.fmt(q.bid, q.decimals)} / Ask ${UI.fmt(q.ask, q.decimals)} · Volume ${UI.abbr(q.volume)} · As of ${UI.clockStr(q.ts)}`;
+  }
+  paintHead();
+
+  const wl = $('#wlBtn');
+  const paintWl = () => wl.textContent = UI.Watchlist.has(sym) ? '★ Watching' : '☆ Watch';
+  paintWl();
+  wl.onclick = () => { UI.Watchlist.toggle(sym); paintWl(); };
+  $('#alBtn').onclick = () => UI.alertOverlay(sym);
+
+  /* ---- chart ---- */
+  const chart = new Charts.PriceChart($('#chart'), {
+    type: 'area', decimals: q.decimals, baseline: q.prevClose,
+    onHover: (bar) => {
+      $('#hoverInfo').textContent = bar
+        ? `${new Date(bar.t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}  O ${UI.fmt(bar.o, q.decimals)}  H ${UI.fmt(bar.h, q.decimals)}  L ${UI.fmt(bar.l, q.decimals)}  C ${UI.fmt(bar.c, q.decimals)}  V ${UI.abbr(bar.v)}`
+        : '';
+    }
+  });
+  let range = '1D';
+  $('#ranges').innerHTML = Object.keys(Market.RANGES).map(r =>
+    `<button data-r="${r}" class="${r === range ? 'on' : ''}">${r}</button>`).join('');
+  function loadRange() {
+    API.history(sym, range).then(bars => {
+      chart.o.baseline = range === '1D' ? q.prevClose : null;
+      chart.setData(bars);
+    });
+  }
+  loadRange();
+  $('#ranges').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('#ranges').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); range = b.dataset.r; loadRange();
+  };
+  $('#types').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('#types').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); chart.setType(b.dataset.t);
+  };
+  $('#volToggle').onchange = (e) => { chart.o.volume = e.target.checked; chart.draw(); };
+  window.addEventListener('iv:theme', () => chart.draw());
+
+  /* ---- stats ---- */
+  function paintStats() {
+    const rows = [
+      ['Open', UI.fmt(q.open, q.decimals)],
+      ['Prev Close', UI.fmt(q.prevClose, q.decimals)],
+      ['Day High', UI.fmt(q.high, q.decimals)],
+      ['Day Low', UI.fmt(q.low, q.decimals)],
+      ['52W High', UI.fmt(q.dayHigh52, q.decimals)],
+      ['52W Low', UI.fmt(q.dayLow52, q.decimals)],
+      ['Volume', UI.abbr(q.volume)],
+      ['Bid / Ask', `${UI.fmt(q.bid, q.decimals)} / ${UI.fmt(q.ask, q.decimals)}`],
+      ['Spread', UI.fmt(q.ask - q.bid, q.decimals)],
+      q.mcap ? ['Market Cap', UI.abbr(q.mcap)] : ['Currency', q.ccy],
+      q.sector ? ['Sector', q.sector] : ['Class', clsLabel],
+      ['1D Change', UI.pctStr(q.pct)]
+    ];
+    $('#stats').innerHTML = rows.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    const span = q.dayHigh52 - q.dayLow52;
+    const pos = Math.max(0, Math.min(1, (q.last - q.dayLow52) / (span || 1)));
+    $('#rangeBar').querySelector('i').style.left = (pos * 100).toFixed(1) + '%';
+    $('#rangeLabels').innerHTML = `52-week range · <span class="mono">${UI.fmt(q.dayLow52, q.decimals)}</span> — <span class="mono">${UI.fmt(q.dayHigh52, q.decimals)}</span>`;
+  }
+  paintStats();
+
+  /* ---- fundamentals ---- */
+  if (q.cls === 'equity') {
+    API.fundamentals(sym).then(fa => {
+      $('#faGrid').innerHTML = [
+        ['P/E', fa.pe], ['EPS (TTM)', fa.eps], ['P/B', fa.pb], ['P/S', fa.ps],
+        ['EV/EBITDA', fa.evEbitda], ['Div Yield', fa.divYield + '%'], ['Payout', fa.payout + '%'],
+        ['Beta', fa.beta], ['ROE', fa.roe + '%'], ['ROA', fa.roa + '%'],
+        ['Gross Margin', fa.grossMargin + '%'], ['Oper Margin', fa.operMargin + '%'],
+        ['Net Debt/EBITDA', fa.netDebtEbitda], ['Current Ratio', fa.currentRatio],
+        ['Shares Out', UI.abbr(fa.shares)], ['Short Interest', fa.shortInterest + '%']
+      ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+      const drawBars = () => Charts.bars($('#faBars'),
+        fa.years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })),
+        { decimals: 1, suffix: 'B', signed: false });
+      drawBars();
+      window.addEventListener('resize', debounce(drawBars, 200));
+
+      const tot = fa.ratings.buy + fa.ratings.hold + fa.ratings.sell;
+      const bar = (label, n, color) => `<div style="display:grid;grid-template-columns:44px 1fr 34px;gap:8px;align-items:center;font-size:12px;margin:5px 0">
+        <span>${label}</span><span style="height:9px;background:var(--bg-sunken);display:block">
+        <i style="display:block;height:9px;width:${(n / tot * 100).toFixed(0)}%;background:${color}"></i></span>
+        <span class="mono">${n}</span></div>`;
+      $('#ratings').innerHTML =
+        bar('Buy', fa.ratings.buy, 'var(--up)') + bar('Hold', fa.ratings.hold, 'var(--flat)') + bar('Sell', fa.ratings.sell, 'var(--down)') +
+        `<div class="mini-quote"><span class="l">12-month target</span><span class="r">${UI.fmt(fa.target, 2)}
+          <span class="${UI.cls(fa.target - q.last)}">${UI.pctStr((fa.target / q.last - 1) * 100)}</span></span></div>`;
+    });
+  } else {
+    $('#faWrap').querySelector('.grid-2').style.display = 'none';
+  }
+
+  /* ---- order book ---- */
+  function paintDepth() {
+    const d = Market.depth(sym, 8);
+    const maxSz = Math.max(...d.bids.concat(d.asks).map(l => l.size));
+    const side = (l, isBid) => `<td class="num">${l.mm}</td><td class="num">${UI.abbr(l.size)}</td>
+      <td class="num ${isBid ? 'up' : 'down'}">${UI.fmt(l.px, q.decimals)}</td>`;
+    $('#depth').innerHTML = `<thead><tr><th>MM</th><th>Size</th><th>Bid</th><th>Ask</th><th>Size</th><th>MM</th></tr></thead><tbody>` +
+      d.bids.map((b, i) => {
+        const a = d.asks[i];
+        const w = (b.size / maxSz * 100).toFixed(0), w2 = (a.size / maxSz * 100).toFixed(0);
+        return `<tr>
+          <td class="num nm">${b.mm}</td><td class="num" style="background:linear-gradient(to left, rgba(0,168,98,.16) ${w}%, transparent ${w}%)">${UI.abbr(b.size)}</td>
+          <td class="num up">${UI.fmt(b.px, q.decimals)}</td>
+          <td class="num down">${UI.fmt(a.px, q.decimals)}</td>
+          <td class="num" style="background:linear-gradient(to right, rgba(226,72,61,.16) ${w2}%, transparent ${w2}%)">${UI.abbr(a.size)}</td>
+          <td class="num nm">${a.mm}</td></tr>`;
+      }).join('') + '</tbody>';
+  }
+  paintDepth();
+  setInterval(paintDepth, 4000);
+
+  /* ---- news + rail ---- */
+  API.news({ symbol: sym, limit: 6 }).then(list => {
+    $('#qNews').innerHTML = list.length
+      ? list.map(a => UI.card(a, 'row')).join('<hr style="border:0;border-top:1px solid var(--rule);margin:14px 0">')
+      : '<p class="disclaimer">No stories tagged to this security yet.</p>';
+  });
+
+  const peers = (q.sector ? Market.quotes('equity').filter(p => p.sector === q.sector && p.sym !== sym) : Market.quotes(q.cls).filter(p => p.sym !== sym)).slice(0, 6);
+  $('#peers').innerHTML = peers.map(p => `<a class="mini-quote" href="${UI.qhref(p.sym)}">
+    <span class="l">${UI.esc(p.sym)}</span><span class="r">${UI.fmt(p.last, p.decimals)}
+    <span class="${UI.cls(p.pct)}">${UI.pctStr(p.pct)}</span></span></a>`).join('');
+  $('#rel').innerHTML = ['SPX', 'CCMP', 'VIX', 'US10Y', 'DXY'].map(s => {
+    const p = Market.quote(s);
+    return `<a class="mini-quote" href="${UI.qhref(s)}"><span class="l">${s}</span>
+      <span class="r">${UI.fmt(p.last, p.decimals)} <span class="${UI.cls(p.pct)}">${UI.pctStr(p.pct)}</span></span></a>`;
+  }).join('');
+  $('#wire').innerHTML = D.WIRE.slice(0, 8).map(w =>
+    `<li class="pr${w.pr}"><span class="w-t">${UI.clockStr(w.ts).slice(0, 5)}</span><span class="w-h">${UI.esc(w.t)}</span></li>`).join('');
+  $('#profile').textContent = q.meta.hq
+    ? `${q.name} is listed on ${q.meta.exch} and employs approximately ${q.meta.emp.toLocaleString()} people. Headquarters: ${q.meta.hq}. Descriptive text is placeholder content.`
+    : `${q.name} is tracked as a ${clsLabel.toLowerCase()} in the ${q.ccy} block. Descriptive text is placeholder content.`;
+
+  /* ---- live updates ---- */
+  Market.subscribe((touched) => {
+    if (!touched.some(t => t.sym === sym)) return;
+    paintHead(); paintStats();
+    const px = $('#qPx');
+    px.classList.remove('flash-up', 'flash-down'); void px.offsetWidth;
+    px.classList.add(q.dir > 0 ? 'flash-up' : 'flash-down');
+    if (range === '1D') chart.draw();
+  });
+
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+})();
+</script>
+</body>
+</html>

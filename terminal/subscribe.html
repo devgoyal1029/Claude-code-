@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subscribe — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <header style="padding:34px 0 20px;text-align:center;max-width:720px;margin:0 auto">
+    <div class="eyebrow">Subscribe</div>
+    <h1 style="font-family:var(--serif);font-size:46px;line-height:1.05">Unlimited access to the newsroom and the terminal</h1>
+    <p class="dek">Cancel anytime. Billing is simulated in this prototype — no payment details are collected.</p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:18px">
+      <button class="pill on" data-b="month">Monthly</button>
+      <button class="pill" data-b="year">Annual · save 30%</button>
+    </div>
+  </header>
+
+  <section class="strip">
+    <div class="plans" id="plans"></div>
+  </section>
+
+  <section class="strip">
+    <div class="strip-head"><h2>What you get</h2></div>
+    <div class="grid-4">
+      <div><h3 class="hl-s">Unmetered journalism</h3><p class="disclaimer">Every story, every desk, no article counter.</p></div>
+      <div><h3 class="hl-s">Live market data</h3><p class="disclaimer">Quotes, charts, depth and heat maps across asset classes.</p></div>
+      <div><h3 class="hl-s">Terminal workspace</h3><p class="disclaimer">Command-driven panels, alerts and portfolio monitoring.</p></div>
+      <div><h3 class="hl-s">Newsletters and audio</h3><p class="disclaimer">Subscriber-only briefings and full archive access.</p></div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="strip-head"><h2>Questions</h2></div>
+    <div id="faq" style="max-width:760px"></div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('subscribe');
+  const $ = (s) => document.querySelector(s);
+  let billing = 'month';
+
+  const PLANS = [
+    { id: 'digital', name: 'Digital', m: 4.99, y: 41.99, feat: ['Unlimited articles', 'All newsletters', 'Podcast archive', 'Mobile reading'] },
+    { id: 'markets', name: 'Markets', m: 34.99, y: 293.99, featured: true, feat: ['Everything in Digital', 'Live quote board & heat maps', 'Terminal workspace', 'Price alerts and watchlists', 'CSV export'] },
+    { id: 'enterprise', name: 'Enterprise', m: 129.00, y: 1084.00, feat: ['Everything in Markets', 'Seat management', 'API access with your keys', 'Single sign-on', 'Priority support'] }
+  ];
+
+  function draw() {
+    $('#plans').innerHTML = PLANS.map(p => `
+      <div class="plan ${p.featured ? 'featured' : ''}">
+        ${p.featured ? '<div class="eyebrow">Most popular</div>' : '<div class="eyebrow">&nbsp;</div>'}
+        <h3 class="hl-l">${p.name}</h3>
+        <div class="price">$${(billing === 'month' ? p.m : p.y / 12).toFixed(2)}<span style="font-size:14px;font-family:var(--sans);color:var(--ink-3)">/month</span></div>
+        <div class="disclaimer">${billing === 'month' ? 'Billed monthly' : `Billed annually at $${p.y.toFixed(2)}`}</div>
+        <ul>${p.feat.map(f => `<li>${UI.esc(f)}</li>`).join('')}</ul>
+        <button class="btn ${p.featured ? '' : 'btn-ghost'}" data-p="${p.id}">Choose ${p.name}</button>
+      </div>`).join('');
+    $('#plans').querySelectorAll('[data-p]').forEach(b => b.onclick = () => checkout(b.dataset.p));
+  }
+  draw();
+
+  document.querySelectorAll('.pill').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.pill').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); billing = b.dataset.b; draw();
+  });
+
+  async function checkout(planId) {
+    const plan = PLANS.find(p => p.id === planId);
+    const o = document.createElement('div');
+    o.className = 'overlay open';
+    o.innerHTML = `<div class="sheet" style="position:relative">
+      <button class="close" data-close>×</button>
+      <div class="eyebrow">Checkout</div>
+      <h3>${plan.name} · $${(billing === 'month' ? plan.m : plan.y).toFixed(2)} / ${billing === 'month' ? 'month' : 'year'}</h3>
+      <label class="field"><span>Email</span><input type="email" id="ckEmail" placeholder="you@example.com"></label>
+      <label class="field"><span>Card number</span><input id="ckCard" placeholder="Payment capture is disabled in this prototype" disabled></label>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn" id="ckGo">Start subscription</button>
+        <button class="btn btn-ghost" data-close>Cancel</button></div>
+      <p class="meter">No payment provider is wired up. Confirming grants subscriber access in this browser only.</p></div>`;
+    document.body.appendChild(o);
+    o.addEventListener('click', e => { if (e.target === o || e.target.hasAttribute('data-close')) o.remove(); });
+    o.querySelector('#ckGo').onclick = async () => {
+      const email = o.querySelector('#ckEmail').value;
+      if (!/.+@.+\..+/.test(email)) return UI.toast('Enter a valid email');
+      await API.startSubscription(planId, email);
+      UI.Paywall.subscribe(planId);
+      o.remove();
+      UI.toast('Subscription active — paywall lifted on this device');
+      setTimeout(() => location.href = 'index.html', 900);
+    };
+  }
+
+  const faqs = [
+    ['Is this real market data?', 'No. Every price is produced by a local simulation so the product can be demonstrated without a data vendor. Point the config file at a real feed to switch.'],
+    ['How does the paywall work?', `Articles marked as subscriber content are metered — ${IV_CONFIG.features.freeArticles} free reads, tracked in localStorage, then the wall appears.`],
+    ['Can I use my own API keys?', 'Yes. Fill in the keys and endpoints in js/config.js and set features.liveData to true. Only js/api.js needs adapting to your vendor payloads.'],
+    ['What is the Terminal?', 'A keyboard-driven workspace with panels for quotes, charts, news, depth, heat maps and alerts, driven by a command line.']
+  ];
+  $('#faq').innerHTML = faqs.map(([q, a]) => `<details style="border-bottom:1px solid var(--rule);padding:14px 0">
+    <summary style="font-weight:700;cursor:pointer">${UI.esc(q)}</summary>
+    <p class="dek" style="margin-top:8px">${UI.esc(a)}</p></details>`).join('');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Article — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--link); z-index: 100; width: 0; }
+  .share { display: flex; gap: 8px; margin: 18px 0; }
+  .share button { border: 1px solid var(--rule); background: var(--bg); color: var(--ink-2); padding: 6px 12px; font-size: 12px; }
+  .quotebox { border-left: 3px solid var(--ink); padding-left: 16px; margin: 26px 0; font-family: var(--serif); font-size: 22px; line-height: 1.4; }
+  .live-chart { border: 1px solid var(--rule); padding: 12px; margin: 26px 0; }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<main class="wrap">
+  <div class="layout">
+    <div>
+      <article class="article" id="art"></article>
+    </div>
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Most Read</div>
+        <ol class="rank-list" id="mostRead"></ol>
+      </section>
+      <section>
+        <div class="widget-title">Securities in this story</div>
+        <div id="artSyms"></div>
+      </section>
+      <section>
+        <div class="widget-title"><span class="live-dot"></span> Wire</div>
+        <ul class="wire-list" id="wire"></ul>
+      </section>
+      <section style="border:1px solid var(--rule);padding:16px">
+        <div class="eyebrow">Newsletter</div>
+        <h3 class="hl-m" style="margin:6px 0 8px">Get this desk in your inbox</h3>
+        <button class="btn btn-sm" id="nlBtn">Sign up</button>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  const id = new URLSearchParams(location.search).get('id') || D.latest(1)[0].id;
+  const a = D.article(id);
+  UI.mount(a ? a.s : 'home');
+  if (!a) { $('#art').innerHTML = '<h1>Story not found</h1>'; return; }
+
+  const sec = D.section(a.s), au = D.author(a.col || a.a);
+  document.title = a.t + ' — VERDICT';
+
+  const walled = UI.Paywall.consume(a.id, a.p);
+  const paras = D.body(a);
+  const visible = walled ? paras.slice(0, 2) : paras;
+
+  $('#art').innerHTML = `
+    <div class="eyebrow sec" style="--sec:${sec.accent}">${UI.esc(sec.label)}${a.p ? ' · Subscriber' : ''}</div>
+    <h1>${UI.esc(a.t)}</h1>
+    <p class="dek">${UI.esc(a.d)}</p>
+    <div class="byline" style="margin-top:14px">
+      <img src="${D.image(au.id, 100, 100)}" width="34" height="34" style="border-radius:50%" alt="">
+      <strong>${UI.esc(au.name)}</strong><span class="dot"></span>${UI.esc(au.role || au.beat || '')}
+      <span class="dot"></span>${new Date(a.ts).toLocaleString([], { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      <span class="dot"></span>${a.mins} min read
+    </div>
+    <div class="share">
+      <button data-act="save">☆ Save</button>
+      <button data-act="link">Copy link</button>
+      <button data-act="print">Print</button>
+      <button data-act="listen">▶ Listen</button>
+      <button data-act="size">A± Text size</button>
+    </div>
+    <figure class="hero" style="margin:0">
+      <img src="${D.image(a.id, 1200, 700)}" alt="">
+      <figcaption class="cap" style="margin-top:6px">Illustration: placeholder imagery generated locally.</figcaption>
+    </figure>
+    ${(a.sym || []).length ? `<div style="margin:18px 0">${a.sym.map(s => {
+      const q = Market.quote(s); if (!q) return '';
+      return `<a class="symbol-chip" href="${UI.qhref(s)}" data-chip="${s}">
+        <strong>${s}</strong> <span data-f="p">${UI.fmt(q.last, q.decimals)}</span>
+        <span class="${UI.cls(q.pct)}" data-f="c">${UI.pctStr(q.pct)}</span></a>`;
+    }).join('')}</div>` : ''}
+    <div class="body" id="body">
+      ${visible.map((p, i) => i === 3 ? chartBlock() + `<p>${UI.esc(p)}</p>` : `<p>${UI.esc(p)}</p>`).join('')}
+    </div>
+    ${walled ? paywallHtml() : ''}
+    <div class="related">
+      <div class="strip-head"><h2>Read next</h2></div>
+      <div class="grid-2" id="related"></div>
+    </div>`;
+
+  function chartBlock() {
+    const s = (a.sym || [])[0];
+    if (!s || walled) return '';
+    return `<div class="live-chart">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+        <strong>${UI.esc(Market.quote(s).name)}</strong>
+        <a class="mono" href="${UI.qhref(s)}">${s} →</a></div>
+      <div style="height:180px"><canvas id="inlineChart"></canvas></div></div>`;
+  }
+
+  function paywallHtml() {
+    return `<div class="paywall"><div class="paywall-inner">
+      <div class="eyebrow">Subscriber exclusive</div>
+      <h3>Keep reading with unlimited access</h3>
+      <p class="dek">You have used your ${IV_CONFIG.features.freeArticles} free articles this month.</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+        <a class="btn" href="subscribe.html">See subscription plans</a>
+        <button class="btn btn-ghost" id="signIn">Already a subscriber?</button>
+      </div>
+      <p class="meter">Metered paywall is simulated in localStorage — clear site data to reset.</p>
+    </div></div>`;
+  }
+
+  /* inline chart */
+  const ic = $('#inlineChart');
+  if (ic) {
+    const s = a.sym[0];
+    const c = new Charts.PriceChart(ic, { type: 'area', volume: false, decimals: Market.quote(s).decimals, padding: { t: 10, r: 54, b: 20, l: 4 } });
+    c.setData(Market.history(s, '1M'));
+    window.addEventListener('iv:theme', () => c.draw());
+  }
+
+  /* actions */
+  $('#art').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const act = b.dataset.act;
+    if (act === 'save') { const s = UI.LS.get('saved', []); s.includes(id) ? s.splice(s.indexOf(id), 1) : s.push(id); UI.LS.set('saved', s); b.textContent = s.includes(id) ? '★ Saved' : '☆ Save'; UI.toast(s.includes(id) ? 'Saved to your list' : 'Removed'); }
+    if (act === 'link') { navigator.clipboard?.writeText(location.href); UI.toast('Link copied'); }
+    if (act === 'print') window.print();
+    if (act === 'listen') UI.toast('Audio narration is stubbed in this prototype');
+    if (act === 'size') {
+      const body = $('#body');
+      const cur = parseFloat(getComputedStyle(body).fontSize);
+      body.style.fontSize = (cur > 21 ? 17 : cur + 2) + 'px';
+      body.querySelectorAll('p').forEach(p => p.style.fontSize = 'inherit');
+    }
+  });
+  const si = $('#signIn'); if (si) si.onclick = UI.signInOverlay;
+  $('#nlBtn').onclick = UI.newsletterOverlay;
+
+  /* related + rail */
+  const related = D.ARTICLES.filter(x => x.id !== id && (x.s === a.s || (x.sym || []).some(s => (a.sym || []).includes(s)))).slice(0, 4);
+  $('#related').innerHTML = related.map(x => UI.card(x, 'm')).join('');
+  $('#mostRead').innerHTML = D.mostRead(6).map(x => `<li><a href="${UI.ahref(x.id)}">${UI.esc(x.t)}</a></li>`).join('');
+  $('#wire').innerHTML = D.WIRE.slice(0, 8).map(w =>
+    `<li class="pr${w.pr}"><span class="w-t">${UI.clockStr(w.ts).slice(0, 5)}</span><span class="w-h">${UI.esc(w.t)}</span></li>`).join('');
+  $('#artSyms').innerHTML = (a.sym || []).map(s => {
+    const q = Market.quote(s); if (!q) return '';
+    return `<a class="mini-quote" href="${UI.qhref(s)}" data-w="${s}"><span class="l">${s}<br>
+      <span class="disclaimer" style="font-weight:400">${UI.esc(q.name)}</span></span>
+      <span class="r"><span data-f="p">${UI.fmt(q.last, q.decimals)}</span><br>
+      <span class="${UI.cls(q.pct)}" data-f="c">${UI.pctStr(q.pct)}</span></span></a>`;
+  }).join('') || '<p class="disclaimer">No securities tagged.</p>';
+
+  Market.subscribe(() => {
+    document.querySelectorAll('[data-chip],[data-w]').forEach(el => {
+      const s = el.dataset.chip || el.dataset.w;
+      const q = Market.quote(s); if (!q) return;
+      el.querySelector('[data-f="p"]').textContent = UI.fmt(q.last, q.decimals);
+      const c = el.querySelector('[data-f="c"]');
+      c.textContent = UI.pctStr(q.pct); c.className = UI.cls(q.pct);
+    });
+  });
+
+  /* reading progress */
+  const prog = $('#progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement;
+    prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100).toFixed(1) + '%';
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

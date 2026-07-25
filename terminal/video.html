@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .player { background:#000; position:relative; aspect-ratio:16/9; overflow:hidden; }
+  .player .art { position:absolute; inset:0; opacity:.55; }
+  .player .eq { position:absolute; inset:0; display:flex; align-items:flex-end; gap:4px; padding:18px; }
+  .player .eq i { flex:1; background:#2b6cb0; opacity:.75; animation:eq 1.2s ease-in-out infinite alternate; }
+  .player .ov { position:absolute; left:0; right:0; bottom:0; padding:16px; background:linear-gradient(transparent,rgba(0,0,0,.85)); color:#fff; }
+  .player .ctl { display:flex; gap:12px; align-items:center; margin-top:10px; }
+  .player .ctl button { background:none; border:1px solid rgba(255,255,255,.5); color:#fff; padding:4px 10px; font-size:12px; }
+  .scrub { height:4px; background:rgba(255,255,255,.25); flex:1; position:relative; cursor:pointer; }
+  .scrub i { position:absolute; left:0; top:0; bottom:0; background:#e2483d; width:12%; }
+  .sched li { display:grid; grid-template-columns:62px 1fr; gap:10px; padding:8px 0; border-bottom:1px solid var(--rule); list-style:none; font-size:13px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div style="padding:24px 0 8px;display:flex;align-items:baseline;gap:14px">
+    <h1 style="font-family:var(--serif);font-size:34px">Video</h1>
+    <span class="tag"><span class="live-dot"></span> LIVE NOW</span>
+    <button class="btn btn-sm btn-ghost" id="dockBtn" style="margin-left:auto">Pop out player</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <section class="player" id="player">
+        <img class="art" id="art" alt="">
+        <div class="eq" id="eq"></div>
+        <div class="ov">
+          <div class="eyebrow" id="show" style="color:#ddd"></div>
+          <h2 class="hl-l" id="title" style="color:#fff"></h2>
+          <div class="ctl">
+            <button id="play">❚❚ Pause</button>
+            <span class="mono" id="tCur" style="font-size:12px">00:00</span>
+            <div class="scrub" id="scrub"><i></i></div>
+            <span class="mono" id="tDur" style="font-size:12px"></span>
+            <button id="mute">🔊</button>
+            <button id="cc">CC</button>
+            <button id="fs">⛶</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="strip">
+        <div class="strip-head"><h2>Latest video</h2></div>
+        <div class="grid-3" id="list"></div>
+      </section>
+
+      <section class="strip">
+        <div class="strip-head"><h2>Shows</h2></div>
+        <div class="grid-4" id="shows"></div>
+      </section>
+    </div>
+
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Today's schedule</div>
+        <ul class="sched" id="sched" style="margin:0;padding:0"></ul>
+      </section>
+      <section>
+        <div class="widget-title">Markets right now</div>
+        <div id="mini"></div>
+      </section>
+      <section>
+        <div class="widget-title">Radio</div>
+        <p class="disclaimer">VERDICT Radio streams 24 hours a day. Audio playback is stubbed in this prototype.</p>
+        <button class="btn btn-sm" id="radio">▶ Listen live</button>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('video');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  let current = D.VIDEOS[0], playing = true, pos = 0;
+
+  $('#eq').innerHTML = Array.from({ length: 42 }, (_, i) => `<i style="animation-delay:${(i * .05).toFixed(2)}s"></i>`).join('');
+
+  function load(v) {
+    current = v; pos = 0;
+    $('#art').src = D.image(v.id, 1280, 720);
+    $('#show').textContent = v.show + ' · ' + UI.timeAgo(v.ts);
+    $('#title').textContent = v.t;
+    $('#tDur').textContent = v.dur;
+    location.hash = v.id;
+  }
+  const secs = (s) => { const [m, x] = s.split(':').map(Number); return m * 60 + x; };
+  const mmss = (n) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
+
+  setInterval(() => {
+    if (!playing) return;
+    const dur = secs(current.dur);
+    pos = (pos + 1) % dur;
+    $('#tCur').textContent = mmss(pos);
+    $('#scrub').querySelector('i').style.width = (pos / dur * 100).toFixed(1) + '%';
+  }, 1000);
+
+  $('#play').onclick = (e) => {
+    playing = !playing;
+    e.target.textContent = playing ? '❚❚ Pause' : '▶ Play';
+    $('#eq').style.animationPlayState = playing ? 'running' : 'paused';
+    $('#eq').querySelectorAll('i').forEach(i => i.style.animationPlayState = playing ? 'running' : 'paused');
+  };
+  $('#scrub').onclick = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    pos = Math.floor(((e.clientX - r.left) / r.width) * secs(current.dur));
+  };
+  $('#mute').onclick = (e) => e.target.textContent = e.target.textContent === '🔊' ? '🔇' : '🔊';
+  $('#cc').onclick = () => UI.toast('Captions toggled (stub)');
+  $('#fs').onclick = () => $('#player').requestFullscreen?.();
+  $('#dockBtn').onclick = UI.tvDock;
+  $('#radio').onclick = () => UI.toast('Radio stream is stubbed in this prototype');
+
+  $('#list').innerHTML = D.VIDEOS.map(v => `<a class="card" href="#${v.id}" data-v="${v.id}">
+    <div style="position:relative"><img class="thumb" src="${D.image(v.id, 480, 320)}" alt="">
+      <span class="mono" style="position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.8);color:#fff;font-size:11px;padding:2px 5px">${v.dur}</span></div>
+    <div><div class="eyebrow">${UI.esc(v.show)}</div><h3 class="hl-s">${UI.esc(v.t)}</h3>
+      <div class="byline">${UI.timeAgo(v.ts)}</div></div></a>`).join('');
+  $('#list').onclick = (e) => {
+    const a = e.target.closest('[data-v]'); if (!a) return;
+    load(D.VIDEOS.find(v => v.id === a.dataset.v));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const shows = [...new Set(D.VIDEOS.map(v => v.show))];
+  $('#shows').innerHTML = shows.map(s => `<div class="card">
+    <img class="thumb" src="${D.image(s, 400, 260)}" alt="">
+    <div><h3 class="hl-s">${UI.esc(s)}</h3><div class="disclaimer">Weekdays · ${D.VIDEOS.filter(v => v.show === s).length} episodes</div></div></div>`).join('');
+
+  const slots = ['06:00', '08:00', '10:00', '12:00', '15:00', '17:00', '20:00'];
+  $('#sched').innerHTML = slots.map((t, i) => {
+    const v = D.VIDEOS[i % D.VIDEOS.length];
+    const nowH = new Date().getHours(), h = +t.slice(0, 2);
+    const live = nowH >= h && nowH < h + 2;
+    return `<li><span class="mono ${live ? 'down' : ''}">${t}</span>
+      <span>${UI.esc(v.show)} ${live ? '<span class="tag"><span class="live-dot"></span> ON AIR</span>' : ''}<br>
+      <span class="disclaimer">${UI.esc(v.t)}</span></span></li>`;
+  }).join('');
+
+  UI.quoteTable('#mini', ['SPX', 'CCMP', 'US10Y', 'CL1', 'BTC'], { spark: false, watch: false, cols: ['sym', 'last', 'pct'] });
+
+  load(D.VIDEOS.find(v => '#' + v.id === location.hash) || D.VIDEOS[0]);
+})();
+</script>
+</body>
+</html>

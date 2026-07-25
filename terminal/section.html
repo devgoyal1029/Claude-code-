@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <header style="padding:26px 0 14px;border-bottom:2px solid var(--rule-strong)">
+    <div class="eyebrow" id="secKicker"></div>
+    <h1 style="font-family:var(--serif);font-size:44px;line-height:1.05" id="secTitle"></h1>
+    <p class="dek" id="secDek"></p>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap" id="tagPills"></div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <section class="strip" id="secLead"></section>
+      <section class="strip">
+        <div class="strip-head"><h2>All coverage</h2>
+          <select id="sortSel" style="margin-left:auto;padding:5px 8px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);font-size:12px">
+            <option value="new">Newest first</option>
+            <option value="old">Oldest first</option>
+            <option value="read">Longest reads</option>
+          </select></div>
+        <div id="secList"></div>
+        <button class="btn btn-ghost" id="moreBtn" style="margin-top:18px">Load more</button>
+      </section>
+    </div>
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Section movers</div>
+        <div id="secMovers"></div>
+      </section>
+      <section>
+        <div class="widget-title">Columnists</div>
+        <div id="cols"></div>
+      </section>
+      <section>
+        <div class="widget-title">Most Read</div>
+        <ol class="rank-list" id="mostRead"></ol>
+      </section>
+      <section>
+        <div class="widget-title"><span class="live-dot"></span> Wire</div>
+        <ul class="wire-list" id="wire"></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  const params = new URLSearchParams(location.search);
+  const id = params.get('s') || 'markets';
+  const sec = D.section(id);
+  UI.mount(id);
+  document.title = sec.label + ' — VERDICT';
+
+  const deks = {
+    markets: 'Equities, rates, credit, currencies and commodities — what moved and why.',
+    technology: 'The companies, chips and capital behind the compute build-out.',
+    politics: 'Policy, regulation and the machinery of government, priced by markets.',
+    wealth: 'How the wealthy invest, spend, give and pass it on.',
+    pursuits: 'Design, travel, dining and the things money buys.',
+    opinion: 'Columnists and contributors on the arguments that matter.',
+    green: 'The economics of decarbonisation.',
+    crypto: 'Digital assets, market structure and regulation.',
+    cities: 'Housing, transit and the urban economy.',
+    economics: 'Growth, inflation, labour and the data that drives them.'
+  };
+  $('#secKicker').textContent = 'Section';
+  $('#secTitle').textContent = sec.label;
+  $('#secTitle').style.color = sec.accent;
+  $('#secDek').textContent = deks[id] || '';
+
+  let list = D.articlesBySection(id);
+  if (!list.length) list = D.latest(12);
+
+  const tags = [...new Set(list.flatMap(a => a.tags || []))].slice(0, 8);
+  let activeTag = null;
+  $('#tagPills').innerHTML = tags.map(t => `<button class="pill" data-t="${UI.esc(t)}">${UI.esc(t)}</button>`).join('');
+  $('#tagPills').onclick = (e) => {
+    const b = e.target.closest('.pill'); if (!b) return;
+    const on = b.classList.contains('on');
+    document.querySelectorAll('#tagPills .pill').forEach(x => x.classList.remove('on'));
+    activeTag = on ? null : b.dataset.t;
+    if (!on) b.classList.add('on');
+    shown = 6; render();
+  };
+
+  let sort = 'new', shown = 6;
+  $('#sortSel').onchange = (e) => { sort = e.target.value; render(); };
+  $('#moreBtn').onclick = () => { shown += 6; render(); };
+
+  function render() {
+    let l = list.filter(a => !activeTag || (a.tags || []).includes(activeTag));
+    if (sort === 'old') l = l.slice().sort((a, b) => a.ts - b.ts);
+    else if (sort === 'read') l = l.slice().sort((a, b) => b.mins - a.mins);
+    else l = l.slice().sort((a, b) => b.ts - a.ts);
+
+    const [lead, ...rest] = l;
+    $('#secLead').innerHTML = lead
+      ? `<div class="lead">${UI.card(lead, 'xl')}<div class="stack">${rest.slice(0, 2).map(a => UI.card(a, 'm')).join('')}</div></div>`
+      : '<p class="disclaimer">Nothing here yet.</p>';
+    const body = rest.slice(2, 2 + shown);
+    $('#secList').innerHTML = body.map(a => UI.card(a, 'row')).join('<hr style="border:0;border-top:1px solid var(--rule);margin:16px 0">')
+      || '<p class="disclaimer">No further stories match this filter.</p>';
+    $('#moreBtn').style.display = rest.length > 2 + shown ? '' : 'none';
+  }
+  render();
+
+  /* rail */
+  const secSyms = [...new Set(list.flatMap(a => a.sym || []))].slice(0, 8);
+  if (secSyms.length) UI.quoteTable('#secMovers', secSyms, { spark: false, watch: false, cols: ['sym', 'last', 'pct'] });
+  else $('#secMovers').innerHTML = '<p class="disclaimer">No securities tagged in this section.</p>';
+
+  $('#cols').innerHTML = D.COLUMNISTS.map(c => `<a class="mini-quote" href="section.html?s=opinion">
+    <span class="l" style="display:flex;gap:8px;align-items:center">
+      <img src="${D.image(c.id, 80, 80)}" width="28" height="28" style="border-radius:50%" alt="">
+      ${UI.esc(c.name)}</span></a>`).join('');
+  $('#mostRead').innerHTML = D.mostRead(6).map(a => `<li><a href="${UI.ahref(a.id)}">${UI.esc(a.t)}</a></li>`).join('');
+  $('#wire').innerHTML = D.WIRE.slice(0, 8).map(w =>
+    `<li class="pr${w.pr}"><span class="w-t">${UI.clockStr(w.ts).slice(0, 5)}</span><span class="w-h">${UI.esc(w.t)}</span></li>`).join('');
+})();
+</script>
+</body>
+</html>

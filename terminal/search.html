@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <div style="padding:26px 0 10px;max-width:720px">
+    <h1 style="font-family:var(--serif);font-size:34px">Search</h1>
+    <input id="q" placeholder="Securities, stories, tags, people…" autocomplete="off"
+      style="width:100%;margin-top:12px;padding:14px 16px;font-size:20px;font-family:var(--serif);border:1px solid var(--rule);background:var(--bg);color:var(--ink)">
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" id="quick"></div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <section class="strip" id="secWrap">
+        <div class="strip-head"><h2>Securities</h2><span class="disclaimer" style="margin-left:auto" id="secCount"></span></div>
+        <div id="secs"></div>
+      </section>
+      <section class="strip">
+        <div class="strip-head"><h2>Stories</h2><span class="disclaimer" style="margin-left:auto" id="artCount"></span></div>
+        <div id="arts"></div>
+      </section>
+    </div>
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Popular searches</div>
+        <div id="pop"></div>
+      </section>
+      <section>
+        <div class="widget-title">Sections</div>
+        <div id="secs2"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('search');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  const params = new URLSearchParams(location.search);
+  const input = $('#q');
+  input.value = params.get('q') || '';
+
+  const quick = ['NVDA', 'inflation', 'oil', 'BTC', 'private credit', 'yen'];
+  $('#quick').innerHTML = quick.map(t => `<button class="pill" data-q="${UI.esc(t)}">${UI.esc(t)}</button>`).join('');
+  $('#quick').onclick = e => { const b = e.target.closest('[data-q]'); if (b) { input.value = b.dataset.q; go(); } };
+
+  let table = null;
+  async function go() {
+    const term = input.value.trim();
+    history.replaceState(null, '', term ? '?q=' + encodeURIComponent(term) : location.pathname);
+    if (!term) { $('#secs').innerHTML = '<p class="disclaimer">Start typing to search.</p>'; $('#arts').innerHTML = ''; return; }
+    const r = await API.search(term);
+    $('#secCount').textContent = r.securities.length + ' matches';
+    $('#artCount').textContent = r.articles.length + ' matches';
+    if (table) { table.destroy(); table = null; }
+    $('#secs').innerHTML = '';
+    if (r.securities.length) table = UI.quoteTable('#secs', r.securities.map(q => q.sym), { spark: true, watch: true, cols: ['sym', 'last', 'chg', 'pct', 'volume'] });
+    else $('#secs').innerHTML = '<p class="disclaimer">No securities matched.</p>';
+    $('#arts').innerHTML = r.articles.length
+      ? r.articles.map(a => UI.card(a, 'row')).join('<hr style="border:0;border-top:1px solid var(--rule);margin:14px 0">')
+      : '<p class="disclaimer">No stories matched.</p>';
+  }
+  let t; input.oninput = () => { clearTimeout(t); t = setTimeout(go, 200); };
+  go();
+
+  $('#pop').innerHTML = ['AI capex', 'Federal Reserve', 'copper', 'ETFs', 'buybacks']
+    .map(t => `<a class="mini-quote" href="?q=${encodeURIComponent(t)}"><span class="l">${t}</span></a>`).join('');
+  $('#secs2').innerHTML = IV_CONFIG.sections.map(s =>
+    `<a class="mini-quote" href="section.html?s=${s.id}"><span class="l" style="color:${s.accent}">${s.label}</span>
+     <span class="r disclaimer">${D.articlesBySection(s.id).length}</span></a>`).join('');
+})();
+</script>
+</body>
+</html>

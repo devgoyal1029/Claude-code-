@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VERDICT Terminal</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/terminal.css">
+</head>
+<body class="term">
+
+<div class="t-top">
+  <span class="t-logo">VERDICT&lt;TERMINAL&gt;</span>
+  <span class="t-note" id="tSec">SECURITY: <b style="color:var(--t-amber)">AAPL</b></span>
+  <div class="t-status">
+    <span>NY <b id="clkNY"></b></span>
+    <span>LDN <b id="clkLDN"></b></span>
+    <span>TKY <b id="clkTKY"></b></span>
+    <span>SPX <b id="stSPX"></b></span>
+    <span>US10Y <b id="st10"></b></span>
+    <span>FEED <b id="stFeed">SIM</b></span>
+  </div>
+  <a class="t-exit" href="index.html">EXIT TO SITE</a>
+</div>
+
+<div class="t-cmdwrap">
+  <div class="t-cmd">
+    <span class="prompt">CMD&gt;</span>
+    <input id="cmd" autocomplete="off" spellcheck="false" placeholder="AAPL US EQUITY DES   ·   TOP   ·   WEI   ·   HELP">
+    <button class="t-go" id="go">&lt;GO&gt;</button>
+    <select id="layout" style="background:#111;color:var(--t-amber);border:1px solid var(--t-rule);font:inherit;padding:5px">
+      <option value="g4">4 PANEL</option>
+      <option value="g1">1 PANEL</option>
+      <option value="g3">3 PANEL</option>
+      <option value="g6">6 PANEL</option>
+    </select>
+  </div>
+  <div class="t-ac" id="ac"></div>
+</div>
+
+<div class="t-grid" id="grid"></div>
+
+<div class="t-fkeys" id="fkeys"></div>
+<div class="t-foot">
+  <span id="footMsg">READY</span>
+  <span style="margin-left:auto" id="footTicks">TICKS 0</span>
+  <span>PANEL <b id="footPanel">1</b></span>
+  <span>ESC = COMMAND LINE · ENTER = &lt;GO&gt; · ↑↓ = HISTORY</span>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  'use strict';
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  const esc = UI.esc, fmt = UI.fmt, abbr = UI.abbr;
+  const tcls = (v) => v > 0 ? 't-up' : v < 0 ? 't-dn' : 't-flat';
+  const sgn = (v, d) => (v > 0 ? '+' : '') + fmt(v, d);
+  const pct = (v) => (v > 0 ? '+' : '') + fmt(v, 2) + '%';
+
+  let security = (new URLSearchParams(location.search).get('s') || 'AAPL').toUpperCase();
+  let focused = 0;
+  const PANELS = [];
+  const HIST = UI.LS.get('cmdHistory', []);
+  let histIdx = HIST.length;
+
+  /* ======================================================== panel plumbing */
+  function buildGrid(n) {
+    const grid = $('#grid');
+    grid.innerHTML = '';
+    PANELS.forEach(p => p.cleanup && p.cleanup());
+    PANELS.length = 0;
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement('div');
+      el.className = 't-panel' + (i === 0 ? ' focus' : '');
+      el.innerHTML = `<div class="t-head"><span class="fn">—</span><span class="ttl">EMPTY</span>
+        <span class="sp"><button data-act="max">MAX</button><button data-act="clr">CLR</button></span></div>
+        <div class="t-body"></div>`;
+      el.addEventListener('mousedown', () => focus(i));
+      el.querySelector('[data-act="clr"]').onclick = (e) => { e.stopPropagation(); render(i, 'EMPTY'); };
+      el.querySelector('[data-act="max"]').onclick = (e) => {
+        e.stopPropagation();
+        const p = PANELS[i];
+        $('#layout').value = 'g1'; setLayout('g1');
+        render(0, p.fn, p.sym, p.arg);
+      };
+      grid.appendChild(el);
+      PANELS.push({ el, fn: 'EMPTY', sym: security, cleanup: null });
+    }
+  }
+  function setLayout(v) {
+    const grid = $('#grid');
+    grid.className = 't-grid' + (v === 'g1' ? ' g1' : v === 'g3' ? ' g3' : v === 'g6' ? ' g6' : '');
+    buildGrid({ g1: 1, g3: 3, g4: 4, g6: 6 }[v]);
+  }
+  function focus(i) {
+    focused = i;
+    PANELS.forEach((p, k) => p.el.classList.toggle('focus', k === i));
+    $('#footPanel').textContent = i + 1;
+  }
+
+  function render(i, fn, sym, arg) {
+    const p = PANELS[i]; if (!p) return;
+    if (p.cleanup) { p.cleanup(); p.cleanup = null; }
+    p.fn = fn; p.sym = sym || security; p.arg = arg;
+    const F = FN[fn] || FN.HELP;
+    const out = F.render(p.sym, arg) || {};
+    p.el.querySelector('.fn').textContent = fn === 'EMPTY' ? '—' : fn;
+    p.el.querySelector('.ttl').textContent = out.title || F.title || fn;
+    const body = p.el.querySelector('.t-body');
+    body.className = 't-body' + (out.pad0 ? ' pad0' : '');
+    body.innerHTML = out.html || '';
+    if (out.after) p.cleanup = out.after(body, p.sym, arg) || null;
+  }
+
+  /* ============================================================= commands */
+  const NOISE = new Set(['US', 'UN', 'EQUITY', 'INDEX', 'CURNCY', 'COMDTY', 'CORP', 'GO', '<GO>']);
+  function parse(raw) {
+    const tokens = String(raw).toUpperCase().replace(/</g, ' ').replace(/>/g, ' ')
+      .split(/\s+/).filter(Boolean).filter(t => !NOISE.has(t));
+    let sym = null, fn = null, arg = null;
+    tokens.forEach(t => {
+      if (!sym && Market.quote(t)) { sym = t; return; }
+      if (!fn && FN[t]) { fn = t; return; }
+      if (fn && !arg) arg = t;
+    });
+    return { sym, fn, arg, tokens };
+  }
+
+  function run(raw) {
+    const { sym, fn, arg, tokens } = parse(raw);
+    if (!tokens.length) return;
+    if (sym) { security = sym; $('#tSec').innerHTML = `SECURITY: <b style="color:var(--t-amber)">${esc(sym)}</b>`; }
+    const target = fn || (sym ? 'DES' : null);
+    if (!target) { status(`UNKNOWN COMMAND: ${esc(tokens.join(' '))} — TYPE HELP <GO>`); return; }
+    render(focused, target, security, arg);
+    status(`${target}${sym ? ' · ' + sym : ''} LOADED IN PANEL ${focused + 1}`);
+    HIST.push(raw); if (HIST.length > 60) HIST.shift();
+    UI.LS.set('cmdHistory', HIST); histIdx = HIST.length;
+    focused = (focused + 1) % PANELS.length; focus(focused);
+  }
+  const status = (m) => { $('#footMsg').textContent = m; };
+
+  /* ============================================================ functions */
+  const liveTable = (getRows, cols) => (body) => {
+    const paint = () => {
+      body.innerHTML = `<table class="t-tbl"><thead><tr>${cols.map(c => `<th>${c.h}</th>`).join('')}</tr></thead>
+        <tbody>${getRows().map(r => `<tr data-s="${esc(r.sym || '')}">${cols.map(c => `<td class="${c.cls ? c.cls(r) : ''}">${c.v(r)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      body.querySelectorAll('tr[data-s]').forEach(tr => tr.onclick = () => { if (tr.dataset.s) run(tr.dataset.s + ' DES'); });
+    };
+    paint();
+    return Market.subscribe(paint);
+  };
+
+  const quoteCols = [
+    { h: 'Security', v: q => `<span class="sym">${esc(q.sym)}</span> <span class="nm">${esc(q.name)}</span>` },
+    { h: 'Last', v: q => fmt(q.last, q.decimals) },
+    { h: 'Chg', v: q => sgn(q.chg, q.decimals), cls: q => tcls(q.chg) },
+    { h: '%Chg', v: q => pct(q.pct), cls: q => tcls(q.pct) },
+    { h: 'High', v: q => fmt(q.high, q.decimals) },
+    { h: 'Low', v: q => fmt(q.low, q.decimals) },
+    { h: 'Time', v: q => UI.clockStr(q.ts) }
+  ];
+
+  const FN = {
+    EMPTY: { title: 'EMPTY', render: () => ({ html: '<p class="t-note">Panel cleared. Type a command and press &lt;GO&gt;.</p>' }) },
+
+    HELP: {
+      title: 'FUNCTION DIRECTORY',
+      render: () => ({
+        html: `<p class="t-note">Type a security then a function, e.g. <b>NVDA US EQUITY GP</b> &lt;GO&gt;. Click any row to load it.</p>
+        <table class="t-tbl"><thead><tr><th>Fn</th><th style="text-align:left">Description</th></tr></thead><tbody>
+        ${IV_CONFIG.terminalFunctions.map(([c, d]) =>
+          `<tr data-fn="${c}"><td class="sym" style="text-align:left">${c}</td><td style="text-align:left">${esc(d)}</td></tr>`).join('')}
+        </tbody></table>`,
+        after: (body) => {
+          body.querySelectorAll('[data-fn]').forEach(tr => tr.onclick = () => run(security + ' ' + tr.dataset.fn));
+        }
+      })
+    },
+
+    DES: {
+      title: 'SECURITY DESCRIPTION',
+      render: (sym) => {
+        const q = Market.quote(sym); if (!q) return { html: '<p class="t-note">NO SECURITY</p>' };
+        const m = q.meta;
+        return {
+          title: `${sym} — DESCRIPTION`,
+          html: `<div id="desHead"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+              <div class="kv" id="desKv"></div>
+              <div><div class="t-note" style="margin-bottom:4px">1D</div><div style="height:130px"><canvas id="desChart"></canvas></div></div>
+            </div>
+            <div class="t-note" style="margin-top:10px">${esc(m.hq ? `${q.name} · ${m.exch} · ${m.emp.toLocaleString()} employees · ${m.hq}` : `${q.name} · ${q.ccy}${m.unit ? ' · ' + m.unit : ''}`)}</div>
+            <div style="margin-top:8px"><div class="t-note">RELATED HEADLINES</div><ul class="t-wire" id="desNews"></ul></div>`,
+          after: (body) => {
+            const c = new Charts.PriceChart(body.querySelector('#desChart'),
+              { type: 'area', volume: false, decimals: q.decimals, baseline: q.prevClose, padding: { t: 8, r: 48, b: 16, l: 2 } });
+            c.setData(Market.history(sym, '1D'));
+            const paint = () => {
+              body.querySelector('#desHead').innerHTML =
+                `<div style="display:flex;gap:12px;align-items:baseline">
+                  <span class="sym" style="color:var(--t-amber);font-size:16px;font-weight:800">${esc(sym)}</span>
+                  <span style="font-size:20px">${fmt(q.last, q.decimals)}</span>
+                  <span class="${tcls(q.chg)}">${sgn(q.chg, q.decimals)} ${pct(q.pct)}</span>
+                  <span class="t-note">${esc(q.ccy)}</span></div>`;
+              body.querySelector('#desKv').innerHTML = [
+                ['OPEN', fmt(q.open, q.decimals)], ['PREV CLOSE', fmt(q.prevClose, q.decimals)],
+                ['HIGH', fmt(q.high, q.decimals)], ['LOW', fmt(q.low, q.decimals)],
+                ['52W HIGH', fmt(q.dayHigh52, q.decimals)], ['52W LOW', fmt(q.dayLow52, q.decimals)],
+                ['BID/ASK', `${fmt(q.bid, q.decimals)} / ${fmt(q.ask, q.decimals)}`],
+                ['VOLUME', abbr(q.volume)], ['MKT CAP', q.mcap ? abbr(q.mcap) : '—'],
+                ['SECTOR', q.sector || q.cls.toUpperCase()]
+              ].map(([k, v]) => `<span class="t-k">${k}</span><span class="t-v">${v}</span>`).join('');
+              c.setData(Market.history(sym, '1D'));
+            };
+            paint();
+            const news = D.articlesBySymbol(sym).slice(0, 5);
+            body.querySelector('#desNews').innerHTML = news.length ? news.map(a =>
+              `<li class="pr3"><span class="w-t">${UI.clockStr(a.ts).slice(0, 5)}</span>
+               <span class="w-h"><a href="${UI.ahref(a.id)}">${esc(a.t.toUpperCase())}</a></span></li>`).join('')
+              : '<li class="pr3"><span class="w-t">—</span><span class="w-h">NO TAGGED HEADLINES</span></li>';
+            return Market.subscribe(paint);
+          }
+        };
+      }
+    },
+
+    GP: {
+      title: 'PRICE GRAPH',
+      render: (sym, arg) => {
+        const q = Market.quote(sym); if (!q) return { html: '<p class="t-note">NO SECURITY</p>' };
+        const range = Market.RANGES[arg] ? arg : '6M';
+        return {
+          title: `${sym} — PRICE GRAPH ${range}`,
+          html: `<div style="display:flex;gap:4px;margin-bottom:4px" id="gpRanges">
+              ${Object.keys(Market.RANGES).map(r => `<button class="t-go" style="background:${r === range ? 'var(--t-amber)' : '#16160f'};color:${r === range ? '#000' : '#c9c9c2'};padding:2px 7px;font-size:10.5px" data-r="${r}">${r}</button>`).join('')}
+              <button class="t-go" style="background:#16160f;color:#c9c9c2;padding:2px 7px;font-size:10.5px" data-t="candle">CANDLE</button>
+              <span class="t-note" id="gpInfo" style="margin-left:auto"></span></div>
+            <div class="t-chart"><canvas id="gpChart"></canvas></div>`,
+          after: (body) => {
+            const c = new Charts.PriceChart(body.querySelector('#gpChart'), {
+              type: 'candle', decimals: q.decimals, padding: { t: 10, r: 58, b: 18, l: 2 },
+              onHover: (b) => body.querySelector('#gpInfo').textContent = b
+                ? `O ${fmt(b.o, q.decimals)}  H ${fmt(b.h, q.decimals)}  L ${fmt(b.l, q.decimals)}  C ${fmt(b.c, q.decimals)}  V ${abbr(b.v)}` : ''
+            });
+            c.setData(Market.history(sym, range));
+            body.querySelector('#gpRanges').onclick = (e) => {
+              const b = e.target.closest('button'); if (!b) return;
+              if (b.dataset.r) render(PANELS.findIndex(p => p.el.contains(body)), 'GP', sym, b.dataset.r);
+              if (b.dataset.t) c.setType(c.o.type === 'candle' ? 'area' : 'candle');
+            };
+            return Market.subscribe(() => { if (range === '1D') c.setData(Market.history(sym, '1D')); });
+          }
+        };
+      }
+    },
+
+    GIP: {
+      title: 'INTRADAY GRAPH',
+      render: (sym) => Object.assign(FN.GP.render(sym, '1D'), { title: `${sym} — INTRADAY` })
+    },
+
+    TOP: {
+      title: 'TOP NEWS',
+      render: () => ({
+        html: '<ul class="t-wire" id="wire"></ul><div class="t-note" style="margin-top:8px">STORIES</div><ul class="t-wire" id="stories"></ul>',
+        after: (body) => {
+          const paint = () => {
+            body.querySelector('#wire').innerHTML = D.WIRE.map(w =>
+              `<li class="pr${w.pr}"><span class="w-t">${UI.clockStr(w.ts).slice(0, 5)}</span><span class="w-h">${esc(w.t)}</span></li>`).join('');
+            body.querySelector('#stories').innerHTML = D.latest(14).map(a =>
+              `<li class="pr3"><span class="w-t">${UI.clockStr(a.ts).slice(0, 5)}</span>
+                <span class="w-h"><a href="${UI.ahref(a.id)}">${esc(a.t.toUpperCase())}</a>
+                <span class="t-k"> · ${esc(D.section(a.s).label.toUpperCase())}</span></span></li>`).join('');
+          };
+          paint();
+          const t = setInterval(paint, 15000);
+          return () => clearInterval(t);
+        }
+      })
+    },
+
+    WEI: {
+      title: 'WORLD EQUITY INDEXES',
+      render: () => ({ html: '', after: liveTable(() => Market.quotes('index'), quoteCols) })
+    },
+    FX: {
+      title: 'CURRENCY MONITOR',
+      render: () => ({ html: '', after: liveTable(() => Market.quotes('fx'), quoteCols) })
+    },
+    CMD: {
+      title: 'COMMODITY MONITOR',
+      render: () => ({ html: '', after: liveTable(() => Market.quotes('commodity'), quoteCols) })
+    },
+    MOST: {
+      title: 'MOST ACTIVE',
+      render: (sym, arg) => {
+        const dir = ['GAINERS', 'LOSERS', 'ACTIVE'].includes(arg) ? arg.toLowerCase() : 'active';
+        return {
+          title: 'MOST ' + dir.toUpperCase(),
+          html: '', after: liveTable(() => Market.movers('all', dir, 16), quoteCols)
+        };
+      }
+    },
+
+    RATE: {
+      title: 'RATES & CURVE',
+      render: () => ({
+        html: `<div style="height:140px"><canvas id="curveC"></canvas></div><div id="rateTbl" style="margin-top:6px"></div>`,
+        after: (body) => {
+          const draw = () => Charts.curve(body.querySelector('#curveC'), D.CURVE);
+          draw();
+          const paint = () => {
+            body.querySelector('#rateTbl').innerHTML =
+              `<table class="t-tbl"><thead><tr><th>Tenor</th><th>Yield</th><th>Chg</th><th>1D High</th><th>1D Low</th></tr></thead><tbody>` +
+              Market.quotes('rate').map(q => `<tr data-s="${q.sym}"><td class="sym">${q.sym}</td>
+                <td>${fmt(q.last, 3)}</td><td class="${tcls(q.chg)}">${sgn(q.chg * 100, 1)}bp</td>
+                <td>${fmt(q.high, 3)}</td><td>${fmt(q.low, 3)}</td></tr>`).join('') + '</tbody></table>';
+          };
+          paint();
+          return Market.subscribe(paint);
+        }
+      })
+    },
+
+    HM: {
+      title: 'SECTOR HEAT MAP',
+      render: () => ({
+        pad0: true,
+        html: '<div class="heat-in-term" id="hm"></div>',
+        after: (body) => {
+          const el = body.querySelector('#hm');
+          const draw = () => Charts.treemap(el, Market.sectors().map(s => ({
+            label: s.sector, title: s.sector, pct: s.pct, weight: s.mcap
+          })), { onClick: () => run('MOST GAINERS') });
+          setTimeout(draw, 30);
+          const t = setInterval(draw, 5000);
+          const ro = new ResizeObserver(draw); ro.observe(el);
+          return () => { clearInterval(t); ro.disconnect(); };
+        }
+      })
+    },
+
+    DEPTH: {
+      title: 'ORDER BOOK',
+      render: (sym) => {
+        const q = Market.quote(sym); if (!q) return { html: '<p class="t-note">NO SECURITY</p>' };
+        return {
+          title: `${sym} — MARKET DEPTH`,
+          html: '<div id="dep"></div>',
+          after: (body) => {
+            const paint = () => {
+              const d = Market.depth(sym, 10);
+              const mx = Math.max(...d.bids.concat(d.asks).map(l => l.size));
+              body.querySelector('#dep').innerHTML =
+                `<table class="t-tbl"><thead><tr><th>MM</th><th>Size</th><th>Bid</th><th>Ask</th><th>Size</th><th>MM</th></tr></thead><tbody>` +
+                d.bids.map((b, i) => {
+                  const a = d.asks[i];
+                  const w = (b.size / mx * 100).toFixed(0), w2 = (a.size / mx * 100).toFixed(0);
+                  return `<tr><td class="nm">${b.mm}</td>
+                    <td style="background:linear-gradient(to left, rgba(46,224,106,.18) ${w}%, transparent ${w}%)">${abbr(b.size)}</td>
+                    <td class="t-up">${fmt(b.px, q.decimals)}</td>
+                    <td class="t-dn">${fmt(a.px, q.decimals)}</td>
+                    <td style="background:linear-gradient(to right, rgba(255,77,67,.18) ${w2}%, transparent ${w2}%)">${abbr(a.size)}</td>
+                    <td class="nm">${a.mm}</td></tr>`;
+                }).join('') + '</tbody></table>' +
+                `<div class="kv" style="margin-top:8px">
+                  <span class="t-k">SPREAD</span><span class="t-v">${fmt(q.ask - q.bid, q.decimals)}</span>
+                  <span class="t-k">MID</span><span class="t-v">${fmt((q.ask + q.bid) / 2, q.decimals)}</span>
+                  <span class="t-k">BOOK IMBALANCE</span><span class="t-v">${fmt(d.bids.reduce((s, l) => s + l.size, 0) / d.asks.reduce((s, l) => s + l.size, 0), 2)}</span></div>`;
+            };
+            paint();
+            const t = setInterval(paint, 2500);
+            return () => clearInterval(t);
+          }
+        };
+      }
+    },
+
+    PORT: {
+      title: 'PORTFOLIO / WATCHLIST',
+      render: () => ({
+        html: '<div id="portBody"></div>',
+        after: (body) => {
+          const paint = () => {
+            const syms = UI.Watchlist.all();
+            const qs = Market.quotes(syms);
+            const pnl = qs.reduce((s, q) => s + q.pct, 0) / (qs.length || 1);
+            body.querySelector('#portBody').innerHTML =
+              `<div class="kv" style="margin-bottom:6px">
+                 <span class="t-k">POSITIONS</span><span class="t-v">${qs.length}</span>
+                 <span class="t-k">EQUAL-WEIGHT DAY RETURN</span><span class="t-v ${tcls(pnl)}">${pct(pnl)}</span></div>
+               <table class="t-tbl"><thead><tr><th>Security</th><th>Last</th><th>Chg</th><th>%Chg</th><th>Vol</th><th></th></tr></thead><tbody>` +
+              qs.map(q => `<tr data-s="${q.sym}"><td><span class="sym">${esc(q.sym)}</span> <span class="nm">${esc(q.name)}</span></td>
+                <td>${fmt(q.last, q.decimals)}</td><td class="${tcls(q.chg)}">${sgn(q.chg, q.decimals)}</td>
+                <td class="${tcls(q.pct)}">${pct(q.pct)}</td><td>${abbr(q.volume)}</td>
+                <td><button data-del="${q.sym}" style="background:none;border:1px solid var(--t-rule);color:#8b8b85;font-size:10px">DEL</button></td></tr>`).join('') +
+              `</tbody></table>
+               <div style="display:flex;gap:4px;margin-top:8px">
+                 <input class="t-input" id="portAdd" placeholder="ADD SYMBOL" style="max-width:180px">
+                 <button class="t-go" id="portGo" style="padding:3px 10px">ADD</button></div>`;
+            body.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => {
+              e.stopPropagation(); UI.Watchlist.toggle(b.dataset.del); paint();
+            });
+            body.querySelectorAll('tr[data-s]').forEach(tr => tr.onclick = () => run(tr.dataset.s + ' DES'));
+            const add = () => {
+              const v = body.querySelector('#portAdd').value.toUpperCase().trim();
+              if (!Market.quote(v)) return status('UNKNOWN SYMBOL ' + v);
+              if (!UI.Watchlist.has(v)) UI.Watchlist.toggle(v);
+              paint();
+            };
+            body.querySelector('#portGo').onclick = add;
+            body.querySelector('#portAdd').onkeydown = (e) => { if (e.key === 'Enter') { e.stopPropagation(); add(); } };
+          };
+          paint();
+          return Market.subscribe(paint);
+        }
+      })
+    },
+
+    ALRT: {
+      title: 'PRICE ALERTS',
+      render: (sym) => ({
+        html: '<div id="alBody"></div>',
+        after: (body) => {
+          const paint = () => {
+            const q = Market.quote(sym);
+            body.querySelector('#alBody').innerHTML = `
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+                <input class="t-input" id="aSym" value="${esc(sym)}" style="max-width:100px">
+                <select class="t-input" id="aDir" style="max-width:110px"><option value="above">ABOVE</option><option value="below">BELOW</option></select>
+                <input class="t-input" id="aPx" value="${q ? fmt(q.last * 1.01, q.decimals) : ''}" style="max-width:120px">
+                <button class="t-go" id="aGo" style="padding:3px 10px">ARM</button></div>
+              <table class="t-tbl"><thead><tr><th>Symbol</th><th>Cond</th><th>Level</th><th>Last</th><th>State</th><th></th></tr></thead><tbody>` +
+              (UI.Alerts.all().map(a => {
+                const qq = Market.quote(a.sym);
+                return `<tr><td class="sym">${esc(a.sym)}</td><td>${a.dir.toUpperCase()}</td><td>${fmt(a.px, 2)}</td>
+                  <td>${qq ? fmt(qq.last, qq.decimals) : '—'}</td>
+                  <td class="${a.fired ? 't-up' : 't-flat'}">${a.fired ? 'FIRED' : 'ARMED'}</td>
+                  <td><button data-del="${a.id}" style="background:none;border:1px solid var(--t-rule);color:#8b8b85;font-size:10px">DEL</button></td></tr>`;
+              }).join('') || '<tr><td colspan="6" class="t-note">NO ALERTS</td></tr>') + '</tbody></table>';
+            body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { UI.Alerts.remove(+b.dataset.del); paint(); });
+            body.querySelector('#aGo').onclick = () => {
+              const s = body.querySelector('#aSym').value.toUpperCase();
+              if (!Market.quote(s)) return status('UNKNOWN SYMBOL');
+              UI.Alerts.add({ sym: s, dir: body.querySelector('#aDir').value, px: parseFloat(body.querySelector('#aPx').value) });
+              status('ALERT ARMED ' + s); paint();
+            };
+          };
+          paint();
+          return Market.subscribe(paint);
+        }
+      })
+    },
+
+    ECO: {
+      title: 'ECONOMIC CALENDAR',
+      render: () => ({
+        html: `<table class="t-tbl"><thead><tr><th>Day</th><th>Time</th><th>Ctry</th><th style="text-align:left">Event</th><th>Est</th><th>Prior</th><th>Imp</th></tr></thead><tbody>` +
+          D.ECO_CALENDAR.map(r => `<tr><td>${new Date(Date.now() + r.d * 864e5).toLocaleDateString([], { weekday: 'short' }).toUpperCase()}</td>
+            <td>${r.time}</td><td class="sym">${r.ctry}</td><td style="text-align:left">${esc(r.ev)} <span class="nm">${esc(r.per)}</span></td>
+            <td>${r.est}</td><td>${r.prev}</td><td class="${r.imp === 3 ? 't-dn' : r.imp === 2 ? 't-up' : 't-flat'}">${'*'.repeat(r.imp)}</td></tr>`).join('') + '</tbody></table>'
+      })
+    },
+    EARN: {
+      title: 'EARNINGS CALENDAR',
+      render: () => ({
+        html: `<table class="t-tbl"><thead><tr><th>Day</th><th>Ticker</th><th style="text-align:left">Company</th><th>Timing</th><th>EPS Est</th><th>Rev Est</th></tr></thead><tbody>` +
+          D.EARNINGS.map(r => `<tr><td>${new Date(Date.now() + r.d * 864e5).toLocaleDateString([], { weekday: 'short' }).toUpperCase()}</td>
+            <td class="sym">${r.sym}</td><td style="text-align:left">${esc(r.name)}</td><td>${r.when}</td>
+            <td>${r.est}</td><td>${r.rev}</td></tr>`).join('') + '</tbody></table>'
+      })
+    },
+
+    FA: {
+      title: 'FINANCIAL ANALYSIS',
+      render: (sym) => {
+        const q = Market.quote(sym);
+        if (!q || q.cls !== 'equity') return { title: 'FINANCIAL ANALYSIS', html: '<p class="t-note">FA AVAILABLE FOR EQUITIES ONLY</p>' };
+        const fa = Market.fundamentals(sym);
+        return {
+          title: `${sym} — FINANCIAL ANALYSIS`,
+          html: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="kv">${[
+              ['P/E', fa.pe], ['EPS', fa.eps], ['P/B', fa.pb], ['P/S', fa.ps], ['EV/EBITDA', fa.evEbitda],
+              ['DIV YLD', fa.divYield + '%'], ['BETA', fa.beta], ['ROE', fa.roe + '%'],
+              ['GROSS MGN', fa.grossMargin + '%'], ['OPER MGN', fa.operMargin + '%'],
+              ['ND/EBITDA', fa.netDebtEbitda], ['SHORT INT', fa.shortInterest + '%'],
+              ['SHARES OUT', abbr(fa.shares)], ['TARGET', fmt(fa.target, 2)]
+            ].map(([k, v]) => `<span class="t-k">${k}</span><span class="t-v">${v}</span>`).join('')}</div>
+            <div><div class="t-note">REVENUE (USD BN)</div><div style="height:130px"><canvas id="faC"></canvas></div>
+              <div class="t-note" style="margin-top:6px">CONSENSUS ${fa.ratings.buy}B / ${fa.ratings.hold}H / ${fa.ratings.sell}S</div></div>
+          </div>
+          <table class="t-tbl" style="margin-top:10px"><thead><tr><th>FY</th><th>Revenue</th><th>Net Income</th><th>EPS</th><th>FCF</th></tr></thead><tbody>
+          ${fa.years.map(y => `<tr><td class="sym">${y.y}</td><td>${abbr(y.rev)}</td><td>${abbr(y.ni)}</td><td>${fmt(y.eps, 2)}</td><td>${abbr(y.fcf)}</td></tr>`).join('')}
+          </tbody></table>`,
+          after: (body) => {
+            const draw = () => Charts.bars(body.querySelector('#faC'),
+              fa.years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })), { decimals: 0, signed: false });
+            setTimeout(draw, 20);
+            const ro = new ResizeObserver(draw); ro.observe(body);
+            return () => ro.disconnect();
+          }
+        };
+      }
+    },
+
+    MSG: {
+      title: 'MESSAGE PANE',
+      render: () => ({
+        html: `<div class="t-msg" id="msgs"></div>
+          <div style="display:flex;gap:4px;margin-top:8px">
+            <input class="t-input" id="msgIn" placeholder="MESSAGE DESK…"><button class="t-go" id="msgGo" style="padding:3px 10px">SEND</button></div>`,
+        after: (body) => {
+          const store = () => UI.LS.get('msgs', [
+            { who: 'RATES DESK', txt: 'Front end offered into the auction. We are better buyers below 4.30 in 10s.', ts: Date.now() - 22 * 60e3 },
+            { who: 'EQ DERIVS', txt: 'Skew bid on Nov expiries again. Vol supply has dried up above 25 delta.', ts: Date.now() - 9 * 60e3 },
+            { who: 'RESEARCH', txt: 'Sector note out: capex revisions still trailing the guide. Full piece on TOP.', ts: Date.now() - 3 * 60e3 }
+          ]);
+          const paint = () => {
+            body.querySelector('#msgs').innerHTML = store().map(m =>
+              `<div class="m"><b>${esc(m.who)}</b> <span class="t-note">${UI.clockStr(m.ts)}</span><br>${esc(m.txt)}</div>`).join('');
+          };
+          paint();
+          const send = () => {
+            const el = body.querySelector('#msgIn');
+            if (!el.value.trim()) return;
+            const l = store(); l.push({ who: 'YOU', txt: el.value, ts: Date.now() });
+            UI.LS.set('msgs', l); el.value = ''; paint();
+            setTimeout(() => {
+              const l2 = UI.LS.get('msgs', []);
+              l2.push({ who: 'RESEARCH', txt: 'Copy — sending the model over. Placeholder auto-reply.', ts: Date.now() });
+              UI.LS.set('msgs', l2); paint();
+            }, 1400);
+          };
+          body.querySelector('#msgGo').onclick = send;
+          body.querySelector('#msgIn').onkeydown = (e) => { if (e.key === 'Enter') { e.stopPropagation(); send(); } };
+        }
+      })
+    }
+  };
+
+  /* ============================================================= autocomplete */
+  const cmd = $('#cmd'), ac = $('#ac');
+  let acIdx = -1;
+  function suggestions(v) {
+    const t = v.trim().toUpperCase();
+    const last = t.split(/\s+/).pop();
+    const out = [];
+    if (last) {
+      IV_CONFIG.terminalFunctions.forEach(([c, d]) => { if (c.startsWith(last)) out.push([c, d, 'fn']); });
+      Market.quotes().forEach(q => {
+        if (q.sym.startsWith(last) || q.name.toUpperCase().startsWith(last)) out.push([q.sym, q.name, 'sec']);
+      });
+    } else {
+      IV_CONFIG.terminalFunctions.slice(0, 8).forEach(([c, d]) => out.push([c, d, 'fn']));
+    }
+    return out.slice(0, 10);
+  }
+  function drawAc() {
+    const s = suggestions(cmd.value);
+    if (!s.length || !cmd.value.trim()) { ac.classList.remove('open'); return; }
+    ac.innerHTML = s.map(([a, b], i) =>
+      `<div data-i="${i}" data-v="${esc(a)}" class="${i === acIdx ? 'on' : ''}"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+    ac.classList.add('open');
+    ac.querySelectorAll('div').forEach(d => d.onclick = () => { applyAc(d.dataset.v); });
+  }
+  function applyAc(v) {
+    const parts = cmd.value.trim().split(/\s+/);
+    parts[parts.length - 1] = v;
+    cmd.value = parts.join(' ') + ' ';
+    ac.classList.remove('open'); acIdx = -1; cmd.focus();
+  }
+
+  cmd.addEventListener('input', () => { acIdx = -1; drawAc(); });
+  cmd.addEventListener('keydown', (e) => {
+    const items = [...ac.querySelectorAll('div')];
+    if (e.key === 'ArrowDown' && ac.classList.contains('open')) { e.preventDefault(); acIdx = Math.min(items.length - 1, acIdx + 1); drawAc(); return; }
+    if (e.key === 'ArrowUp' && ac.classList.contains('open') && acIdx > -1) { e.preventDefault(); acIdx--; drawAc(); return; }
+    if (e.key === 'Tab' && items[Math.max(0, acIdx)]) { e.preventDefault(); applyAc(items[Math.max(0, acIdx)].dataset.v); return; }
+    if (e.key === 'Enter') {
+      if (acIdx > -1 && items[acIdx]) { applyAc(items[acIdx].dataset.v); return; }
+      run(cmd.value); cmd.value = ''; ac.classList.remove('open'); return;
+    }
+    if (e.key === 'ArrowUp') { if (histIdx > 0) cmd.value = HIST[--histIdx] || ''; }
+    if (e.key === 'ArrowDown') { if (histIdx < HIST.length - 1) cmd.value = HIST[++histIdx] || ''; else { histIdx = HIST.length; cmd.value = ''; } }
+    if (e.key === 'Escape') { ac.classList.remove('open'); }
+  });
+  $('#go').onclick = () => { run(cmd.value); cmd.value = ''; };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { cmd.focus(); cmd.select(); }
+    if (e.target === cmd || e.target.matches('input,select,textarea')) return;
+    const fk = { F1: 'HELP', F2: 'DES', F3: 'GP', F4: 'TOP', F5: 'WEI', F6: 'MOST', F7: 'FX', F8: 'PORT' }[e.key];
+    if (fk) { e.preventDefault(); run(fk); }
+    const digit = parseInt(e.key, 10);
+    if (digit >= 1 && digit <= PANELS.length) focus(digit - 1);
+  });
+
+  /* --------------------------------------------------------- function keys */
+  $('#fkeys').innerHTML = IV_CONFIG.terminalFunctions.map(([c, d]) =>
+    `<button data-f="${c}" title="${esc(d)}"><b>${c}</b> ${esc(d.toUpperCase())}</button>`).join('');
+  $('#fkeys').onclick = (e) => { const b = e.target.closest('button'); if (b) run(b.dataset.f); };
+  $('#layout').onchange = (e) => { setLayout(e.target.value); boot(); };
+
+  /* ------------------------------------------------------------ status bar */
+  const tz = (t) => new Date().toLocaleTimeString('en-GB', { timeZone: t, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  setInterval(() => {
+    try {
+      $('#clkNY').textContent = tz('America/New_York');
+      $('#clkLDN').textContent = tz('Europe/London');
+      $('#clkTKY').textContent = tz('Asia/Tokyo');
+    } catch (_) { $('#clkNY').textContent = new Date().toLocaleTimeString(); }
+  }, 1000);
+  let ticks = 0;
+  Market.subscribe(() => {
+    $('#footTicks').textContent = 'TICKS ' + (++ticks);
+    const s = Market.quote('SPX'), r = Market.quote('US10Y');
+    $('#stSPX').innerHTML = `${fmt(s.last, 2)} <span class="${tcls(s.pct)}">${pct(s.pct)}</span>`;
+    $('#st10').innerHTML = `${fmt(r.last, 3)} <span class="${tcls(r.chg)}">${sgn(r.chg * 100, 1)}bp</span>`;
+    UI.Alerts.check();
+  });
+  $('#stFeed').textContent = IV_CONFIG.features.liveData ? 'LIVE' : 'SIM';
+
+  /* ------------------------------------------------------------------ boot */
+  function boot() {
+    const n = PANELS.length;
+    const start = ['DES', 'GP', 'TOP', 'WEI', 'HM', 'PORT'].slice(0, n);
+    start.forEach((f, i) => render(i, f, security));
+    focus(0);
+  }
+  setLayout('g4');
+  boot();
+  const initial = new URLSearchParams(location.search).get('cmd');
+  if (initial) { focused = 0; run(initial); }
+  cmd.focus();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletters — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <header style="padding:30px 0 18px;border-bottom:2px solid var(--rule-strong);max-width:720px">
+    <div class="eyebrow">Newsletters</div>
+    <h1 style="font-family:var(--serif);font-size:44px;line-height:1.05">Everything we publish, curated for your inbox</h1>
+    <p class="dek">Pick the desks you care about. One-click unsubscribe, always.</p>
+  </header>
+
+  <section class="strip">
+    <form id="form">
+      <div class="grid-2" id="list" style="gap:18px"></div>
+      <div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
+        <label class="field" style="flex:1;margin:0"><span>Email address</span>
+          <input type="email" id="email" placeholder="you@example.com" required></label>
+        <button class="btn" type="submit">Sign up</button>
+      </div>
+      <p class="disclaimer" style="margin-top:10px">Submissions are stubbed — nothing leaves the browser until an API key is configured.</p>
+    </form>
+  </section>
+
+  <section class="strip">
+    <div class="strip-head"><h2>Preview: Five Things</h2></div>
+    <div style="max-width:640px;border:1px solid var(--rule);padding:22px">
+      <div class="eyebrow">Weekday mornings</div>
+      <h3 class="hl-l" style="margin:6px 0 14px">Five things to start your day</h3>
+      <ol id="preview" style="padding-left:18px;display:grid;gap:14px"></ol>
+      <div style="margin-top:18px;border-top:1px solid var(--rule);padding-top:12px" id="mkt"></div>
+    </div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('newsletters');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+
+  $('#list').innerHTML = D.NEWSLETTERS.map(n => `
+    <label style="border:1px solid var(--rule);padding:18px;display:grid;gap:8px;cursor:pointer">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <input type="checkbox" value="${n.id}" ${n.id === 'n1' ? 'checked' : ''}>
+        <div><h3 class="hl-m">${UI.esc(n.t)}</h3>
+          <div class="eyebrow" style="margin-top:4px">${UI.esc(n.cad)}</div></div>
+      </div>
+      <p class="dek" style="margin:0">${UI.esc(n.d)}</p></label>`).join('');
+
+  $('#form').onsubmit = async (e) => {
+    e.preventDefault();
+    const ids = [...document.querySelectorAll('#list input:checked')].map(i => i.value);
+    if (!ids.length) return UI.toast('Pick at least one newsletter');
+    const r = await API.subscribeNewsletter($('#email').value, ids);
+    UI.toast(`Subscribed ${r.email} to ${ids.length} newsletter${ids.length === 1 ? '' : 's'}`);
+  };
+
+  $('#preview').innerHTML = D.latest(5).map(a =>
+    `<li><strong><a href="${UI.ahref(a.id)}">${UI.esc(a.t)}</a></strong><br>
+     <span class="disclaimer">${UI.esc(a.d)}</span></li>`).join('');
+
+  function paintMkt() {
+    $('#mkt').innerHTML = ['SPX', 'US10Y', 'EURUSD', 'CL1', 'BTC'].map(s => {
+      const q = Market.quote(s);
+      return `<div class="mini-quote"><span class="l">${UI.esc(q.name)}</span>
+        <span class="r">${UI.fmt(q.last, q.decimals)} <span class="${UI.cls(q.pct)}">${UI.pctStr(q.pct)}</span></span></div>`;
+    }).join('');
+  }
+  paintMkt();
+  Market.subscribe(paintMkt);
+})();
+</script>
+</body>
+</html>

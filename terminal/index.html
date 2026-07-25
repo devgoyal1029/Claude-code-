@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VERDICT — Markets, Money and Power</title>
+<meta name="description" content="Business, financial and market news. Live quotes, analysis and a terminal workspace.">
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<main class="wrap">
+
+  <!-- market strip ------------------------------------------------------- -->
+  <section style="padding:18px 0 0">
+    <div class="mkt-hero" id="mktHero"></div>
+  </section>
+
+  <div class="layout">
+    <div>
+      <!-- lead ----------------------------------------------------------- -->
+      <section class="lead" id="lead"></section>
+
+      <!-- latest --------------------------------------------------------- -->
+      <section class="strip">
+        <div class="strip-head"><h2>Latest</h2><a class="more" href="section.html?s=markets">More coverage →</a></div>
+        <div class="grid-3" id="latest"></div>
+      </section>
+
+      <!-- markets module -------------------------------------------------- -->
+      <section class="strip">
+        <div class="strip-head"><h2>Markets</h2><a class="more" href="markets.html">Full data →</a></div>
+        <div class="tabs" id="moverTabs">
+          <button class="on" data-d="gainers">Gainers</button>
+          <button data-d="losers">Losers</button>
+          <button data-d="active">Most Active</button>
+        </div>
+        <div id="movers"></div>
+      </section>
+
+      <!-- opinion --------------------------------------------------------- -->
+      <section class="strip">
+        <div class="strip-head"><h2>Opinion</h2><a class="more" href="section.html?s=opinion">All columnists →</a></div>
+        <div class="grid-3" id="opinion"></div>
+      </section>
+
+      <!-- technology ------------------------------------------------------ -->
+      <section class="strip">
+        <div class="strip-head"><h2>Technology</h2><a class="more" href="section.html?s=technology">More →</a></div>
+        <div class="grid-2" id="tech"></div>
+      </section>
+
+      <!-- video ----------------------------------------------------------- -->
+      <section class="strip">
+        <div class="strip-head"><h2>Watch</h2><a class="more" href="video.html">All video →</a></div>
+        <div class="grid-4" id="videos"></div>
+      </section>
+    </div>
+
+    <!-- rail --------------------------------------------------------------- -->
+    <aside class="rail">
+      <section>
+        <div class="widget-title"><span class="live-dot"></span> First Word Wire</div>
+        <ul class="wire-list" id="wire"></ul>
+      </section>
+
+      <section>
+        <div class="widget-title">Most Read</div>
+        <ol class="rank-list" id="mostRead"></ol>
+      </section>
+
+      <section>
+        <div class="widget-title">Your Watchlist <a href="watchlist.html" style="margin-left:auto;font-size:11px;color:var(--link)">Edit</a></div>
+        <div id="watchMini"></div>
+      </section>
+
+      <section>
+        <div class="widget-title">Yield Curve · US Treasury</div>
+        <div style="height:150px"><canvas id="curve"></canvas></div>
+      </section>
+
+      <section style="border:1px solid var(--rule);padding:16px">
+        <div class="eyebrow">Newsletter</div>
+        <h3 class="hl-m" style="margin:6px 0 8px">Five Things to Start Your Day</h3>
+        <p class="disclaimer">The stories moving markets, before the open.</p>
+        <button class="btn btn-sm" id="nlBtn" style="margin-top:10px">Sign up</button>
+      </section>
+
+      <section>
+        <div class="widget-title">Listen</div>
+        <div id="pods"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('home');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+
+  /* ---- market strip ---- */
+  const stripSyms = ['SPX', 'CCMP', 'INDU', 'UKX', 'NKY', 'US10Y', 'CL1', 'GC1', 'EURUSD', 'BTC'];
+  function drawStrip() {
+    $('#mktHero').innerHTML = stripSyms.map(s => {
+      const q = Market.quote(s);
+      return `<a class="mkt-cell" href="${UI.qhref(s)}" data-c="${s}">
+        <span class="nm">${UI.esc(q.name)}</span>
+        <span class="px" data-f="px">${UI.fmt(q.last, q.decimals)}</span>
+        <span class="ch ${UI.cls(q.pct)}" data-f="ch">${UI.signed(q.chg, q.decimals)} (${UI.pctStr(q.pct)})</span>
+        <canvas height="26"></canvas></a>`;
+    }).join('');
+    $('#mktHero').querySelectorAll('.mkt-cell').forEach(cell => {
+      const s = cell.dataset.c, q = Market.quote(s), P = Charts.palette(cell);
+      Charts.spark(cell.querySelector('canvas'), Market.history(s, '1D').map(b => b.c),
+        { w: cell.clientWidth - 28, h: 26, color: q.pct >= 0 ? P.up : P.down });
+    });
+  }
+  drawStrip();
+  window.addEventListener('resize', debounce(drawStrip, 250));
+  Market.subscribe(() => {
+    $('#mktHero').querySelectorAll('.mkt-cell').forEach(cell => {
+      const q = Market.quote(cell.dataset.c);
+      cell.querySelector('[data-f="px"]').textContent = UI.fmt(q.last, q.decimals);
+      const ch = cell.querySelector('[data-f="ch"]');
+      ch.textContent = `${UI.signed(q.chg, q.decimals)} (${UI.pctStr(q.pct)})`;
+      ch.className = 'ch ' + UI.cls(q.pct);
+    });
+  });
+
+  /* ---- editorial ---- */
+  const latest = D.latest(40);
+  const [a1, a2, a3, ...rest] = latest;
+  $('#lead').innerHTML = UI.card(a1, 'xl') + `<div class="stack">${UI.card(a2, 'l')}${UI.card(a3, 'm')}</div>`;
+  $('#latest').innerHTML = rest.slice(0, 6).map(a => UI.card(a, 'm')).join('');
+  $('#opinion').innerHTML = D.articlesBySection('opinion').slice(0, 3).map(a => {
+    const c = D.author(a.col || a.a);
+    return `<a class="card" href="${UI.ahref(a.id)}">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img src="${D.image(c.id, 120, 120)}" width="52" height="52" style="border-radius:50%" alt="">
+        <div><div class="eyebrow">${UI.esc(c.name)}</div><div class="disclaimer">${UI.esc(c.beat || c.role)}</div></div>
+      </div>
+      <h3 class="hl-m">${UI.esc(a.t)}</h3><p class="dek">${UI.esc(a.d)}</p></a>`;
+  }).join('');
+  $('#tech').innerHTML = D.articlesBySection('technology').slice(0, 2).map(a => UI.card(a, 'l')).join('');
+  $('#videos').innerHTML = D.VIDEOS.slice(0, 4).map(v => `
+    <a class="card" href="video.html#${v.id}">
+      <div style="position:relative">
+        <img class="thumb" src="${D.image(v.id, 480, 320)}" alt="">
+        <span style="position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.8);color:#fff;font-size:11px;padding:2px 5px" class="mono">${v.dur}</span>
+      </div>
+      <div><div class="eyebrow">${UI.esc(v.show)}</div><h3 class="hl-s">${UI.esc(v.t)}</h3></div></a>`).join('');
+
+  /* ---- rail ---- */
+  function drawWire() {
+    $('#wire').innerHTML = D.WIRE.slice(0, 12).map(w =>
+      `<li class="pr${w.pr}"><span class="w-t">${UI.clockStr(w.ts).slice(0, 5)}</span><span class="w-h">${UI.esc(w.t)}</span></li>`).join('');
+  }
+  drawWire();
+  $('#mostRead').innerHTML = D.mostRead(6).map(a =>
+    `<li><a href="${UI.ahref(a.id)}" class="${a.p ? 'premium' : ''}">${UI.esc(a.t)}</a></li>`).join('');
+
+  function drawWatch() {
+    const list = UI.Watchlist.all().slice(0, 8);
+    $('#watchMini').innerHTML = list.map(s => {
+      const q = Market.quote(s); if (!q) return '';
+      return `<a class="mini-quote" href="${UI.qhref(s)}" data-w="${s}">
+        <span class="l">${UI.esc(s)}</span>
+        <span class="r"><span data-f="p">${UI.fmt(q.last, q.decimals)}</span>
+        <span class="${UI.cls(q.pct)}" data-f="c">${UI.pctStr(q.pct)}</span></span></a>`;
+    }).join('') || '<p class="disclaimer">No symbols yet.</p>';
+  }
+  drawWatch();
+  window.addEventListener('iv:watchlist', drawWatch);
+  Market.subscribe(() => {
+    document.querySelectorAll('#watchMini [data-w]').forEach(el => {
+      const q = Market.quote(el.dataset.w);
+      el.querySelector('[data-f="p"]').textContent = UI.fmt(q.last, q.decimals);
+      const c = el.querySelector('[data-f="c"]');
+      c.textContent = UI.pctStr(q.pct); c.className = UI.cls(q.pct);
+    });
+  });
+
+  const curveCanvas = document.getElementById('curve');
+  const drawCurve = () => Charts.curve(curveCanvas, D.CURVE);
+  drawCurve();
+  window.addEventListener('resize', debounce(drawCurve, 250));
+  window.addEventListener('iv:theme', drawCurve);
+
+  $('#pods').innerHTML = D.PODCASTS.slice(0, 3).map(p =>
+    `<a class="mini-quote" href="podcasts.html#${p.id}"><span class="l">${UI.esc(p.show)}<br>
+      <span class="disclaimer" style="font-weight:400">${UI.esc(p.t)}</span></span>
+      <span class="r disclaimer">${p.dur}</span></a>`).join('');
+
+  $('#nlBtn').onclick = UI.newsletterOverlay;
+
+  /* ---- movers ---- */
+  let dir = 'gainers', table = null;
+  function drawMovers() {
+    if (table) table.destroy();
+    const syms = Market.movers('all', dir, 8).map(q => q.sym);
+    table = UI.quoteTable('#movers', syms, { spark: true, watch: true, cols: ['sym', 'last', 'chg', 'pct', 'volume'] });
+  }
+  document.querySelectorAll('#moverTabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#moverTabs button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); dir = b.dataset.d; drawMovers();
+  });
+  drawMovers();
+  setInterval(drawMovers, 30000);
+
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+})();
+</script>
+</body>
+</html>

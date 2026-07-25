@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Podcasts — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .bar { position:sticky; bottom:0; background:var(--ink); color:var(--bg); padding:12px 16px; display:flex; gap:14px; align-items:center; }
+  .bar .scrub { flex:1; height:4px; background:rgba(128,128,128,.4); position:relative; cursor:pointer; }
+  .bar .scrub i { position:absolute; inset:0 auto 0 0; background:var(--up); width:0; }
+  .bar button { background:none; border:1px solid currentColor; color:inherit; padding:4px 10px; font-size:12px; }
+  .ep { display:grid; grid-template-columns:72px 1fr auto; gap:14px; padding:14px 0; border-bottom:1px solid var(--rule); align-items:center; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div style="padding:24px 0 8px"><h1 style="font-family:var(--serif);font-size:34px">Podcasts</h1>
+    <p class="dek">Conversations about markets, money and the people moving them.</p></div>
+
+  <div class="layout">
+    <div>
+      <section class="strip">
+        <div class="strip-head"><h2>Episodes</h2>
+          <input id="q" placeholder="Search episodes…" style="margin-left:auto;padding:6px 10px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);font-size:13px"></div>
+        <div id="eps"></div>
+      </section>
+      <section class="strip">
+        <div class="strip-head"><h2>Shows</h2></div>
+        <div class="grid-4" id="shows"></div>
+      </section>
+    </div>
+    <aside class="rail">
+      <section>
+        <div class="widget-title">Subscribe</div>
+        <p class="disclaimer">Feeds are placeholders in this prototype.</p>
+        <div style="display:grid;gap:6px;margin-top:8px">
+          <button class="btn btn-sm btn-ghost">Apple Podcasts</button>
+          <button class="btn btn-sm btn-ghost">Spotify</button>
+          <button class="btn btn-sm btn-ghost">RSS</button>
+        </div>
+      </section>
+      <section>
+        <div class="widget-title">Related reading</div>
+        <ol class="rank-list" id="reads"></ol>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<div class="bar" id="bar">
+  <button id="pp">▶</button>
+  <div><strong id="nowT">Select an episode</strong><br><span class="disclaimer" id="nowS"></span></div>
+  <div class="scrub" id="scrub"><i></i></div>
+  <span class="mono" id="clock">00:00</span>
+  <button id="spd">1.0×</button>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('podcasts');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  let cur = null, playing = false, pos = 0, speed = 1;
+
+  function render(filter) {
+    const list = D.PODCASTS.filter(p => !filter || (p.t + p.show).toLowerCase().includes(filter.toLowerCase()));
+    $('#eps').innerHTML = list.map(p => `<div class="ep" data-p="${p.id}">
+      <img src="${D.image(p.id, 200, 200)}" width="72" height="72" alt="">
+      <div><div class="eyebrow">${UI.esc(p.show)} · ${UI.timeAgo(p.ts)}</div>
+        <h3 class="hl-m">${UI.esc(p.t)}</h3>
+        <p class="disclaimer">Placeholder episode notes. Guests, transcript and chapter markers would appear here.</p></div>
+      <div style="text-align:right"><div class="mono disclaimer">${p.dur}</div>
+        <button class="btn btn-sm" style="margin-top:6px">▶ Play</button></div></div>`).join('')
+      || '<p class="disclaimer">No episodes match.</p>';
+    $('#eps').querySelectorAll('[data-p]').forEach(el => el.onclick = () => play(D.PODCASTS.find(p => p.id === el.dataset.p)));
+  }
+  render();
+  $('#q').oninput = (e) => render(e.target.value);
+
+  const shows = [...new Set(D.PODCASTS.map(p => p.show))];
+  $('#shows').innerHTML = shows.map(s => `<div class="card">
+    <img class="thumb" style="aspect-ratio:1/1" src="${D.image(s, 300, 300)}" alt="">
+    <h3 class="hl-s">${UI.esc(s)}</h3>
+    <div class="disclaimer">${D.PODCASTS.filter(p => p.show === s).length} episodes</div></div>`).join('');
+  $('#reads').innerHTML = D.mostRead(5).map(a => `<li><a href="${UI.ahref(a.id)}">${UI.esc(a.t)}</a></li>`).join('');
+
+  function play(p) {
+    cur = p; playing = true; pos = 0;
+    $('#nowT').textContent = p.t; $('#nowS').textContent = p.show + ' · ' + p.dur;
+    $('#pp').textContent = '❚❚';
+    location.hash = p.id;
+  }
+  const total = () => cur ? parseInt(cur.dur) * 60 : 1;
+  setInterval(() => {
+    if (!playing || !cur) return;
+    pos = Math.min(total(), pos + speed);
+    $('#clock').textContent = `${String(Math.floor(pos / 60)).padStart(2, '0')}:${String(Math.floor(pos % 60)).padStart(2, '0')}`;
+    $('#scrub').querySelector('i').style.width = (pos / total() * 100).toFixed(2) + '%';
+  }, 1000);
+  $('#pp').onclick = () => { if (!cur) return play(D.PODCASTS[0]); playing = !playing; $('#pp').textContent = playing ? '❚❚' : '▶'; };
+  $('#spd').onclick = () => { speed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1; $('#spd').textContent = speed.toFixed(1) + '×'; };
+  $('#scrub').onclick = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    pos = Math.floor(((e.clientX - r.left) / r.width) * total());
+  };
+  const want = D.PODCASTS.find(p => '#' + p.id === location.hash);
+  if (want) play(want);
+})();
+</script>
+</body>
+</html>

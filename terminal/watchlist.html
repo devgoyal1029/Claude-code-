@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchlist — VERDICT</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<main class="wrap">
+  <div style="padding:24px 0 10px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+    <h1 style="font-family:var(--serif);font-size:34px">Watchlist</h1>
+    <span class="disclaimer">Stored locally in this browser</span>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <input id="add" placeholder="Add symbol (e.g. NVDA)" style="padding:8px 10px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);font-size:13px">
+      <button class="btn btn-sm" id="addBtn">Add</button>
+      <button class="btn btn-sm btn-ghost" id="alertBtn">Alerts</button>
+      <button class="btn btn-sm btn-ghost" id="exportBtn">Export CSV</button>
+    </div>
+  </div>
+
+  <div class="stat-grid" id="summary" style="margin-bottom:20px"></div>
+
+  <section class="strip">
+    <div class="strip-head"><h2>Positions</h2><span class="disclaimer" style="margin-left:auto">Click a row for the full quote page</span></div>
+    <div id="tbl"></div>
+    <div class="watch-empty" id="empty" style="display:none">
+      Your watchlist is empty. Add a symbol above, or star securities from any quote page.
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="grid-2">
+      <div>
+        <div class="strip-head"><h2>Performance</h2></div>
+        <div style="height:220px"><canvas id="perf"></canvas></div>
+        <p class="disclaimer">Equal-weighted index of your watchlist, rebased to 100 over the last month.</p>
+      </div>
+      <div>
+        <div class="strip-head"><h2>News for your symbols</h2></div>
+        <div id="news"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="strip-head"><h2>Active alerts</h2></div>
+    <div id="alerts"></div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/market.js"></script>
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/components.js"></script>
+<script>
+(function () {
+  UI.mount('watchlist');
+  const D = IV_DATA, $ = (s) => document.querySelector(s);
+  let table = null;
+
+  function draw() {
+    const syms = UI.Watchlist.all();
+    $('#empty').style.display = syms.length ? 'none' : '';
+    if (table) { table.destroy(); table = null; }
+    $('#tbl').innerHTML = '';
+    if (syms.length) {
+      table = UI.quoteTable('#tbl', syms, { spark: true, watch: true, cols: ['sym', 'last', 'chg', 'pct', 'high', 'low', 'volume', 'time'] });
+    }
+    paintSummary();
+    paintPerf();
+    paintNews();
+  }
+
+  function paintSummary() {
+    const qs = Market.quotes(UI.Watchlist.all());
+    const avg = qs.reduce((s, q) => s + q.pct, 0) / (qs.length || 1);
+    const best = qs.slice().sort((a, b) => b.pct - a.pct)[0];
+    const worst = qs.slice().sort((a, b) => a.pct - b.pct)[0];
+    const adv = qs.filter(q => q.pct > 0).length;
+    $('#summary').innerHTML = [
+      ['Symbols', qs.length],
+      ['Equal-weight day', `<span class="${UI.cls(avg)}">${UI.pctStr(avg)}</span>`],
+      ['Advancing / declining', `${adv} / ${qs.length - adv}`],
+      ['Best', best ? `${best.sym} <span class="${UI.cls(best.pct)}">${UI.pctStr(best.pct)}</span>` : '—'],
+      ['Worst', worst ? `${worst.sym} <span class="${UI.cls(worst.pct)}">${UI.pctStr(worst.pct)}</span>` : '—'],
+      ['Alerts armed', UI.Alerts.all().filter(a => !a.fired).length]
+    ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  }
+
+  function paintPerf() {
+    const syms = UI.Watchlist.all();
+    if (!syms.length) return;
+    const series = syms.map(s => Market.history(s, '1M').map(b => b.c));
+    const n = Math.min(...series.map(s => s.length));
+    const idx = [];
+    for (let i = 0; i < n; i++) {
+      const v = series.reduce((sum, s) => sum + (s[i] / s[0]), 0) / series.length * 100;
+      idx.push({ t: Date.now() - (n - i) * 864e5, o: v, h: v, l: v, c: v, v: 0 });
+    }
+    if (!window._perf) window._perf = new Charts.PriceChart($('#perf'), { type: 'area', volume: false, decimals: 2 });
+    window._perf.setData(idx);
+  }
+
+  function paintNews() {
+    const syms = UI.Watchlist.all();
+    const list = D.ARTICLES.filter(a => (a.sym || []).some(s => syms.includes(s))).sort((a, b) => b.ts - a.ts).slice(0, 5);
+    $('#news').innerHTML = list.length
+      ? list.map(a => UI.card(a, 's')).join('<hr style="border:0;border-top:1px solid var(--rule);margin:12px 0">')
+      : '<p class="disclaimer">No stories tagged to your symbols.</p>';
+  }
+
+  function paintAlerts() {
+    const al = UI.Alerts.all();
+    $('#alerts').innerHTML = al.length
+      ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Symbol</th><th>Condition</th><th>Level</th><th>Last</th><th>State</th><th></th></tr></thead><tbody>` +
+        al.map(a => {
+          const q = Market.quote(a.sym);
+          return `<tr><td class="sym">${a.sym}</td><td>${a.dir}</td><td class="num">${UI.fmt(a.px, 2)}</td>
+            <td class="num">${q ? UI.fmt(q.last, q.decimals) : '—'}</td>
+            <td class="${a.fired ? 'up' : ''}">${a.fired ? 'Fired ' + UI.timeAgo(a.firedAt) : 'Armed'}</td>
+            <td><button class="btn btn-sm btn-ghost" data-del="${a.id}">Remove</button></td></tr>`;
+        }).join('') + '</tbody></table></div>'
+      : '<p class="disclaimer">No alerts yet — use the Alerts button above.</p>';
+    document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { UI.Alerts.remove(+b.dataset.del); paintAlerts(); });
+  }
+
+  $('#addBtn').onclick = () => {
+    const v = $('#add').value.trim().toUpperCase();
+    if (!Market.quote(v)) return UI.toast('Unknown symbol: ' + v);
+    if (!UI.Watchlist.has(v)) UI.Watchlist.toggle(v);
+    $('#add').value = '';
+  };
+  $('#add').onkeydown = (e) => { if (e.key === 'Enter') $('#addBtn').click(); };
+  $('#alertBtn').onclick = () => UI.alertOverlay(UI.Watchlist.all()[0] || 'AAPL');
+  $('#exportBtn').onclick = () => {
+    const rows = [['Symbol', 'Name', 'Last', 'Change', 'PctChange', 'Volume']];
+    Market.quotes(UI.Watchlist.all()).forEach(q => rows.push([q.sym, q.name, q.last, q.chg, q.pct.toFixed(2), q.volume]));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'watchlist.csv'; a.click();
+    URL.revokeObjectURL(url); UI.toast('CSV exported');
+  };
+
+  window.addEventListener('iv:watchlist', draw);
+  Market.subscribe(() => { paintSummary(); paintAlerts(); });
+  draw(); paintAlerts();
+})();
+</script>
+</body>
+</html>
