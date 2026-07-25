@@ -2,29 +2,33 @@
  * terminal.css — the workspace. Amber-on-black, dense, keyboard-first.
  * ========================================================================== */
 
+/* Palette follows the reference terminal: pure black ground, Sunshade amber as
+   the primary ink, deep blue panel headers and the function-key bar, saturated
+   green/red for the tape. */
 .term {
-  --t-bg: #050505;
-  --t-panel: #0b0b0c;
-  --t-rule: #262622;
-  --t-amber: #ffb000;
-  --t-amber-dim: #a97400;
-  --t-white: #e8e8e4;
-  --t-cyan: #4ec9e8;
-  --t-green: #2ee06a;
-  --t-red: #ff4d43;
-  --t-blue: #3b6fd4;
-  --up: #2ee06a;
-  --down: #ff4d43;
-  --chart-line: #ffb000;
-  --chart-grid: rgba(255, 176, 0, .12);
-  --chart-axis: rgba(255, 176, 0, .5);
-  --chart-text: #a97400;
-  --chart-cross: rgba(255, 255, 255, .5);
-  --hm-flat: #333;
+  --t-bg: #000000;
+  --t-panel: #050505;
+  --t-rule: #2a2a24;
+  --t-amber: #ffa028;
+  --t-amber-dim: #b06f12;
+  --t-white: #f0f0ea;
+  --t-cyan: #4fd2ff;
+  --t-green: #2fe36c;
+  --t-red: #ff3b30;
+  --t-blue: #002d72;
+  --t-blue-lite: #1d54b8;
+  --up: #2fe36c;
+  --down: #ff3b30;
+  --chart-line: #ffa028;
+  --chart-grid: rgba(255, 160, 40, .13);
+  --chart-axis: rgba(255, 160, 40, .55);
+  --chart-text: #b06f12;
+  --chart-cross: rgba(255, 255, 255, .55);
+  --hm-flat: #2c2c2c;
 
   background: var(--t-bg);
   color: var(--t-white);
-  font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace);
+  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px;
   height: 100vh;
   overflow: hidden;
@@ -52,14 +56,22 @@
 .t-cmd { display: flex; align-items: center; gap: 8px; }
 .t-cmd .prompt { color: var(--t-amber); font-weight: 700; }
 .t-cmd input {
-  flex: 1; background: #111; border: 1px solid var(--t-rule); color: var(--t-amber);
-  font: inherit; padding: 6px 9px; text-transform: uppercase; letter-spacing: .06em;
+  flex: 1; background: #0a0a0a; border: 1px solid var(--t-rule); color: var(--t-amber);
+  font: inherit; padding: 6px 9px; text-transform: uppercase; letter-spacing: .08em;
+  caret-color: var(--t-amber);
 }
-.t-cmd input:focus { outline: 1px solid var(--t-amber); }
+.t-cmd input:focus { outline: 1px solid var(--t-amber); background: #101008; }
+/* blinking block cursor at the prompt, terminal-style */
+.t-cmd .prompt::after {
+  content: '█'; margin-left: 2px; color: var(--t-amber); animation: t-blink 1.06s steps(1) infinite;
+}
+@keyframes t-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 .t-go {
-  background: var(--t-amber); color: #000; border: 0; font-weight: 800; padding: 6px 12px;
-  letter-spacing: .06em;
+  background: var(--t-amber); color: #000; border: 0; font-weight: 700; padding: 6px 12px;
+  letter-spacing: .08em;
+  transition: background 120ms linear;
 }
+.t-go:hover { background: #ffb95c; }
 .t-ac {
   position: absolute; left: 90px; right: 10px; top: 100%; z-index: 40;
   background: #0d0d0c; border: 1px solid var(--t-rule); max-height: 300px; overflow: auto; display: none;
@@ -89,12 +101,16 @@
   min-height: 0; overflow: hidden;
 }
 .t-panel.focus { border-color: var(--t-amber); }
+.t-panel { animation: t-panel-in 220ms cubic-bezier(.22,.61,.36,1) both; }
+@keyframes t-panel-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* deep-blue title bar with amber function code */
 .t-head {
   display: flex; align-items: center; gap: 8px; padding: 4px 8px;
-  background: #141410; border-bottom: 1px solid var(--t-rule); font-size: 11.5px;
+  background: var(--t-blue); border-bottom: 1px solid #0b1f47; font-size: 11.5px;
 }
-.t-head .fn { color: #000; background: var(--t-amber); padding: 0 6px; font-weight: 800; letter-spacing: .06em; }
-.t-head .ttl { color: var(--t-white); text-transform: uppercase; letter-spacing: .05em; }
+.t-panel.focus .t-head { background: var(--t-blue-lite); }
+.t-head .fn { color: #000; background: var(--t-amber); padding: 0 6px; font-weight: 700; letter-spacing: .08em; }
+.t-head .ttl { color: var(--t-amber); text-transform: uppercase; letter-spacing: .06em; }
 .t-head .sp { margin-left: auto; display: flex; gap: 6px; }
 .t-head button { background: transparent; border: 1px solid var(--t-rule); color: #8b8b85; font-size: 10px; padding: 1px 6px; }
 .t-head button:hover { color: var(--t-amber); border-color: var(--t-amber); }
@@ -105,11 +121,16 @@
 /* ---------------------------------------------------------- table/prims -- */
 .t-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
 .t-tbl th {
-  text-align: right; color: var(--t-amber-dim); font-weight: 600; padding: 3px 6px;
-  border-bottom: 1px solid var(--t-rule); position: sticky; top: 0; background: var(--t-panel);
-  text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+  text-align: right; color: var(--t-amber); font-weight: 500; padding: 3px 6px;
+  border-bottom: 1px solid var(--t-amber-dim); position: sticky; top: 0; background: var(--t-panel);
+  text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; font-size: 10.5px;
 }
-.t-tbl td { text-align: right; padding: 2px 6px; white-space: nowrap; border-bottom: 1px solid #16160f; }
+.t-tbl td { text-align: right; padding: 2px 6px; white-space: nowrap; border-bottom: 1px solid #14140e; }
+/* cell-level tick flash */
+.t-flash-up { animation: tfu 520ms linear; }
+.t-flash-dn { animation: tfd 520ms linear; }
+@keyframes tfu { 0% { background: var(--t-green); color: #000; } 100% { background: transparent; } }
+@keyframes tfd { 0% { background: var(--t-red); color: #000; } 100% { background: transparent; } }
 .t-tbl th:first-child, .t-tbl td:first-child { text-align: left; }
 .t-tbl tr:hover td { background: #1a1a14; }
 .t-tbl .sym { color: var(--t-amber); font-weight: 700; }
@@ -149,10 +170,10 @@
   overflow-x: auto;
 }
 .t-fkeys button {
-  background: #16160f; border: 1px solid var(--t-rule); color: #c9c9c2; font-size: 10.5px;
-  padding: 3px 9px; white-space: nowrap;
+  background: var(--t-blue); border: 1px solid #0b1f47; color: #dfe6f5; font-size: 10.5px;
+  padding: 3px 9px; white-space: nowrap; transition: background 120ms linear;
 }
-.t-fkeys button:hover { border-color: var(--t-amber); color: var(--t-amber); }
+.t-fkeys button:hover { background: var(--t-blue-lite); color: #fff; }
 .t-fkeys button b { color: var(--t-amber); }
 .t-foot {
   display: flex; gap: 16px; padding: 3px 10px; background: #000; color: #6d6d68;

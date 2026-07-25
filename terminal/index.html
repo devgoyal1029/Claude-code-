@@ -125,13 +125,26 @@
   }
   drawStrip();
   window.addEventListener('resize', debounce(drawStrip, 250));
-  Market.subscribe(() => {
+  const sparkSign = {};
+  Market.subscribe((touched) => {
+    const moved = new Set(touched.map(q => q.sym));
     $('#mktHero').querySelectorAll('.mkt-cell').forEach(cell => {
       const q = Market.quote(cell.dataset.c);
-      cell.querySelector('[data-f="px"]').textContent = UI.fmt(q.last, q.decimals);
+      const px = cell.querySelector('[data-f="px"]');
+      px.textContent = UI.fmt(q.last, q.decimals);
       const ch = cell.querySelector('[data-f="ch"]');
       ch.textContent = `${UI.signed(q.chg, q.decimals)} (${UI.pctStr(q.pct)})`;
       ch.className = 'ch ' + UI.cls(q.pct);
+      if (moved.has(q.sym)) UI.flash(px, q.dir, 'px-roll', 'px-roll');
+      // repaint the sparkline only when the day flips sign, so its colour
+      // never contradicts the change figure next to it
+      const sign = q.pct >= 0 ? 1 : -1;
+      if (sparkSign[q.sym] !== sign) {
+        sparkSign[q.sym] = sign;
+        const P = Charts.palette(cell);
+        Charts.spark(cell.querySelector('canvas'), Market.history(q.sym, '1D').map(b => b.c),
+          { w: cell.clientWidth - 28, h: 26, color: sign > 0 ? P.up : P.down });
+      }
     });
   });
 

@@ -148,10 +148,21 @@
   const status = (m) => { $('#footMsg').textContent = m; };
 
   /* ============================================================ functions */
+  /* Repaints on every tick; the Last cell of a row whose price actually moved
+     gets a one-shot green/red flash, the way a live monitor behaves. */
   const liveTable = (getRows, cols) => (body) => {
+    const prev = new Map();
     const paint = () => {
+      const rows = getRows();
       body.innerHTML = `<table class="t-tbl"><thead><tr>${cols.map(c => `<th>${c.h}</th>`).join('')}</tr></thead>
-        <tbody>${getRows().map(r => `<tr data-s="${esc(r.sym || '')}">${cols.map(c => `<td class="${c.cls ? c.cls(r) : ''}">${c.v(r)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+        <tbody>${rows.map(r => {
+          const before = prev.get(r.sym);
+          const moved = before != null && r.last != null && before !== r.last;
+          const fl = moved ? (r.last > before ? ' t-flash-up' : ' t-flash-dn') : '';
+          return `<tr data-s="${esc(r.sym || '')}">${cols.map((c, i) =>
+            `<td class="${c.cls ? c.cls(r) : ''}${c.h === 'Last' ? fl : ''}">${c.v(r)}</td>`).join('')}</tr>`;
+        }).join('')}</tbody></table>`;
+      rows.forEach(r => prev.set(r.sym, r.last));
       body.querySelectorAll('tr[data-s]').forEach(tr => tr.onclick = () => { if (tr.dataset.s) run(tr.dataset.s + ' DES'); });
     };
     paint();

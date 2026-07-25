@@ -278,9 +278,9 @@
   Market.subscribe((touched) => {
     if (!touched.some(t => t.sym === sym)) return;
     paintHead(); paintStats();
-    const px = $('#qPx');
-    px.classList.remove('flash-up', 'flash-down'); void px.offsetWidth;
-    px.classList.add(q.dir > 0 ? 'flash-up' : 'flash-down');
+    // the big number slides rather than washing, and the change block flashes
+    UI.flash($('#qPx'), q.dir, 'px-roll', 'px-roll');
+    UI.flash($('#qChg'), q.dir);
     if (range === '1D') chart.draw();
   });
 

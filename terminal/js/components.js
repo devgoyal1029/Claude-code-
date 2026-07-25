@@ -101,6 +101,44 @@
     }
   };
 
+  /* ------------------------------------------------------------- motion --- */
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Restart-safe flash: strip the class, force reflow, re-add. */
+  function flash(el, dir, upClass, downClass) {
+    if (!el || reduced()) return;
+    const u = upClass || 'flash-up', d = downClass || 'flash-down';
+    el.classList.remove(u, d);
+    void el.offsetWidth;
+    el.classList.add(dir > 0 ? u : d);
+  }
+
+  /* Stagger the first paint of each block so the page assembles rather than
+     appearing all at once. */
+  function revealOnLoad() {
+    if (reduced()) return;
+    const blocks = document.querySelectorAll('main > .wrap > section, main .layout > div > section, main .layout > .rail > section, .lead, .strip');
+    blocks.forEach((el, i) => {
+      if (i > 11) return;
+      el.style.animationDelay = (i * 45) + 'ms';
+      el.classList.add('reveal');
+    });
+  }
+
+  /* Masthead condenses once the page scrolls, and hides the mega menu. */
+  function pinHeader() {
+    const bar = document.querySelector('.topbar');
+    if (!bar) return;
+    let last = -1;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const pinned = y > 24;
+      if (pinned !== (last === 1)) { bar.classList.toggle('pinned', pinned); last = pinned ? 1 : 0; }
+    };
+    onScroll();
+    addEventListener('scroll', onScroll, { passive: true });
+  }
+
   /* --------------------------------------------------------------- toasts -- */
   function toast(msg, ms) {
     let host = document.querySelector('.toasts');
@@ -136,7 +174,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu">${icon('menu')}</button>
-    <a class="brand" href="index.html"><span class="brand-mark">${esc(b.mark)}</span>${esc(b.name)}</a>
+    <a class="brand" href="index.html">${esc(b.name)}</a>
     <nav class="topnav" id="topnav">
       ${nav}
       <a href="terminal.html" class="${active === 'terminal' ? 'active' : ''}">Terminal</a>
@@ -149,7 +187,7 @@
       <button class="icon-btn" id="themeBtn" title="Theme">${icon('moon')}</button>
       <a class="icon-btn" id="wlTopBtn" href="watchlist.html" title="Watchlist">${icon('star')}</a>
       <button class="btn btn-sm btn-sub" id="subBtn">${Paywall.isSubscriber() ? 'Account' : 'Subscribe'}</button>
-      <button class="btn btn-sm btn-ghost" id="signBtn" style="color:#ddd;border-color:#555">Sign In</button>
+      <button class="btn btn-sm btn-ghost" id="signBtn">Sign In</button>
     </div>
   </div>
   <div class="mega" id="mega">
@@ -234,13 +272,15 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
     const tape = document.getElementById('tape');
     tape.addEventListener('mouseenter', () => tape.classList.add('paused'));
     tape.addEventListener('mouseleave', () => tape.classList.remove('paused'));
-    Market.subscribe(() => {
+    Market.subscribe((touched) => {
+      const moved = new Set(touched.map(q => q.sym));
       track.querySelectorAll('[data-tsym]').forEach(el => {
         const q = Market.quote(el.dataset.tsym); if (!q) return;
         el.querySelector('.t-px').textContent = fmt(q.last, q.decimals);
         const c = el.querySelector('.t-chg');
         c.textContent = pctStr(q.pct);
         c.className = 't-chg ' + cls(q.pct);
+        if (moved.has(q.sym)) flash(el, q.dir);   // whole cell pulses like a blotter
       });
     });
   }
@@ -498,12 +538,7 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
         set('low', fmt(q.low, q.decimals));
         set('volume', abbr(q.volume));
         set('time', clockStr(q.ts));
-        const cellEl = tr.querySelector('[data-f="last"]');
-        if (cellEl) {
-          cellEl.classList.remove('flash-up', 'flash-down');
-          void cellEl.offsetWidth;
-          cellEl.classList.add(q.dir > 0 ? 'flash-up' : 'flash-down');
-        }
+        flash(tr.querySelector('[data-f="last"]'), q.dir);
       });
     });
     return { refresh: rows, destroy: unsub };
@@ -545,11 +580,15 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
 
     Market.subscribe(q => Alerts.check(q));
     if (CFG.features.liveTv && LS.get('tvOpen', false)) tvDock();
+
+    pinHeader();
+    revealOnLoad();
   }
 
   window.UI = {
     esc, fmt, signed, pctStr, cls, abbr, timeAgo, clockStr, qhref, ahref,
     mount, card, quoteTable, toast, theme, Watchlist, Alerts, Paywall,
-    searchOverlay, signInOverlay, newsletterOverlay, alertOverlay, tvDock, icon, LS
+    searchOverlay, signInOverlay, newsletterOverlay, alertOverlay, tvDock, icon, LS,
+    flash, reduced
   };
 })();

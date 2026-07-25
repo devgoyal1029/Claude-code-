@@ -19,7 +19,7 @@
   <!-- world indexes ------------------------------------------------------- -->
   <section class="strip">
     <div class="strip-head"><h2>World Indexes</h2><span class="disclaimer" style="margin-left:auto">Click a region to filter</span></div>
-    <div style="display:flex;gap:8px;margin-bottom:12px" id="regionPills">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="regionPills">
       <button class="pill on" data-r="all">All</button>
       <button class="pill" data-r="Americas">Americas</button>
       <button class="pill" data-r="EMEA">EMEA</button>
@@ -129,13 +129,26 @@
     document.querySelectorAll('#regionPills .pill').forEach(x => x.classList.remove('on'));
     b.classList.add('on'); region = b.dataset.r; drawIdx();
   });
-  Market.subscribe(() => document.querySelectorAll('#idxGrid .mkt-cell').forEach(c => {
-    const q = Market.quote(c.dataset.c);
-    c.querySelector('[data-f="px"]').textContent = UI.fmt(q.last, q.decimals);
-    const ch = c.querySelector('[data-f="ch"]');
-    ch.textContent = `${UI.signed(q.chg, q.decimals)} (${UI.pctStr(q.pct)})`;
-    ch.className = 'ch ' + UI.cls(q.pct);
-  }));
+  const sparkSign = {};
+  Market.subscribe((touched) => {
+    const moved = new Set(touched.map(q => q.sym));
+    document.querySelectorAll('#idxGrid .mkt-cell').forEach(c => {
+      const q = Market.quote(c.dataset.c);
+      const px = c.querySelector('[data-f="px"]');
+      px.textContent = UI.fmt(q.last, q.decimals);
+      const ch = c.querySelector('[data-f="ch"]');
+      ch.textContent = `${UI.signed(q.chg, q.decimals)} (${UI.pctStr(q.pct)})`;
+      ch.className = 'ch ' + UI.cls(q.pct);
+      if (moved.has(q.sym)) UI.flash(px, q.dir, 'px-roll', 'px-roll');
+      const sign = q.pct >= 0 ? 1 : -1;
+      if (sparkSign[q.sym] !== sign) {           // keep spark colour honest
+        sparkSign[q.sym] = sign;
+        const P = Charts.palette(c);
+        Charts.spark(c.querySelector('canvas'), Market.history(q.sym, '1D').map(b => b.c),
+          { w: c.clientWidth - 28, h: 30, color: sign > 0 ? P.up : P.down });
+      }
+    });
+  });
 
   /* ---- heat map (sector -> constituents) ---- */
   const hm = $('#heatmap');

@@ -50,17 +50,19 @@ window.IV_CONFIG = {
   },
 
   /* Sections drive the nav, the section pages and the article taxonomy. */
+  /* Kicker colours stay inside the brand family — amber, blue, red, black —
+     rather than a per-section rainbow. */
   sections: [
-    { id: 'markets',    label: 'Markets',    accent: '#0b7' },
-    { id: 'technology', label: 'Technology', accent: '#5b8cff' },
-    { id: 'politics',   label: 'Politics',   accent: '#d9534f' },
-    { id: 'wealth',     label: 'Wealth',     accent: '#c9a227' },
-    { id: 'pursuits',   label: 'Pursuits',   accent: '#b06ab3' },
-    { id: 'opinion',    label: 'Opinion',    accent: '#e2703a' },
-    { id: 'green',      label: 'Green',      accent: '#3aa76d' },
-    { id: 'crypto',     label: 'Crypto',     accent: '#f0932b' },
-    { id: 'cities',     label: 'Cities',     accent: '#4aa3c7' },
-    { id: 'economics',  label: 'Economics',  accent: '#8e8e93' }
+    { id: 'markets',    label: 'Markets',    accent: '#ff7a00' },
+    { id: 'technology', label: 'Technology', accent: '#0068ff' },
+    { id: 'politics',   label: 'Politics',   accent: '#ee1b22' },
+    { id: 'wealth',     label: 'Wealth',     accent: '#000000' },
+    { id: 'pursuits',   label: 'Pursuits',   accent: '#8e5cd9' },
+    { id: 'opinion',    label: 'Opinion',    accent: '#000000' },
+    { id: 'green',      label: 'Green',      accent: '#00a15a' },
+    { id: 'crypto',     label: 'Crypto',     accent: '#ff7a00' },
+    { id: 'cities',     label: 'Cities',     accent: '#0068ff' },
+    { id: 'economics',  label: 'Economics',  accent: '#000000' }
   ],
 
   /* Terminal function codes surfaced in HELP and the command autocomplete. */

@@ -16,6 +16,70 @@ real keys and flip one flag to point the whole thing at a live feed.
 
 ---
 
+## Design system
+
+**Colour.** The reference brand spine is Black `#000000`, White `#FFFFFF` and
+Sunshade amber `#FFA028`; everything else derives from it. Tokens live at the
+top of `css/site.css`:
+
+| token | light | role |
+|---|---|---|
+| `--amber` / `--amber-deep` | `#ffa028` / `#ff7a00` | kickers, rail numerals, hovers, accents |
+| `--ink` / `--bg` | `#000000` / `#ffffff` | text and ground |
+| `--rule` / `--rule-strong` | `#e0e0e0` / `#000000` | hairlines and section rules |
+| `--up` / `--down` | `#00a15a` / `#ee1b22` | market direction |
+| `--brand-blue` | `#0068ff` | section kickers, chart series |
+
+Section kickers are restricted to amber / blue / red / black rather than a
+per-section rainbow — see `sections[].accent` in `js/config.js`.
+
+Terminal palette (`css/terminal.css`): black ground, amber `#ffa028` as primary
+ink, deep blue `#002d72` panel headers and function-key bar, `#2fe36c` /
+`#ff3b30` tape, cyan links.
+
+**Type.** Two roles, driven by `--display` and `--ui`:
+
+- **Display** (headlines, wordmark, page titles): a heavy, tightly-tracked
+  grotesque — nothing on this site is serif. Stack:
+  `BW Haas Grotesk Display → Neue Haas Grotesk Display Pro → Archivo → Helvetica Neue`
+- **UI / body** (decks, bylines, labels, tables): a geometric sans. Stack:
+  `AvenirNext for BBG → Avenir Next → Avenir → Nunito Sans`
+- **Numbers** (every price, every table cell): `Roboto Mono`, tabular figures.
+
+The first two entries in each stack are the reference product's own licensed
+faces. They are **not shipped** — they are proprietary and cannot be
+redistributed. Two consequences:
+
+1. If you have them installed locally, you already get them.
+2. To self-host them, drop the `.woff2` files into `fonts/` using the names in
+   the commented `@font-face` block at the top of `css/site.css` and uncomment
+   it. Nothing else changes.
+
+Until then the site uses bundled, self-hosted, SIL OFL substitutes chosen for
+closeness — **Archivo** (display), **Nunito Sans** (UI), **Roboto Mono**
+(numbers) — so the rendering is identical on every machine instead of falling
+back to Arial on Windows. Licenses are in `fonts/`.
+
+**Motion.** Real animation, no library:
+
+| behaviour | where |
+|---|---|
+| Masthead condenses (height + wordmark scale) past 24px of scroll | `.topbar.pinned`, `pinHeader()` |
+| Continuous marquee ticker, pauses on hover, ▲▼ glyphs | `@keyframes tape-scroll`, `.t-chg.up::before` |
+| Price flash: solid green/red → wash → clear, per updated cell | `@keyframes fl-up` / `fl-dn`, `UI.flash()` |
+| Big quote number slides in on each tick instead of flashing | `@keyframes px-in` / `.px-roll` |
+| Headline underline fades in on card hover; image scales 1.035 | `.card:hover` |
+| Nav underline wipes in from the left | `.topnav a::after` |
+| Mega menu fades and drops on hover intent | `.mega.open` |
+| Staggered section reveal on load (45ms apart) | `.reveal`, `revealOnLoad()` |
+| Live dot emits an expanding ring | `@keyframes ring` |
+| Wire lines slide in as they arrive; skeleton shimmer for pending data | `@keyframes wire-in` / `shimmer` |
+| Terminal: blinking block cursor, panel fade-in, per-cell tick flash | `@keyframes t-blink`, `t-panel-in`, `tfu` / `tfd` |
+| Toasts slide in from the right; sheets scale up behind a fade | `@keyframes toast-in` / `sheet-in` |
+
+Everything above collapses under `@media (prefers-reduced-motion: reduce)`, and
+`UI.reduced()` gates the JS-driven pieces.
+
 ## Run it
 
 Any static server works — there is no compile step.
@@ -92,8 +156,9 @@ screenshots and demos are reproducible.
 ```
 terminal/
 ├── index.html … search.html      12 pages, each with its own inline page script
-├── css/site.css                  tokens, light/dark themes, news site, responsive
+├── css/site.css                  tokens, type, animations, light/dark, responsive
 ├── css/terminal.css              the amber-on-black workspace
+├── fonts/                        self-hosted OFL webfonts + licenses
 ├── js/config.js                  brand, feature flags, API keys, endpoints, functions
 ├── js/data.js                    universe (60 securities), 36 stories, wire, media, calendars
 ├── js/market.js                  tick engine, history, depth, fundamentals, movers, search
@@ -117,8 +182,8 @@ search, chart controls, theme persistence and the heat map drill-in.
 
 ## Notable implementation details
 
-- **No dependencies.** Charts, layout, routing and state are hand-rolled; the
-  pages work offline and over `file://`.
+- **No dependencies and no external requests.** Charts, layout, routing, state
+  and fonts are all local; the pages work offline and over `file://`.
 - **Images** are procedurally generated SVG data URIs seeded per article id, so
   there are no image requests and thumbnails stay stable between loads.
 - **Theming** is CSS custom properties end to end — the canvas engine reads the
