@@ -1,0 +1,1065 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fund Analyzer — InvestVerdict</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#F8FAFC; --surface:#FFFFFF;
+  --navy:#0B1F3A; --navy-mid:#122847; --navy-dark:#061029;
+  --gold:#C9A961; --gold-bright:#E0C07A; --gold-deep:#8B6F2F; --gold-soft:rgba(201,169,97,0.12);
+  --primary:#059669; --primary-deep:#047857; --primary-light:#D1FAE5; --primary-soft:#ECFDF5;
+  --text:#0F172A; --muted:#64748B; --border:#E2E8F0; --border-soft:#F1F5F9;
+  --amber:#F59E0B; --amber-bg:#FFFBEB; --red:#DC2626; --red-bg:#FEF2F2;
+  --blue:#2563EB; --purple:#7C3AED;
+  --r:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+  --shadow-sm:0 1px 3px rgba(15,23,42,.05);
+  --shadow:0 4px 16px rgba(15,23,42,.07);
+  --shadow-lg:0 12px 40px rgba(15,23,42,.10);
+  --font:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'DM Mono','SF Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);
+     font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.02em}
+a{color:var(--blue);text-decoration:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+
+/* ---------- header + search ---------- */
+header{background:linear-gradient(135deg,var(--navy-dark),var(--navy-mid));color:#fff;
+       padding:28px 0 72px;position:relative}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:-.01em}
+.brand i{width:22px;height:22px;border-radius:6px;display:inline-block;
+         background:linear-gradient(135deg,var(--gold-bright),var(--gold-deep))}
+header h1{font-size:26px;margin:22px 0 6px}
+header p{margin:0;color:rgba(255,255,255,.62);font-size:13.5px;max-width:620px}
+
+.searchbox{position:relative;margin-top:22px;max-width:680px}
+.searchbox input{width:100%;padding:15px 17px;border-radius:var(--r-md);border:1px solid transparent;
+  background:rgba(255,255,255,.97);font-family:var(--font);font-size:15px;color:var(--text);
+  box-shadow:var(--shadow-lg);outline:none}
+.searchbox input:focus{border-color:var(--gold)}
+.results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
+  border-radius:var(--r-md);box-shadow:var(--shadow-lg);max-height:420px;overflow-y:auto;
+  z-index:40;display:none;border:1px solid var(--border)}
+.results.on{display:block}
+.res{padding:11px 15px;cursor:pointer;border-bottom:1px solid var(--border-soft);display:flex;
+     gap:10px;align-items:flex-start}
+.res:last-child{border-bottom:0}
+.res:hover,.res.sel{background:var(--primary-soft)}
+.res .nm{font-weight:600;font-size:13.5px;line-height:1.35}
+.res .sub{color:var(--muted);font-size:11.5px;margin-top:2px}
+.res .rt{margin-left:auto;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.pill{font-size:10px;font-weight:700;padding:2.5px 7px;border-radius:99px;letter-spacing:.02em;
+      text-transform:uppercase;white-space:nowrap}
+.pill.ok{background:var(--primary-light);color:var(--primary-deep)}
+.pill.no{background:var(--border-soft);color:var(--muted)}
+.pill.gold{background:var(--gold-soft);color:var(--gold-deep)}
+
+/* ---------- layout ---------- */
+main{margin-top:-46px;padding-bottom:64px}
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);
+      border:1px solid var(--border);padding:22px;margin-bottom:18px}
+.card h2{font-size:15px;margin-bottom:3px}
+.card .hint{color:var(--muted);font-size:12px;margin-bottom:16px}
+.row{display:grid;gap:18px}
+@media(min-width:900px){.row.two{grid-template-columns:1fr 1fr}}
+
+/* ---------- fund header ---------- */
+.fhead{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.fhead .t{flex:1;min-width:260px}
+.fhead h2{font-size:20px;line-height:1.3}
+.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.navbox{text-align:right;min-width:150px}
+.navbox .v{font-size:30px;font-weight:800;letter-spacing:-.03em;font-family:var(--mono)}
+.navbox .d{color:var(--muted);font-size:11.5px;margin-top:2px}
+.chg{font-weight:700;font-size:13px;font-family:var(--mono)}
+.up{color:var(--primary)} .down{color:var(--red)} .flat{color:var(--muted)}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto}
+.tab{padding:10px 15px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);
+     border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--navy);border-bottom-color:var(--gold)}
+.pane{display:none} .pane.on{display:block}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:11px}
+.tile{background:var(--bg);border-radius:var(--r-md);padding:13px 14px;border:1px solid var(--border-soft)}
+.tile .k{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:19px;font-weight:700;margin-top:5px;font-family:var(--mono);letter-spacing:-.02em}
+.tile .s{color:var(--muted);font-size:11px;margin-top:2px}
+
+/* ---------- chart ---------- */
+.chartwrap{position:relative}
+.rangebar{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+.rg{padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface);
+    cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);font-family:var(--font)}
+.rg:hover{border-color:var(--gold)}
+.rg.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+svg.chart{width:100%;height:280px;display:block;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--navy);color:#fff;padding:7px 10px;
+     border-radius:var(--r);font-size:11.5px;white-space:nowrap;opacity:0;transition:opacity .12s;
+     z-index:10;box-shadow:var(--shadow)}
+.tip .tv{font-family:var(--mono);font-weight:700}
+
+/* ---------- bars ---------- */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:4px}
+.bar .lbl{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .pc{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
+.bar .tr{grid-column:1/-1;height:7px;background:var(--border-soft);border-radius:99px;overflow:hidden}
+.bar .fl{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* ---------- table ---------- */
+.tblwrap{overflow-x:auto;margin:0 -22px;padding:0 22px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+   font-weight:700;padding:9px 11px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 11px;border-bottom:1px solid var(--border-soft)}
+tbody tr:hover{background:var(--bg)}
+td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+th.n{text-align:right}
+.lnk{cursor:pointer;color:var(--blue);font-weight:600}
+.lnk:hover{text-decoration:underline}
+
+/* ---------- misc ---------- */
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
+.note{background:var(--amber-bg);border:1px solid #FDE68A;border-radius:var(--r-md);
+      padding:11px 14px;font-size:12.5px;color:#92400E;margin-bottom:16px}
+.note.err{background:var(--red-bg);border-color:#FECACA;color:#991B1B}
+.spin{width:17px;height:17px;border:2px solid var(--border);border-top-color:var(--gold);
+      border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.cmp{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.cmp input{flex:1;min-width:220px;padding:10px 13px;border-radius:var(--r);border:1px solid var(--border);
+  font-family:var(--font);font-size:13.5px;outline:none}
+.cmp input:focus{border-color:var(--gold)}
+.drawer{position:fixed;inset:0;background:rgba(11,31,58,.45);z-index:60;display:none;
+        align-items:flex-end;justify-content:center}
+.drawer.on{display:flex}
+.drawer .inner{background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;width:100%;
+  max-width:760px;max-height:82vh;overflow-y:auto;padding:24px}
+@media(min-width:700px){.drawer{align-items:center}
+  .drawer .inner{border-radius:var(--r-xl);max-height:78vh}}
+.dclose{float:right;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-weight:300}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><i></i> InvestVerdict</div>
+    <h1>Fund Analyzer</h1>
+    <p>Search any AMFI-registered scheme for live NAV, returns and risk. Schemes with a
+       disclosed portfolio also carry full holdings analytics.</p>
+    <div class="searchbox">
+      <input id="q" type="text" placeholder="Search a fund — e.g. flexi cap, corporate bond, nifty 50"
+             autocomplete="off" spellcheck="false">
+      <div class="results" id="res"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="boot" class="card">
+    <div class="empty">
+      <b>Start by searching a fund</b>
+      Type at least two characters. Funds marked <span class="pill ok">Portfolio</span>
+      have holdings loaded.
+    </div>
+  </div>
+  <div id="app" style="display:none"></div>
+</main>
+
+<div class="drawer" id="drawer"><div class="inner" id="drawerBody"></div></div>
+
+<script>
+/* ==========================================================================
+   CONFIG  —  paste the ANON key, never the service_role key.
+   This file ships to the browser; anything in it is public.
+   Supabase → Project Settings → API Keys → anon / public
+   ========================================================================== */
+const SUPABASE_URL = "https://ulunrpbayvlazzxpqrpj.supabase.co";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE";
+
+const MFAPI = "https://api.mfapi.in/mf/";   // NAV history, keyed by AMFI scheme_code
+const RISK_FREE = 6.5;                       // % p.a., used for Sharpe / Sortino
+const TRADING_DAYS = 252;
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t);
+  if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+const fmt = (n, d = 2) => n == null || !isFinite(n) ? "—"
+  : Number(n).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (n, d = 2) => n == null || !isFinite(n) ? "—" : fmt(n, d) + "%";
+const sign = n => n == null || !isFinite(n) ? "flat" : n > 0.0001 ? "up" : n < -0.0001 ? "down" : "flat";
+const signed = (n, d = 2) => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : "") + fmt(n, d) + "%";
+const dstr = d => d instanceof Date && !isNaN(d)
+  ? d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+async function rpc(fn, args) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+               "Content-Type": "application/json" },
+    body: JSON.stringify(args || {})
+  });
+  if (!r.ok) throw new Error(`${fn}: ${r.status} ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+
+/* ==========================================================================
+   NAV history — api.mfapi.in, fetched in the browser.
+   Response: { meta:{...}, data:[{date:"DD-MM-YYYY", nav:"107.65"}, ...] }
+   Newest first, so it gets reversed into chronological order.
+   ========================================================================== */
+async function loadNav(code) {
+  const r = await fetch(MFAPI + encodeURIComponent(code));
+  if (!r.ok) throw new Error("mfapi " + r.status);
+  const j = await r.json();
+  if (!j || !Array.isArray(j.data)) throw new Error("mfapi: unexpected shape");
+  const series = j.data.map(d => {
+    const [dd, mm, yy] = String(d.date).split("-");
+    return { t: new Date(+yy, +mm - 1, +dd), v: parseFloat(d.nav) };
+  }).filter(p => p.t instanceof Date && !isNaN(p.t) && isFinite(p.v) && p.v > 0)
+    .sort((a, b) => a.t - b.t);
+  return { meta: j.meta || {}, series };
+}
+
+const addM = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
+const addY = (d, n) => { const x = new Date(d); x.setFullYear(x.getFullYear() + n); return x; };
+
+/* last observation on or before `target` — binary search, series is sorted */
+function navOn(series, target) {
+  let lo = 0, hi = series.length - 1, out = null;
+  while (lo <= hi) { const m = (lo + hi) >> 1;
+    if (series[m].t <= target) { out = series[m]; lo = m + 1; } else hi = m - 1; }
+  return out;
+}
+
+const PERIODS = [
+  ["1M", d => addM(d, -1)], ["3M", d => addM(d, -3)], ["6M", d => addM(d, -6)],
+  ["YTD", d => new Date(d.getFullYear(), 0, 1)],
+  ["1Y", d => addY(d, -1)], ["3Y", d => addY(d, -3)],
+  ["5Y", d => addY(d, -5)], ["10Y", d => addY(d, -10)]
+];
+
+/* Returns beyond a year are annualised (CAGR); shorter ones stay absolute.
+   Quoting an absolute 3-year number next to a 1-year one would flatter the
+   longer period for no reason other than elapsed time. */
+function returns(series) {
+  if (!series.length) return [];
+  const last = series[series.length - 1], first = series[0];
+  const out = [];
+  for (const [name, back] of PERIODS) {
+    const target = back(last.t);
+    if (target < first.t) continue;
+    const base = navOn(series, target);
+    if (!base || !base.v) continue;
+    const days = (last.t - base.t) / 864e5;
+    const abs = (last.v / base.v - 1) * 100;
+    const ann = days > 400 ? (Math.pow(last.v / base.v, 365.25 / days) - 1) * 100 : null;
+    out.push({ name, abs, ann, from: base.t, days });
+  }
+  const days = (last.t - first.t) / 864e5;
+  if (days > 30) out.push({ name: "Since inception",
+    abs: (last.v / first.v - 1) * 100,
+    ann: days > 400 ? (Math.pow(last.v / first.v, 365.25 / days) - 1) * 100 : null,
+    from: first.t, days });
+  return out;
+}
+
+/* Risk over a trailing window. Daily NAV only lands on business days, so the
+   annualisation factor is 252, not 365. */
+function risk(series, years = 3) {
+  if (series.length < 30) return null;
+  const end = series[series.length - 1].t;
+  const s = series.filter(p => p.t >= addY(end, -years));
+  if (s.length < 30) return null;
+
+  const r = [];
+  for (let i = 1; i < s.length; i++) {
+    if (s[i - 1].v > 0) r.push(s[i].v / s[i - 1].v - 1);
+  }
+  if (r.length < 20) return null;
+
+  const mean = r.reduce((a, b) => a + b, 0) / r.length;
+  const varc = r.reduce((a, b) => a + (b - mean) ** 2, 0) / (r.length - 1);
+  const vol = Math.sqrt(varc * TRADING_DAYS) * 100;
+
+  const down = r.filter(x => x < 0);
+  const dvar = down.length
+    ? down.reduce((a, b) => a + b * b, 0) / down.length : 0;
+  const dvol = Math.sqrt(dvar * TRADING_DAYS) * 100;
+
+  const days = (s[s.length - 1].t - s[0].t) / 864e5;
+  const cagr = (Math.pow(s[s.length - 1].v / s[0].v, 365.25 / days) - 1) * 100;
+
+  let peak = -Infinity, mdd = 0, mddAt = null;
+  for (const p of s) {
+    if (p.v > peak) peak = p.v;
+    const dd = p.v / peak - 1;
+    if (dd < mdd) { mdd = dd; mddAt = p.t; }
+  }
+
+  return {
+    years, cagr, vol,
+    sharpe:  vol  > 0 ? (cagr - RISK_FREE) / vol  : null,
+    sortino: dvol > 0 ? (cagr - RISK_FREE) / dvol : null,
+    maxdd: mdd * 100, maxddAt: mddAt,
+    best: Math.max(...r) * 100, worst: Math.min(...r) * 100,
+    posDays: r.filter(x => x > 0).length / r.length * 100,
+    obs: r.length
+  };
+}
+
+/* ==========================================================================
+   Charts — inline SVG, no libraries
+   ========================================================================== */
+const NS = "http://www.w3.org/2000/svg";
+const mk = (t, a) => { const n = document.createElementNS(NS, t);
+  for (const k in a) n.setAttribute(k, a[k]); return n; };
+
+function lineChart(host, series) {
+  host.innerHTML = "";
+  if (series.length < 2) { host.appendChild(el("div", "empty", "Not enough data to plot")); return; }
+
+  const wrap = el("div", "chartwrap");
+  const W = 1000, H = 280, P = { t: 14, r: 54, b: 26, l: 8 };
+  const svg = mk("svg", { class: "chart", viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none" });
+
+  const xs = series.map(p => +p.t), ys = series.map(p => p.v);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = (y1 - y0) * 0.12 || y1 * 0.02 || 1;
+  y0 -= pad; y1 += pad;
+
+  const X = v => P.l + (v - x0) / (x1 - x0 || 1) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - y0) / (y1 - y0 || 1)) * (H - P.t - P.b);
+
+  /* gridlines + right-hand axis */
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = Y(v);
+    svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: y, y2: y,
+      stroke: "#E2E8F0", "stroke-width": 1, "stroke-dasharray": i ? "3 4" : "0" }));
+    const tx = mk("text", { x: W - P.r + 8, y: y + 4, fill: "#64748B",
+      "font-size": 11, "font-family": "DM Mono, monospace" });
+    tx.textContent = v >= 1000 ? Math.round(v).toLocaleString("en-IN") : v.toFixed(1);
+    svg.appendChild(tx);
+  }
+
+  const d = series.map((p, i) => `${i ? "L" : "M"}${X(+p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join("");
+  const gain = series[series.length - 1].v >= series[0].v;
+  const col = gain ? "#059669" : "#DC2626";
+
+  const gid = "g" + Math.random().toString(36).slice(2, 8);
+  const grad = mk("linearGradient", { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.appendChild(mk("stop", { offset: "0%",   "stop-color": col, "stop-opacity": .18 }));
+  grad.appendChild(mk("stop", { offset: "100%", "stop-color": col, "stop-opacity": 0 }));
+  const defs = mk("defs"); defs.appendChild(grad); svg.appendChild(defs);
+
+  svg.appendChild(mk("path", { d: `${d}L${X(x1)},${Y(y0)}L${X(x0)},${Y(y0)}Z`, fill: `url(#${gid})` }));
+  svg.appendChild(mk("path", { d, fill: "none", stroke: col, "stroke-width": 2,
+    "stroke-linejoin": "round", "stroke-linecap": "round",
+    "vector-effect": "non-scaling-stroke" }));
+
+  /* date ticks */
+  [0, .25, .5, .75, 1].forEach(f => {
+    const t = new Date(x0 + (x1 - x0) * f);
+    const tx = mk("text", { x: X(+t), y: H - 6, fill: "#94A3B8", "font-size": 11,
+      "text-anchor": f === 0 ? "start" : f === 1 ? "end" : "middle" });
+    tx.textContent = t.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    svg.appendChild(tx);
+  });
+
+  const dot = mk("circle", { r: 4, fill: col, stroke: "#fff", "stroke-width": 2, opacity: 0 });
+  const vln = mk("line", { stroke: "#94A3B8", "stroke-width": 1, "stroke-dasharray": "3 3",
+    y1: P.t, y2: H - P.b, opacity: 0 });
+  svg.appendChild(vln); svg.appendChild(dot);
+
+  wrap.appendChild(svg);
+  const tip = el("div", "tip"); wrap.appendChild(tip);
+
+  svg.addEventListener("mousemove", ev => {
+    const box = svg.getBoundingClientRect();
+    const vx = (ev.clientX - box.left) / box.width * W;
+    const tv = x0 + (vx - P.l) / (W - P.l - P.r) * (x1 - x0);
+    let lo = 0, hi = series.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (+series[m].t < tv) lo = m + 1; else hi = m; }
+    const p = series[lo];
+    const px = X(+p.t) / W * box.width, py = Y(p.v) / H * box.height;
+    dot.setAttribute("cx", X(+p.t)); dot.setAttribute("cy", Y(p.v)); dot.setAttribute("opacity", 1);
+    vln.setAttribute("x1", X(+p.t)); vln.setAttribute("x2", X(+p.t)); vln.setAttribute("opacity", 1);
+    tip.innerHTML = `${dstr(p.t)}<br><span class="tv">₹${fmt(p.v, 4)}</span>`;
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(Math.max(px - 55, 0), box.width - 130) + "px";
+    tip.style.top = Math.max(py - 52, 0) + "px";
+  });
+  svg.addEventListener("mouseleave", () => {
+    tip.style.opacity = 0; dot.setAttribute("opacity", 0); vln.setAttribute("opacity", 0);
+  });
+
+  host.appendChild(wrap);
+}
+
+const PALETTE = ["#0B1F3A","#059669","#C9A961","#2563EB","#7C3AED","#F59E0B",
+                 "#DC2626","#0891B2","#DB2777","#65A30D","#475569","#B45309"];
+
+function barList(host, rows, { max = 12, colorFn = null } = {}) {
+  host.innerHTML = "";
+  if (!rows.length) { host.appendChild(el("div", "empty", "No data")); return; }
+  const top = rows.slice(0, max);
+  const rest = rows.slice(max);
+  if (rest.length) {
+    const p = rest.reduce((a, b) => a + Number(b.pct || 0), 0);
+    top.push({ label: `Other (${rest.length})`, pct: p, other: true });
+  }
+  const peak = Math.max(...top.map(r => Math.abs(Number(r.pct) || 0)), 0.01);
+  const box = el("div", "bars");
+  top.forEach((r, i) => {
+    const b = el("div", "bar");
+    b.appendChild(el("div", "lbl", esc(r.label)));
+    b.appendChild(el("div", "pc", pct(Number(r.pct))));
+    const tr = el("div", "tr"), fl = el("div", "fl");
+    fl.style.width = Math.abs(Number(r.pct) || 0) / peak * 100 + "%";
+    fl.style.background = r.other ? "#CBD5E1"
+      : colorFn ? colorFn(r) : PALETTE[i % PALETTE.length];
+    tr.appendChild(fl); b.appendChild(tr); box.appendChild(b);
+  });
+  host.appendChild(box);
+}
+
+function donut(host, rows) {
+  host.innerHTML = "";
+  const data = rows.filter(r => Number(r.pct) > 0);
+  if (!data.length) { host.appendChild(el("div", "empty", "No data")); return; }
+  const total = data.reduce((a, b) => a + Number(b.pct), 0);
+  const S = 200, R = 74, C = 2 * Math.PI * R;
+  const svg = mk("svg", { viewBox: `0 0 ${S} ${S}`, style: "width:180px;height:180px;flex:0 0 auto" });
+  let off = 0;
+  data.forEach((r, i) => {
+    const frac = Number(r.pct) / total;
+    svg.appendChild(mk("circle", { cx: S / 2, cy: S / 2, r: R, fill: "none",
+      stroke: PALETTE[i % PALETTE.length], "stroke-width": 26,
+      "stroke-dasharray": `${(frac * C).toFixed(2)} ${C.toFixed(2)}`,
+      "stroke-dashoffset": (-off * C).toFixed(2),
+      transform: `rotate(-90 ${S / 2} ${S / 2})` }));
+    off += frac;
+  });
+  const t1 = mk("text", { x: S / 2, y: S / 2 - 4, "text-anchor": "middle",
+    "font-size": 25, "font-weight": 700, fill: "#0F172A", "font-family": "DM Mono, monospace" });
+  t1.textContent = data.length;
+  const t2 = mk("text", { x: S / 2, y: S / 2 + 16, "text-anchor": "middle",
+    "font-size": 11, fill: "#64748B", "font-family": "Plus Jakarta Sans, sans-serif" });
+  t2.textContent = "asset types";
+  svg.appendChild(t1); svg.appendChild(t2);
+
+  const legend = el("div", "", "");
+  legend.style.cssText = "flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px";
+  data.forEach((r, i) => {
+    const row = el("div", "", "");
+    row.style.cssText = "display:flex;align-items:center;gap:9px;font-size:12.5px";
+    const sw = el("i"); sw.style.cssText =
+      `width:11px;height:11px;border-radius:3px;flex:0 0 auto;background:${PALETTE[i % PALETTE.length]}`;
+    const nm = el("span", "", esc(r.label)); nm.style.cssText = "flex:1";
+    const vv = el("span", "mono", pct(Number(r.pct))); vv.style.fontWeight = 600;
+    row.append(sw, nm, vv); legend.appendChild(row);
+  });
+
+  const wrap = el("div");
+  wrap.style.cssText = "display:flex;gap:22px;align-items:center;flex-wrap:wrap";
+  wrap.append(svg, legend);
+  host.appendChild(wrap);
+}
+
+/* ==========================================================================
+   Search
+   ========================================================================== */
+let searchTimer = null, cursor = -1, hits = [];
+
+$("#q").addEventListener("input", e => {
+  const q = e.target.value.trim();
+  clearTimeout(searchTimer);
+  if (q.length < 2) { $("#res").classList.remove("on"); return; }
+  searchTimer = setTimeout(() => runSearch(q), 220);
+});
+
+$("#q").addEventListener("keydown", e => {
+  const box = $("#res");
+  if (!box.classList.contains("on")) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); cursor = Math.min(cursor + 1, hits.length - 1); paintCursor(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); cursor = Math.max(cursor - 1, 0); paintCursor(); }
+  else if (e.key === "Enter" && cursor >= 0) { e.preventDefault(); pick(hits[cursor]); }
+  else if (e.key === "Escape") box.classList.remove("on");
+});
+
+function paintCursor() {
+  [...$("#res").children].forEach((n, i) => n.classList.toggle("sel", i === cursor));
+  const n = $("#res").children[cursor];
+  if (n) n.scrollIntoView({ block: "nearest" });
+}
+
+async function runSearch(q) {
+  const box = $("#res");
+  box.innerHTML = `<div class="res"><span class="spin"></span>&nbsp; Searching…</div>`;
+  box.classList.add("on");
+  try {
+    hits = await rpc("search_schemes", { q, lim: 25 });
+    cursor = -1;
+    if (!hits.length) {
+      box.innerHTML = `<div class="res"><div><div class="nm">No match</div>
+        <div class="sub">Try a shorter phrase — "flexi", "bond", "nifty"</div></div></div>`;
+      return;
+    }
+    box.innerHTML = "";
+    hits.forEach((h, i) => {
+      const r = el("div", "res");
+      r.innerHTML = `<div style="flex:1;min-width:0">
+          <div class="nm">${esc(h.scheme_name)}</div>
+          <div class="sub">${esc(h.amc_name || "—")}${h.category ? " · " + esc(h.category) : ""}</div>
+        </div>
+        <div class="rt">
+          <span class="pill ${h.has_holdings ? "ok" : "no"}">${h.has_holdings ? "Portfolio" : "NAV only"}</span>
+          <span class="sub mono">${esc(h.scheme_code)}</span>
+        </div>`;
+      r.onclick = () => pick(h);
+      r.onmouseenter = () => { cursor = i; paintCursor(); };
+      box.appendChild(r);
+    });
+  } catch (err) {
+    box.innerHTML = `<div class="res"><div><div class="nm">Search failed</div>
+      <div class="sub">${esc(err.message)}</div></div></div>`;
+  }
+}
+
+document.addEventListener("click", e => {
+  if (!e.target.closest(".searchbox")) $("#res").classList.remove("on");
+});
+
+/* ==========================================================================
+   Fund page
+   ========================================================================== */
+let CUR = null;
+
+async function pick(hit) {
+  $("#res").classList.remove("on");
+  $("#q").value = hit.scheme_name;
+  $("#boot").style.display = "none";
+  const app = $("#app");
+  app.style.display = "block";
+  app.innerHTML = `<div class="card"><div class="empty"><span class="spin"></span>
+    &nbsp; Loading ${esc(hit.scheme_name)}…</div></div>`;
+
+  CUR = { hit, code: String(hit.scheme_code) };
+
+  /* NAV and holdings are independent — fetch together, let either fail alone */
+  const [navRes, ovRes, mxRes, asRes, seRes, hlRes] = await Promise.allSettled([
+    loadNav(CUR.code),
+    hit.has_holdings ? rpc("fund_overview",   { p_scheme_code: CUR.code }) : Promise.resolve([]),
+    hit.has_holdings ? rpc("holdings_metrics",{ p_scheme_code: CUR.code }) : Promise.resolve([]),
+    hit.has_holdings ? rpc("holdings_assets", { p_scheme_code: CUR.code }) : Promise.resolve([]),
+    hit.has_holdings ? rpc("holdings_sectors",{ p_scheme_code: CUR.code }) : Promise.resolve([]),
+    hit.has_holdings ? rpc("holdings_list",   { p_scheme_code: CUR.code }) : Promise.resolve([])
+  ]);
+
+  const get = r => r.status === "fulfilled" ? r.value : null;
+  CUR.nav      = get(navRes);
+  CUR.navErr   = navRes.status === "rejected" ? navRes.reason.message : null;
+  CUR.overview = (get(ovRes) || [])[0] || null;
+  CUR.metrics  = (get(mxRes) || [])[0] || null;
+  CUR.assets   = get(asRes) || [];
+  CUR.sectors  = get(seRes) || [];
+  CUR.holdings = get(hlRes) || [];
+  CUR.series   = CUR.nav ? CUR.nav.series : [];
+  CUR.returns  = returns(CUR.series);
+  CUR.risk     = risk(CUR.series, 3);
+
+  render();
+}
+
+function render() {
+  const { hit, series, nav, navErr } = CUR;
+  const last = series.length ? series[series.length - 1] : null;
+  const prev = series.length > 1 ? series[series.length - 2] : null;
+  const dayChg = last && prev ? (last.v / prev.v - 1) * 100 : null;
+  const app = $("#app");
+  app.innerHTML = "";
+
+  /* ---- header card ---- */
+  const head = el("div", "card");
+  head.innerHTML = `
+    <div class="fhead">
+      <div class="t">
+        <h2>${esc(hit.scheme_name)}</h2>
+        <div class="meta">
+          <span class="pill gold">${esc(hit.amc_name || "—")}</span>
+          ${hit.category ? `<span class="pill no">${esc(hit.category)}</span>` : ""}
+          <span class="pill ${hit.has_holdings ? "ok" : "no"}">
+            ${hit.has_holdings ? "Portfolio available" : "NAV only"}</span>
+          <span class="pill no mono">Code ${esc(hit.scheme_code)}</span>
+        </div>
+      </div>
+      <div class="navbox">
+        <div class="v">${last ? "₹" + fmt(last.v, 4) : "—"}</div>
+        <div class="chg ${sign(dayChg)}">${dayChg == null ? "" : signed(dayChg)} <span
+          style="color:var(--muted);font-weight:500">1D</span></div>
+        <div class="d">NAV as on ${last ? dstr(last.t) : "—"}</div>
+      </div>
+    </div>`;
+  app.appendChild(head);
+
+  if (navErr) {
+    app.appendChild(el("div", "note err",
+      `NAV history unavailable — ${esc(navErr)}. Returns and risk need
+       <span class="mono">api.mfapi.in</span>; holdings below are unaffected.`));
+  }
+
+  /* ---- tabs ---- */
+  const tabs = [
+    ["perf", "Performance", true],
+    ["port", "Portfolio", hit.has_holdings],
+    ["anly", "Analytics", hit.has_holdings],
+    ["cmp",  "Compare",   hit.has_holdings]
+  ].filter(t => t[2]);
+
+  const bar = el("div", "tabs");
+  const panes = el("div");
+  tabs.forEach(([id, label], i) => {
+    const t = el("div", "tab" + (i === 0 ? " on" : ""), label);
+    t.onclick = () => {
+      [...bar.children].forEach(n => n.classList.remove("on"));
+      [...panes.children].forEach(n => n.classList.remove("on"));
+      t.classList.add("on"); $("#pane-" + id).classList.add("on");
+    };
+    bar.appendChild(t);
+    const p = el("div", "pane" + (i === 0 ? " on" : "")); p.id = "pane-" + id;
+    panes.appendChild(p);
+  });
+  const shell = el("div", "card");
+  shell.append(bar, panes);
+  app.appendChild(shell);
+
+  paintPerf($("#pane-perf"));
+  if (hit.has_holdings) {
+    paintPortfolio($("#pane-port"));
+    paintAnalytics($("#pane-anly"));
+    paintCompare($("#pane-cmp"));
+  }
+}
+
+/* ---------- Performance ---------- */
+function paintPerf(host) {
+  const { series, returns: rets, risk: rk } = CUR;
+  host.innerHTML = "";
+
+  if (!series.length) {
+    host.appendChild(el("div", "empty",
+      "<b>No NAV history</b>This scheme code returned nothing from api.mfapi.in."));
+    return;
+  }
+
+  /* returns tiles */
+  host.appendChild(el("h2", "", "Returns"));
+  host.appendChild(el("div", "hint",
+    "Periods beyond one year are annualised (CAGR). Shorter periods are absolute."));
+  const tiles = el("div", "tiles");
+  rets.forEach(r => {
+    const v = r.ann != null ? r.ann : r.abs;
+    const t = el("div", "tile");
+    t.innerHTML = `<div class="k">${esc(r.name)}</div>
+      <div class="v ${sign(v)}">${signed(v)}</div>
+      <div class="s">${r.ann != null ? "CAGR · from " : "from "}${dstr(r.from)}</div>`;
+    tiles.appendChild(t);
+  });
+  host.appendChild(tiles);
+
+  /* chart */
+  const ch = el("div"); ch.style.marginTop = "26px";
+  ch.appendChild(el("h2", "", "NAV history"));
+  ch.appendChild(el("div", "hint", `${series.length.toLocaleString("en-IN")} observations ·
+     ${dstr(series[0].t)} to ${dstr(series[series.length - 1].t)}`));
+  const rangebar = el("div", "rangebar");
+  const plot = el("div");
+  const RANGES = [["1M",1/12],["6M",.5],["1Y",1],["3Y",3],["5Y",5],["10Y",10],["MAX",null]];
+  const draw = yrs => {
+    const end = series[series.length - 1].t;
+    const s = yrs == null ? series : series.filter(p => p.t >= addY(end, -yrs));
+    lineChart(plot, s.length > 1 ? s : series);
+  };
+  RANGES.forEach(([label, yrs], i) => {
+    const b = el("button", "rg" + (label === "3Y" ? " on" : ""), label);
+    b.onclick = () => {
+      [...rangebar.children].forEach(n => n.classList.remove("on"));
+      b.classList.add("on"); draw(yrs);
+    };
+    rangebar.appendChild(b);
+  });
+  ch.append(rangebar, plot);
+  host.appendChild(ch);
+  draw(3);
+
+  /* risk */
+  const rw = el("div"); rw.style.marginTop = "26px";
+  rw.appendChild(el("h2", "", "Risk"));
+  if (!rk) {
+    rw.appendChild(el("div", "empty", "Not enough history for risk metrics."));
+    host.appendChild(rw); return;
+  }
+  rw.appendChild(el("div", "hint",
+    `Trailing ${rk.years} years · ${rk.obs.toLocaleString("en-IN")} daily observations ·
+     risk-free ${RISK_FREE}% p.a. · annualised over ${TRADING_DAYS} trading days`));
+  const rt = el("div", "tiles");
+  const cards = [
+    ["CAGR", signed(rk.cagr), sign(rk.cagr), `${rk.years}-year annualised`],
+    ["Volatility", pct(rk.vol), "", "annualised σ of daily returns"],
+    ["Sharpe", fmt(rk.sharpe), sign(rk.sharpe), "return per unit of total risk"],
+    ["Sortino", fmt(rk.sortino), sign(rk.sortino), "return per unit of downside risk"],
+    ["Max drawdown", pct(rk.maxdd), "down", rk.maxddAt ? "trough " + dstr(rk.maxddAt) : ""],
+    ["Best day", signed(rk.best), "up", ""],
+    ["Worst day", signed(rk.worst), "down", ""],
+    ["Positive days", pct(rk.posDays, 1), "", "share of sessions up"]
+  ];
+  cards.forEach(([k, v, cls, s]) => {
+    const t = el("div", "tile");
+    t.innerHTML = `<div class="k">${k}</div><div class="v ${cls}">${v}</div>
+                   <div class="s">${s}</div>`;
+    rt.appendChild(t);
+  });
+  rw.appendChild(rt);
+  host.appendChild(rw);
+}
+
+/* ---------- Portfolio ---------- */
+function paintPortfolio(host) {
+  const { metrics: m, assets, sectors, holdings, overview: ov } = CUR;
+  host.innerHTML = "";
+
+  if (!holdings.length) {
+    host.appendChild(el("div", "empty", "<b>No holdings returned</b>The scheme is mapped but the query came back empty."));
+    return;
+  }
+
+  const pd = m ? m.portfolio_date : (ov ? ov.portfolio_date : null);
+  host.appendChild(el("h2", "", "Portfolio snapshot"));
+  host.appendChild(el("div", "hint",
+    `Disclosure as on ${pd ? dstr(new Date(pd)) : "—"} · weights sum to ${m ? pct(m.pct_sum) : "—"}`));
+
+  if (m && Math.abs(Number(m.pct_sum) - 100) > 2) {
+    host.appendChild(el("div", "note",
+      `Weights sum to ${pct(m.pct_sum)} rather than 100%. Arbitrage, equity-savings and
+       dynamic-allocation funds disclose derivative legs differently, which is the usual
+       cause. The holdings themselves are unaffected.`));
+  }
+
+  if (m) {
+    const tiles = el("div", "tiles");
+    [["Holdings", m.total_holdings, `${m.securities} securities`],
+     ["Top 5", pct(m.top_5_pct), "of net assets"],
+     ["Top 10", pct(m.top_10_pct), "of net assets"],
+     ["Largest", pct(m.largest_pct), "single position"],
+     ["Cash", pct(m.cash_pct), "TREPS + net current assets"],
+     ["Sectors", m.sectors, m.top_sector ? `top: ${m.top_sector}` : ""],
+     ["HHI", fmt(m.hhi, 0), "concentration index"],
+     ["Effective stocks", fmt(m.effective_stocks, 1), "10000 / HHI"]
+    ].forEach(([k, v, s]) => {
+      const t = el("div", "tile");
+      t.innerHTML = `<div class="k">${k}</div><div class="v">${v ?? "—"}</div>
+                     <div class="s">${esc(s || "")}</div>`;
+      tiles.appendChild(t);
+    });
+    host.appendChild(tiles);
+  }
+
+  const two = el("div", "row two"); two.style.marginTop = "26px";
+
+  const a = el("div");
+  a.appendChild(el("h2", "", "Asset allocation"));
+  a.appendChild(el("div", "hint", "Equity / debt / cash split"));
+  const ah = el("div"); a.appendChild(ah);
+  donut(ah, assets.map(r => ({ label: r.asset_type, pct: r.pct })));
+
+  const s = el("div");
+  s.appendChild(el("h2", "", "Sector allocation"));
+  s.appendChild(el("div", "hint", "Equity sectors; credit ratings for debt schemes"));
+  const sh = el("div"); s.appendChild(sh);
+  barList(sh, sectors.map(r => ({ label: r.sector, pct: r.pct })), { max: 12 });
+
+  two.append(a, s);
+  host.appendChild(two);
+
+  /* holdings table */
+  const tw = el("div"); tw.style.marginTop = "26px";
+  tw.appendChild(el("h2", "", "All holdings"));
+  tw.appendChild(el("div", "hint",
+    "Click any row to see which other funds hold the same security."));
+
+  const filter = el("div", "cmp");
+  const fi = el("input");
+  fi.placeholder = "Filter by name, ISIN or sector…";
+  filter.appendChild(fi);
+  tw.appendChild(filter);
+
+  const box = el("div", "tblwrap");
+  tw.appendChild(box);
+  host.appendChild(tw);
+
+  const paint = q => {
+    const rows = !q ? holdings : holdings.filter(h =>
+      [h.instrument, h.isin, h.sector, h.asset_type].join(" ").toLowerCase().includes(q.toLowerCase()));
+    box.innerHTML = "";
+    const t = el("table");
+    t.innerHTML = `<thead><tr><th>#</th><th>Instrument</th><th>Sector / Rating</th>
+      <th>Type</th><th class="n">% to NAV</th><th class="n">₹ Cr</th></tr></thead>`;
+    const tb = el("tbody");
+    rows.forEach((h, i) => {
+      const tr = el("tr");
+      tr.innerHTML = `<td class="n" style="color:var(--muted)">${i + 1}</td>
+        <td>${h.isin ? `<span class="lnk">${esc(h.instrument)}</span>` : esc(h.instrument)}
+            ${h.isin ? `<div class="sub mono" style="font-size:10.5px;color:var(--muted)">${esc(h.isin)}</div>` : ""}</td>
+        <td>${esc(h.sector)}</td>
+        <td><span class="pill no">${esc(h.asset_type)}</span></td>
+        <td class="n" style="font-weight:600">${pct(h.pct_to_nav)}</td>
+        <td class="n">${h.value_cr == null ? "—" : fmt(h.value_cr, 1)}</td>`;
+      if (h.isin) tr.onclick = () => showHolders(h);
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    box.appendChild(t);
+    if (!rows.length) box.appendChild(el("div", "empty", "Nothing matches that filter"));
+  };
+  paint("");
+  fi.addEventListener("input", e => paint(e.target.value.trim()));
+}
+
+/* ---------- Analytics ---------- */
+function paintAnalytics(host) {
+  const { holdings, metrics: m } = CUR;
+  host.innerHTML = "";
+
+  host.appendChild(el("h2", "", "Concentration"));
+  host.appendChild(el("div", "hint",
+    "How much of the fund rides on its largest positions. Effective stocks is 10000/HHI — " +
+    "the number of equally-weighted positions the portfolio actually behaves like, " +
+    "usually far below the raw holding count."));
+  const secs = holdings.filter(h => h.is_security);
+  barList(host.appendChild(el("div")),
+    secs.slice(0, 15).map(h => ({ label: h.instrument, pct: h.pct_to_nav })),
+    { max: 15, colorFn: () => "#0B1F3A" });
+
+  /* cumulative weight curve */
+  const cw = el("div"); cw.style.marginTop = "26px";
+  cw.appendChild(el("h2", "", "Cumulative weight"));
+  cw.appendChild(el("div", "hint", "How quickly the portfolio's weight accumulates across ranked holdings"));
+  const plot = el("div"); cw.appendChild(plot);
+  host.appendChild(cw);
+  let run = 0;
+  const cum = secs.map((h, i) => { run += Number(h.pct_to_nav) || 0;
+    return { t: new Date(2000, 0, 1 + i), v: run }; });
+  if (cum.length > 1) lineChart(plot, cum);
+  else plot.appendChild(el("div", "empty", "Not enough securities"));
+
+  /* debt detail, only where it means something */
+  const debt = holdings.filter(h => h.asset_type === "Debt");
+  if (debt.length) {
+    const d = el("div"); d.style.marginTop = "26px";
+    d.appendChild(el("h2", "", "Credit quality"));
+    d.appendChild(el("div", "hint", `${debt.length} debt instruments by rating`));
+    const agg = {};
+    debt.forEach(h => { agg[h.sector] = (agg[h.sector] || 0) + Number(h.pct_to_nav || 0); });
+    const dh = el("div"); d.appendChild(dh);
+    barList(dh, Object.entries(agg).map(([label, pct]) => ({ label, pct }))
+      .sort((a, b) => b.pct - a.pct), { max: 14 });
+    host.appendChild(d);
+
+    const withYield = debt.filter(h => h.yield_pct != null);
+    if (withYield.length) {
+      const wsum = withYield.reduce((a, h) => a + Number(h.pct_to_nav || 0), 0);
+      const wavg = wsum > 0 ? withYield.reduce((a, h) =>
+        a + Number(h.yield_pct) * Number(h.pct_to_nav || 0), 0) / wsum : null;
+      const t = el("div", "tiles"); t.style.marginTop = "16px";
+      t.innerHTML = `<div class="tile"><div class="k">Weighted yield</div>
+        <div class="v">${pct(wavg)}</div><div class="s">across ${withYield.length} rated papers</div></div>`;
+      host.appendChild(t);
+    }
+  }
+
+  if (m) {
+    const n = el("div", "note"); n.style.marginTop = "26px";
+    n.innerHTML = `Portfolio turnover, YTM and Macaulay duration are published in the same
+      AMC disclosure files but are not captured in this database yet — only holdings are stored.`;
+    host.appendChild(n);
+  }
+}
+
+/* ---------- Compare ---------- */
+function paintCompare(host) {
+  host.innerHTML = "";
+  host.appendChild(el("h2", "", "Portfolio overlap"));
+  host.appendChild(el("div", "hint",
+    "Overlap is the sum of min(weight) across shared ISINs, so two funds holding the same " +
+    "names at different weights score below 100. Matched on ISIN — instrument names differ " +
+    "across AMCs for the same security."));
+
+  const bar = el("div", "cmp");
+  const inp = el("input");
+  inp.placeholder = "Search a second fund to compare…";
+  bar.appendChild(inp);
+  host.appendChild(bar);
+
+  const drop = el("div", "results"); drop.style.position = "static"; drop.style.marginTop = "-8px";
+  host.appendChild(drop);
+  const out = el("div"); host.appendChild(out);
+
+  let tmr = null;
+  inp.addEventListener("input", e => {
+    const q = e.target.value.trim();
+    clearTimeout(tmr);
+    if (q.length < 2) { drop.classList.remove("on"); return; }
+    tmr = setTimeout(async () => {
+      try {
+        const rows = (await rpc("search_schemes", { q, lim: 12 }))
+          .filter(r => r.has_holdings && String(r.scheme_code) !== CUR.code);
+        drop.innerHTML = "";
+        if (!rows.length) {
+          drop.innerHTML = `<div class="res"><div><div class="nm">No comparable fund</div>
+            <div class="sub">Only schemes with a loaded portfolio can be compared</div></div></div>`;
+          drop.classList.add("on"); return;
+        }
+        rows.forEach(r => {
+          const n = el("div", "res", `<div style="flex:1"><div class="nm">${esc(r.scheme_name)}</div>
+            <div class="sub">${esc(r.amc_name || "")}</div></div>`);
+          n.onclick = () => { inp.value = r.scheme_name; drop.classList.remove("on"); doCompare(r, out); };
+          drop.appendChild(n);
+        });
+        drop.classList.add("on");
+      } catch (err) { drop.classList.remove("on"); }
+    }, 220);
+  });
+}
+
+async function doCompare(other, out) {
+  out.innerHTML = `<div class="empty"><span class="spin"></span>&nbsp; Comparing…</div>`;
+  try {
+    const [ovRows, hlRows] = await Promise.all([
+      rpc("fund_overlap", { p_code_a: CUR.code, p_code_b: String(other.scheme_code) }),
+      rpc("holdings_list", { p_scheme_code: String(other.scheme_code) })
+    ]);
+    const o = ovRows[0] || {};
+    out.innerHTML = "";
+
+    if (o.comparable === false) {
+      out.appendChild(el("div", "note",
+        `These two disclose on different dates — ${dstr(new Date(o.date_a))} vs
+         ${dstr(new Date(o.date_b))}. The overlap below compares two different points in
+         time and should be read loosely.`));
+    }
+
+    const tiles = el("div", "tiles");
+    [["Overlap", pct(o.overlap_pct), "sum of min(weight)"],
+     ["Common", o.common_holdings ?? "—", "shared securities"],
+     ["Only in A", o.only_a ?? "—", CUR.hit.scheme_name.slice(0, 28)],
+     ["Only in B", o.only_b ?? "—", other.scheme_name.slice(0, 28)]
+    ].forEach(([k, v, s]) => {
+      const t = el("div", "tile");
+      t.innerHTML = `<div class="k">${k}</div><div class="v">${v}</div>
+                     <div class="s">${esc(s)}</div>`;
+      tiles.appendChild(t);
+    });
+    out.appendChild(tiles);
+
+    /* side-by-side of the shared names */
+    const bMap = {};
+    (hlRows || []).forEach(h => { if (h.isin) bMap[h.isin] = h; });
+    const shared = CUR.holdings
+      .filter(h => h.isin && bMap[h.isin])
+      .map(h => ({ name: h.instrument, a: Number(h.pct_to_nav), b: Number(bMap[h.isin].pct_to_nav) }))
+      .sort((x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b))
+      .slice(0, 25);
+
+    if (shared.length) {
+      const w = el("div"); w.style.marginTop = "26px";
+      w.appendChild(el("h2", "", "Shared holdings"));
+      w.appendChild(el("div", "hint", "Ranked by the smaller of the two weights"));
+      const box = el("div", "tblwrap");
+      const t = el("table");
+      t.innerHTML = `<thead><tr><th>Instrument</th>
+        <th class="n">${esc(CUR.hit.scheme_name.slice(0, 24))}</th>
+        <th class="n">${esc(other.scheme_name.slice(0, 24))}</th>
+        <th class="n">Min</th></tr></thead>`;
+      const tb = el("tbody");
+      shared.forEach(s => {
+        tb.appendChild(el("tr", "", `<td>${esc(s.name)}</td>
+          <td class="n">${pct(s.a)}</td><td class="n">${pct(s.b)}</td>
+          <td class="n" style="font-weight:600">${pct(Math.min(s.a, s.b))}</td>`));
+      });
+      t.appendChild(tb); box.appendChild(t); w.appendChild(box);
+      out.appendChild(w);
+    }
+  } catch (err) {
+    out.innerHTML = `<div class="note err">Compare failed — ${esc(err.message)}</div>`;
+  }
+}
+
+/* ---------- who else holds this security ---------- */
+async function showHolders(h) {
+  const d = $("#drawer"), b = $("#drawerBody");
+  d.classList.add("on");
+  b.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
+    <h2>${esc(h.instrument)}</h2>
+    <div class="hint mono">${esc(h.isin)}</div>
+    <div class="empty"><span class="spin"></span>&nbsp; Finding funds…</div>`;
+  try {
+    const rows = await rpc("stock_holders", { p_isin: h.isin, lim: 60 });
+    const box = el("div");
+    box.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
+      <h2>${esc(h.instrument)}</h2>
+      <div class="hint mono">${esc(h.isin)}</div>`;
+    if (!rows.length) {
+      box.appendChild(el("div", "empty", "No other loaded fund holds this security."));
+    } else {
+      const head = el("div", "hint",
+        `Held by ${rows.length} scheme${rows.length > 1 ? "s" : ""} across the loaded AMCs.
+         Each row uses that scheme's own latest disclosure, so dates differ.`);
+      box.appendChild(head);
+      const tw = el("div", "tblwrap");
+      const t = el("table");
+      t.innerHTML = `<thead><tr><th>AMC</th><th>Scheme</th>
+        <th class="n">% to NAV</th><th class="n">₹ Cr</th><th>As on</th></tr></thead>`;
+      const tb = el("tbody");
+      rows.forEach(r => tb.appendChild(el("tr", "",
+        `<td><span class="pill gold">${esc(r.amc)}</span></td>
+         <td>${esc(r.scheme_name)}</td>
+         <td class="n" style="font-weight:600">${pct(r.pct_to_nav)}</td>
+         <td class="n">${r.value_cr == null ? "—" : fmt(r.value_cr, 1)}</td>
+         <td class="mono" style="font-size:11.5px;color:var(--muted)">${dstr(new Date(r.portfolio_date))}</td>`)));
+      t.appendChild(tb); tw.appendChild(t); box.appendChild(tw);
+    }
+    b.innerHTML = ""; b.appendChild(box);
+  } catch (err) {
+    b.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
+      <div class="note err">${esc(err.message)}</div>`;
+  }
+}
+
+$("#drawer").addEventListener("click", e => {
+  if (e.target.id === "drawer") e.target.classList.remove("on");
+});
+
+/* config guard */
+if (SUPABASE_ANON_KEY === "PASTE_YOUR_ANON_KEY_HERE") {
+  $("#boot").innerHTML = `<div class="note err"><b>Anon key not set.</b><br>
+    Open <span class="mono">dashboard/index.html</span> and replace
+    <span class="mono">PASTE_YOUR_ANON_KEY_HERE</span> with the project's
+    <b>anon / public</b> key from Supabase → Project Settings → API Keys.<br><br>
+    Use the anon key, never the service_role key — this file runs in the browser
+    and everything in it is readable by anyone.</div>`;
+}
+</script>
