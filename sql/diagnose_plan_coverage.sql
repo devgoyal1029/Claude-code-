@@ -122,3 +122,99 @@ select sum((select count(*) from scheme_base x where x.k = m.k))            as j
        sum((select count(*) from schemes_master s
              where norm_key(s.scheme_name) like norm_key(m.base_name) || '%')) as reachable
 from mapped m;
+
+
+-- ============================================================================
+-- E. SCHEME-CODE VERSION -- same test as B, keyed on scheme_code.
+--    More reliable than name matching: no ilike pattern to get wrong.
+-- ============================================================================
+
+
+-- ----------------------------------------------------------------------------
+-- E1. Pick a test subject: the mapped schemes with the FEWEST plans attached.
+--     These are the most broken, so they show the problem most clearly.
+--     Copy a scheme_code from here into E2/E3.
+-- ----------------------------------------------------------------------------
+select p.amc,
+       p.scheme_name,
+       min(p.scheme_code::text) as sample_scheme_code,
+       count(*)                 as plans_now
+from v_scheme_plans p
+group by 1, 2
+order by plans_now asc, p.scheme_name
+limit 30;
+
+-- Debt funds carry the most IDCW frequency variants (Daily/Weekly/Monthly/
+-- Quarterly), so the gap is widest there. Good hunting ground:
+select p.amc, p.scheme_name, min(p.scheme_code::text) as sample_scheme_code,
+       count(*) as plans_now
+from v_scheme_plans p
+where p.scheme_name ~* 'bond|duration|debt|gilt|income|savings|liquid|money market'
+group by 1, 2
+order by plans_now asc
+limit 30;
+
+
+-- ----------------------------------------------------------------------------
+-- E2. THE TEST. Put one scheme_code in `params` and run.
+--
+--     Takes that plan's fund, finds every sibling plan of the same fund, and
+--     marks which ones share its key.
+--       status = 'joined' -> fans out correctly today
+--       status = 'LOST'   -> orphaned; `base_after_strip` shows the suffix
+--                            base_scheme() failed to remove
+--
+--     If this returns nothing at all, the scheme_code did not match --
+--     check whether master stores it as text with padding.
+-- ----------------------------------------------------------------------------
+with params as (
+    select '<PASTE_SCHEME_CODE_HERE>'::text as scheme_code
+),
+seed as (
+    select s.scheme_name,
+           base_scheme(s.scheme_name)           as base_name,
+           norm_key(base_scheme(s.scheme_name)) as k
+    from schemes_master s, params p
+    where s.scheme_code::text = p.scheme_code
+)
+select sm.scheme_code,
+       sm.scheme_name,
+       base_scheme(sm.scheme_name)           as base_after_strip,
+       norm_key(base_scheme(sm.scheme_name)) as k,
+       case when norm_key(base_scheme(sm.scheme_name)) = seed.k
+            then 'joined' else 'LOST' end     as status
+from schemes_master sm
+cross join seed
+where norm_key(sm.scheme_name) like norm_key(seed.base_name) || '%'
+order by status, sm.scheme_name;
+
+-- Compact summary of the same thing:
+with params as (
+    select '<PASTE_SCHEME_CODE_HERE>'::text as scheme_code
+),
+seed as (
+    select base_scheme(s.scheme_name)           as base_name,
+           norm_key(base_scheme(s.scheme_name)) as k
+    from schemes_master s, params p
+    where s.scheme_code::text = p.scheme_code
+)
+select seed.base_name,
+       count(*) filter (where norm_key(base_scheme(sm.scheme_name)) = seed.k) as joined,
+       count(*)                                                              as total_siblings,
+       count(*) - count(*) filter (where norm_key(base_scheme(sm.scheme_name)) = seed.k) as lost
+from schemes_master sm
+cross join seed
+where norm_key(sm.scheme_name) like norm_key(seed.base_name) || '%'
+group by seed.base_name;
+
+
+-- ----------------------------------------------------------------------------
+-- E3. END-TO-END PROOF. Two scheme_codes from the SAME fund -- one Growth,
+--     one IDCW (take both from E2's output).
+--
+--     Growth returns rows and IDCW returns 0  ->  hypothesis confirmed.
+--     Both return the same count                ->  that fund is fine.
+-- ----------------------------------------------------------------------------
+select 'growth' as plan, count(*) as holdings from holdings_by_code('<GROWTH_CODE>')
+union all
+select 'idcw',           count(*)             from holdings_by_code('<IDCW_CODE>');
