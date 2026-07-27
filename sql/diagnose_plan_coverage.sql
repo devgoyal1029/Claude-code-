@@ -208,6 +208,75 @@ where norm_key(sm.scheme_name) like norm_key(seed.base_name) || '%'
 group by seed.base_name;
 
 
+-- ============================================================================
+-- F. FAST VERSIONS -- use these, the earlier prefix-join ones time out.
+-- ----------------------------------------------------------------------------
+-- Why the timeout: base_scheme() is plpgsql (a loop around regexp_replace).
+-- Joining schemes_master to itself by name prefix calls it ~42M times.
+--
+-- The fix is to stop recomputing: scheme_base ALREADY stores k and base_name
+-- for every schemes_master row. Read the columns instead.
+-- ============================================================================
+
+
+-- ----------------------------------------------------------------------------
+-- F1. THE REGEX TO-DO LIST. No joins, one scan, instant.
+--     Master rows whose base_name STILL ends in plan vocabulary = rows where
+--     base_scheme() gave up. Grouped by the leftover trailing chunk and ranked
+--     by how many rows each pattern costs.
+-- ----------------------------------------------------------------------------
+select regexp_replace(base_name, '^.*[-–]\s*', '') as leftover_suffix,
+       count(*)                                    as master_rows,
+       min(full_name)                              as example_full_name
+from scheme_base
+where base_name ~* '(growth|idcw|dividend|payout|reinvest(ment)?|bonus|option)\s*$'
+   or base_name ~* 'income distribution'
+group by 1
+order by 2 desc
+limit 50;
+
+
+-- F2. Scale of the problem, one row.
+select count(*) filter (
+           where base_name ~* '(growth|idcw|dividend|payout|reinvest(ment)?|bonus)\s*$'
+              or base_name ~* 'income distribution'
+       ) as leftover_rows,
+       count(*) as total_master_rows
+from scheme_base;
+
+
+-- ----------------------------------------------------------------------------
+-- F3. Exact loss attribution, optimised. Only run if F1/F2 leave doubt.
+--     Materialises norm_key(full_name) once (37,613 rows) instead of computing
+--     it inside a nested loop, then range-scans a text_pattern_ops index.
+--     ~1,121 index probes instead of 42M function calls.
+-- ----------------------------------------------------------------------------
+drop table if exists _plan_probe;
+create table _plan_probe as
+select k, base_name, full_name, scheme_code, norm_key(full_name) as fk
+from scheme_base;
+create index on _plan_probe (fk text_pattern_ops);
+analyze _plan_probe;
+
+with mapped as (
+    select distinct b.k, norm_key(b.base_name) as bk
+    from scheme_base b
+    join scheme_alias a on a.k = b.k
+)
+select p.base_name       as base_after_strip,
+       count(*)          as master_rows,
+       min(p.full_name)  as example_full_name
+from _plan_probe p
+join mapped m on p.fk like m.bk || '%'
+where p.k <> m.k          -- sibling of a mapped scheme, but a different key
+group by 1
+order by 2 desc
+limit 40;
+
+-- cleanup when done:
+-- drop table _plan_probe;
+
+
 -- ----------------------------------------------------------------------------
 -- E3. END-TO-END PROOF. Two scheme_codes from the SAME fund -- one Growth,
 --     one IDCW (take both from E2's output).
