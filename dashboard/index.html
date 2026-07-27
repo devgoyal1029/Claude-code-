@@ -43,7 +43,10 @@ header p{margin:0;color:rgba(255,255,255,.62);font-size:13.5px;max-width:620px}
   background:rgba(255,255,255,.97);font-family:var(--font);font-size:15px;color:var(--text);
   box-shadow:var(--shadow-lg);outline:none}
 .searchbox input:focus{border-color:var(--gold)}
+/* color must be re-declared: the dropdown sits inside <header>, which sets
+   color:#fff, so anything without an explicit colour renders white-on-white */
 .results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
+  color:var(--text);
   border-radius:var(--r-md);box-shadow:var(--shadow-lg);max-height:420px;overflow-y:auto;
   z-index:40;display:none;border:1px solid var(--border)}
 .results.on{display:block}
