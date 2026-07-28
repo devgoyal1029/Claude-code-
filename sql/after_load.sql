@@ -83,12 +83,14 @@ order by 1, 2;
 -- ----------------------------------------------------------------------------
 refresh materialized view mv_security;
 refresh materialized view mv_current;
+refresh materialized view mv_previous;
 refresh materialized view mv_fund_stats;
 
 -- REFRESH resets the planner statistics too, so re-analyze or queries that were
 -- fast yesterday start timing out.
 analyze mv_security;
 analyze mv_current;
+analyze mv_previous;
 analyze mv_fund_stats;
 
 

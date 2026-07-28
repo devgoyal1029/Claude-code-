@@ -15,7 +15,22 @@ Supabase → SQL Editor → paste file → Run. Each file is safe to re-run.
 | 3 | `sql/dashboard_api.sql` | `asset_class()`, `search_schemes()`, 7 holdings RPCs | 1, 2 |
 | 4 | `sql/search_fix.sql` | `scheme_key_meta`, `search_schemes()` v2 | 3 |
 | 5 | `sql/engine_core.sql` | `mv_security`, `mv_current`, `mv_fund_stats` | 4 |
-| 6 | `sql/engine_api.sql` | 16 cross-fund RPCs | 5 |
+| 6 | `sql/engine_api.sql` | 18 cross-fund RPCs | 5 |
+| 7 | `sql/xray.sql` | portfolio look-through RPCs | 5 |
+| 8 | `sql/changes.sql` | `mv_previous`, change-tracking RPCs | 5 |
+| 9 | `sql/returns_and_caps.sql` | `scheme_nav_monthly`, `security_meta`, leaderboard + style-drift RPCs | 5 |
+
+Steps 7–9 are independent of each other; all three need step 5.
+
+Two of them start empty and fill in later:
+- **Changes** needs a second `portfolio_date` per scheme. `push()` deletes per
+  (amc, date, frequency), so loading an older month does not disturb the current one —
+  just load previous months.
+- **Leaders / style drift** need `colab/nav_monthly_ingest.py` and
+  `colab/marketcap_tags.py` to be run.
+
+Until then those RPCs return empty and the dashboard hides the sections rather than
+showing a broken page.
 
 **Order is not optional.** Step 5 reads `scheme_key_meta`, which step 4 creates — running
 5 first fails with "relation scheme_key_meta does not exist".

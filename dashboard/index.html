@@ -170,6 +170,8 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
     <a href="#/market">Market</a>
     <a href="#/sectors">Sectors</a>
     <a href="#/screener">Screener</a>
+    <a href="#/leaders">Leaders</a>
+    <a href="#/xray">X-ray</a>
     <a href="#/amcs">AMCs</a>
   </nav>
 </div></div>
@@ -600,6 +602,8 @@ async function route() {
     else if (p[0] === "sectors")        { setNav("sectors"); await viewSectors(v); }
     else if (p[0] === "amc" && p[1])     { setNav("amcs"); await viewAmc(v, decodeURIComponent(p[1])); }
     else if (p[0] === "screener")       { setNav("screener"); await viewScreener(v); }
+    else if (p[0] === "leaders")        { setNav("leaders"); await viewLeaders(v); }
+    else if (p[0] === "xray")           { setNav("xray"); await viewXray(v); }
     else if (p[0] === "amcs")           { setNav("amcs"); await viewAmcs(v); }
     else                                 { setNav("market"); await viewMarket(v); }
   } catch (e) { v.innerHTML = errCard(e); }
@@ -739,7 +743,16 @@ async function viewFund(v, code) {
   if (navErr) v.appendChild(el("div", "note err",
     `NAV history unavailable — ${esc(navErr)}. Returns and risk need api.mfapi.in.`));
 
+  /* Changes only earns a tab once a second snapshot exists for this scheme. */
+  let chSum = null;
+  if (hasPortfolio) {
+    try { chSum = one(await rpc("fund_change_summary", { p_scheme_code: code })); }
+    catch (e) { chSum = null; }
+  }
+  const hasHistory = !!(chSum && chSum.has_history);
+
   const tabDefs = [["perf", "Performance", true], ["port", "Portfolio", hasPortfolio],
+    ["chg", "Changes", hasHistory],
     ["anly", "Analytics", hasPortfolio], ["peer", "Peers & overlap", hasPortfolio]]
     .filter(t => t[2]);
   const shell = el("div", "card");
@@ -768,9 +781,10 @@ async function viewFund(v, code) {
       rpc("holdings_list",    { p_scheme_code: code }),
       rpc("fund_rank",        { p_scheme_code: code })
     ]);
-    paintPortfolio($("#pane-port"), one(mx), as, se, hl, ov);
+    paintPortfolio($("#pane-port"), one(mx), as, se, hl, ov, code);
     paintFundAnalytics($("#pane-anly"), code, hl, one(mx), one(rk));
     paintPeers($("#pane-peer"), code, hl);
+    if (hasHistory) paintChanges($("#pane-chg"), code, chSum);
   }
 }
 
@@ -833,7 +847,7 @@ function paintPerf(host, series) {
   rw.appendChild(rt); host.appendChild(rw);
 }
 
-function paintPortfolio(host, m, assets, sectors, holdings, ov) {
+function paintPortfolio(host, m, assets, sectors, holdings, ov, code) {
   host.innerHTML = "";
   if (!holdings || !holdings.length) {
     host.appendChild(el("div", "empty", "<b>No holdings returned</b>"));
@@ -879,6 +893,24 @@ function paintPortfolio(host, m, assets, sectors, holdings, ov) {
   barList(sh, (sectors || []).map(r => ({ label: r.sector, pct: r.pct })),
     { max: 12, onClick: r => go("#/sector/" + encodeURIComponent(r.label)) });
   two.append(a, s); host.appendChild(two);
+
+  /* Market-cap split -- only rendered once security_meta is populated. */
+  if (code) {
+    const mc = el("div"); mc.style.marginTop = "26px";
+    host.appendChild(mc);
+    rpc("fund_marketcap", { p_scheme_code: code }).then(rows => {
+      const known = (rows || []).filter(r => r.market_cap_class !== "Unclassified");
+      if (!known.length) return;
+      const unc = (rows || []).find(r => r.market_cap_class === "Unclassified");
+      mc.appendChild(el("h3", "", "Market-cap split"));
+      mc.appendChild(el("div", "hint",
+        "Against AMFI's half-yearly ranking — ranks 1-100 Large, 101-250 Mid, 251+ Small. " +
+        (unc ? `${pct(unc.pct)} is unclassified (debt, cash, foreign or unlisted), so the
+                split describes the rest of the book.` : "")));
+      const h = el("div"); mc.appendChild(h);
+      barList(h, known.map(r => ({ label: r.market_cap_class, pct: r.pct })), { max: 6 });
+    }).catch(() => {});
+  }
 
   const tw = el("div"); tw.style.marginTop = "26px";
   tw.appendChild(el("h3", "", "All holdings"));
@@ -1438,6 +1470,339 @@ async function viewAmcs(v) {
   barList(bh, rows.map(r => ({ label: r.amc, pct: r.total_aum_cr, raw: cr(r.total_aum_cr) })),
     { max: 20, onClick: r => go("#/amc/" + encodeURIComponent(r.label)) });
   v.appendChild(b);
+}
+
+
+/* ==========================================================================
+   Fund · Changes
+   ========================================================================== */
+async function paintChanges(host, code, sum) {
+  host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+  try {
+    const rows = await rpc("fund_changes", { p_scheme_code: code, lim: 400 });
+    host.innerHTML = "";
+    host.appendChild(el("h2", "", "What changed"));
+    host.appendChild(el("div", "hint",
+      `Between ${dstr(dt(sum.date_before))} and ${dstr(dt(sum.date_now))}.`));
+
+    const t = el("div", "tiles");
+    [["New positions", fmt(sum.new_count, 0), pct(sum.new_pct) + " of the book"],
+     ["Exits", fmt(sum.exit_count, 0), pct(sum.exit_pct) + " released"],
+     ["Added to", fmt(sum.added_count, 0), ""],
+     ["Trimmed", fmt(sum.trimmed_count, 0), ""],
+     ["Churn", pct(sum.churn_pct), "half the absolute weight shift"],
+     ["AUM now", cr(sum.aum_now_cr), signed(sum.aum_change_pct) + " vs before"]
+    ].forEach(([k, v, sub]) => t.appendChild(el("div", "tile",
+      `<div class="k">${k}</div><div class="v">${v}</div><div class="s">${esc(sub)}</div>`)));
+    host.appendChild(t);
+
+    host.appendChild(el("div", "note",
+      `Weight change alone can mislead — when the whole book rises, an untouched position's
+       weight barely moves while its value climbs. Where the AMC discloses quantity, the
+       <b>Qty</b> column is the cleaner read on what was actually traded.`));
+
+    const chips = el("div", "chips"); chips.style.marginTop = "20px";
+    const body = el("div");
+    const FILTERS = [["", "Everything"], ["NEW", "New"], ["EXIT", "Exits"],
+                     ["ADDED", "Added"], ["TRIMMED", "Trimmed"]];
+    const draw = f => {
+      const list = f ? rows.filter(r => r.action === f) : rows.filter(r => r.action !== "HELD");
+      body.innerHTML = "";
+      body.appendChild(table(list, [
+        { h: "", fn: r => `<span class="pill ${r.action === "NEW" ? "ok"
+            : r.action === "EXIT" ? "no" : r.action === "ADDED" ? "blue" : "gold"}">${r.action}</span>` },
+        { h: "Instrument", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+            <div class="sub2 mono">${esc(r.isin || "")}</div>` },
+        { h: "Sector", fn: r => esc(r.sector || "—") },
+        { h: "Before", n: 1, fn: r => pct(r.pct_before) },
+        { h: "Now", n: 1, fn: r => pct(r.pct_now) },
+        { h: "Change", n: 1, fn: r => `<b class="${signOf(r.pct_change)}">${signed(r.pct_change)}</b>` },
+        { h: "Qty", n: 1, fn: r => r.qty_change_pct == null ? "—"
+            : `<span class="${signOf(r.qty_change_pct)}">${signed(r.qty_change_pct, 1)}</span>` }
+      ], r => { if (r.isin) go("#/stock/" + r.isin); }));
+    };
+    FILTERS.forEach(([f, label], i) => {
+      const b = el("button", "chip" + (i === 0 ? " on" : ""), label);
+      b.onclick = () => { [...chips.children].forEach(n => n.classList.remove("on"));
+        b.classList.add("on"); draw(f); };
+      chips.appendChild(b);
+    });
+    host.append(chips, body);
+    draw("");
+  } catch (e) { host.innerHTML = errCard(e); }
+}
+
+/* ==========================================================================
+   VIEW · Leaders
+   ========================================================================== */
+async function viewLeaders(v) {
+  hero("Leaders", "Ranked by trailing return within a category.");
+  v.innerHTML = loading("Loading…");
+  const cats = await rpc("list_categories");
+  v.innerHTML = "";
+
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", "Return leaderboard"));
+  c.appendChild(el("div", "hint",
+    "Computed from stored month-end NAV of each fund's Direct-Growth plan — the standard " +
+    "comparison basis, so the ranking is not reordered by plan choice. Volatility here is " +
+    "annualised from monthly returns, so it reads lower than the daily figure on a fund " +
+    "page; compare ranks within this table, not across the two."));
+
+  const f = el("div", "filters");
+  f.innerHTML = `
+    <div><label>Category</label><select id="lCat"><option value="">All categories</option>
+      ${cats.map(x => `<option value="${esc(x.category)}">${esc(x.category)} (${x.funds})</option>`).join("")}
+    </select></div>
+    <div><label>Period</label><select id="lPer">
+      <option value="12">1 year</option><option value="36" selected>3 years</option>
+      <option value="60">5 years</option><option value="120">10 years</option>
+      <option value="6">6 months</option>
+    </select></div>`;
+  c.appendChild(f);
+  v.appendChild(c);
+
+  const out = el("div"); v.appendChild(out);
+  const run = async () => {
+    out.innerHTML = loading("Ranking…");
+    try {
+      const rows = await rpc("return_leaderboard", {
+        p_months: Number($("#lPer").value),
+        p_category: $("#lCat").value || null, lim: 100 });
+      out.innerHTML = "";
+      if (!rows.length) {
+        out.innerHTML = `<div class="card"><div class="empty">
+          <b>No stored NAV yet</b>Run colab/nav_monthly_ingest.py to populate
+          scheme_nav_monthly, then this fills in.</div></div>`;
+        return;
+      }
+      const rc = el("div", "card");
+      rc.appendChild(el("h2", "", `${rows.length} funds`));
+      rc.appendChild(el("div", "hint",
+        `${dstr(dt(rows[0].from_date))} to ${dstr(dt(rows[0].to_date))}` +
+        (rows[0].annualised ? " · annualised" : " · absolute")));
+      rc.appendChild(table(rows, [
+        { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+        { h: "Fund", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+            <div class="sub2">${esc(r.amc)}${r.category ? " · " + esc(r.category) : ""}</div>` },
+        { h: "Return", n: 1, fn: r => `<b class="${signOf(r.return_pct)}">${signed(r.return_pct)}</b>` },
+        { h: "Volatility", n: 1, fn: r => pct(r.volatility) },
+        { h: "Sharpe", n: 1, fn: r => fmt(r.sharpe) },
+        { h: "AUM", n: 1, fn: r => cr(r.aum_cr) }
+      ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+      out.appendChild(rc);
+    } catch (e) { out.innerHTML = errCard(e); }
+  };
+  $("#lCat").onchange = run; $("#lPer").onchange = run;
+  run();
+
+  /* style drift sits here too -- both are "how does this fund compare" views */
+  const sd = el("div"); v.appendChild(sd);
+  try {
+    const drift = await rpc("style_drift", { lim: 60 });
+    if (drift.length) {
+      const dc = el("div", "card");
+      dc.appendChild(el("h2", "", "Style drift"));
+      dc.appendChild(el("div", "hint",
+        "Funds whose cap mix does not match what their category implies. SEBI minimums: " +
+        "Large Cap 80% large, Mid Cap 65% mid, Small Cap 65% small, Large &amp; Mid 35% each. " +
+        "Measured against the <i>classified</i> part of the book, so cash and debt do not " +
+        "manufacture a false breach. Read a row as worth checking, not as a violation — the " +
+        "mandate is tested on a different date and against the AMFI list current then."));
+      dc.appendChild(table(drift, [
+        { h: "Fund", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+            <div class="sub2">${esc(r.amc)}${r.category ? " · " + esc(r.category) : ""}</div>` },
+        { h: "Large", n: 1, fn: r => pct(r.large_pct) },
+        { h: "Mid", n: 1, fn: r => pct(r.mid_pct) },
+        { h: "Small", n: 1, fn: r => pct(r.small_pct) },
+        { h: "Expected", fn: r => `<span class="sub2">${esc(r.expected || "—")}</span>` },
+        { h: "Short by", n: 1, fn: r => `<b class="down">${fmt(r.shortfall_pp, 1)} pp</b>` },
+        { h: "Classified", n: 1, fn: r => pct(r.classified_pct) }
+      ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+      v.appendChild(dc);
+    }
+  } catch (e) { /* security_meta not populated yet */ }
+}
+
+/* ==========================================================================
+   VIEW · Portfolio X-ray
+   ========================================================================== */
+let XRAY = [];   // [{code, name, amc, amount}]
+
+async function viewXray(v) {
+  hero("Portfolio X-ray",
+       "Add the funds you hold and see what you actually own underneath them.");
+  v.innerHTML = "";
+
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", "Your funds"));
+  c.appendChild(el("div", "hint",
+    "Add funds and, optionally, the amount in each — leave amounts blank to weight them " +
+    "equally. Any plan works; Direct, Regular and IDCW all resolve to the same portfolio."));
+
+  const bar = el("div", "cmp");
+  const inp = el("input");
+  inp.placeholder = "Search a fund to add…";
+  bar.appendChild(inp);
+  c.appendChild(bar);
+  const drop = el("div", "results");
+  drop.style.position = "static"; drop.style.marginTop = "-8px";
+  c.appendChild(drop);
+  const list = el("div"); c.appendChild(list);
+  const actions = el("div"); actions.style.cssText = "display:flex;gap:9px;margin-top:14px";
+  const run = el("button", "btn", "Run X-ray");
+  const clr = el("button", "btn ghost", "Clear");
+  actions.append(run, clr); c.appendChild(actions);
+  v.appendChild(c);
+
+  const out = el("div"); v.appendChild(out);
+
+  const paintList = () => {
+    list.innerHTML = "";
+    if (!XRAY.length) {
+      list.appendChild(el("div", "empty", "No funds added yet."));
+      return;
+    }
+    XRAY.forEach((f, i) => {
+      const row = el("div");
+      row.style.cssText = "display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-soft)";
+      const nm = el("div", "", `<div style="font-weight:600;font-size:13.5px">${esc(f.name)}</div>
+        <div class="sub2">${esc(f.amc || "")} · ${esc(f.code)}</div>`);
+      nm.style.flex = "1";
+      const amt = el("input");
+      amt.type = "number"; amt.placeholder = "Amount ₹"; amt.value = f.amount || "";
+      amt.style.cssText = "width:130px;padding:8px 10px;border-radius:var(--r);border:1px solid var(--border);font-family:var(--mono);font-size:13px;outline:none";
+      amt.oninput = e => { f.amount = e.target.value ? Number(e.target.value) : null; };
+      const rm = el("button", "btn ghost", "Remove");
+      rm.onclick = () => { XRAY.splice(i, 1); paintList(); };
+      row.append(nm, amt, rm);
+      list.appendChild(row);
+    });
+  };
+  paintList();
+
+  let tmr = null;
+  inp.addEventListener("input", e => {
+    const q = e.target.value.trim();
+    clearTimeout(tmr);
+    if (q.length < 2) { drop.classList.remove("on"); return; }
+    tmr = setTimeout(async () => {
+      try {
+        const rows = (await rpc("search_schemes", { q, lim: 12 }))
+          .filter(r => r.has_holdings && !XRAY.some(x => x.code === String(r.scheme_code)));
+        drop.innerHTML = "";
+        if (!rows.length) {
+          drop.innerHTML = `<div class="res"><div><div class="nm">Nothing to add</div>
+            <div class="sub">Only schemes with a loaded portfolio can be x-rayed</div></div></div>`;
+          drop.classList.add("on"); return;
+        }
+        rows.forEach(r => {
+          const n = el("div", "res", `<div style="flex:1"><div class="nm">${esc(r.scheme_name)}</div>
+            <div class="sub">${esc(r.amc_name || "")}</div></div>`);
+          n.onclick = () => {
+            XRAY.push({ code: String(r.scheme_code), name: r.scheme_name,
+                        amc: r.amc_name, amount: null });
+            inp.value = ""; drop.classList.remove("on"); paintList();
+          };
+          drop.appendChild(n);
+        });
+        drop.classList.add("on");
+      } catch (err) { drop.classList.remove("on"); }
+    }, 220);
+  });
+
+  clr.onclick = () => { XRAY = []; paintList(); out.innerHTML = ""; };
+  run.onclick = () => doXray(out);
+}
+
+async function doXray(out) {
+  if (XRAY.length < 1) {
+    out.innerHTML = `<div class="card"><div class="empty">Add at least one fund.</div></div>`;
+    return;
+  }
+  out.innerHTML = loading("Looking through…");
+  const codes = XRAY.map(f => f.code);
+  const anyAmt = XRAY.some(f => f.amount > 0);
+  const amounts = anyAmt ? XRAY.map(f => f.amount || 0) : null;
+
+  try {
+    const [sumR, hldR, secR, prsR] = await Promise.all([
+      rpc("xray_summary",  { p_codes: codes, p_amounts: amounts }),
+      rpc("xray_holdings", { p_codes: codes, p_amounts: amounts, lim: 300 }),
+      rpc("xray_sectors",  { p_codes: codes, p_amounts: amounts }),
+      codes.length > 1 ? rpc("xray_pairs", { p_codes: codes }) : Promise.resolve([])
+    ]);
+    const S = one(sumR);
+    out.innerHTML = "";
+
+    const c1 = el("div", "card");
+    c1.appendChild(el("h2", "", "What you actually own"));
+    c1.appendChild(el("div", "hint", anyAmt
+      ? "Weighted by the amounts entered."
+      : "Equal-weighted — enter amounts above for a weighting that matches your holding."));
+    const t = el("div", "tiles");
+    [["Funds", fmt(S.funds, 0), anyAmt ? cr(S.total_amount / 1e7) : "equal weight"],
+     ["Securities", fmt(S.securities, 0), "distinct names"],
+     ["Effective stocks", fmt(S.effective_stocks, 1), "10000 / HHI"],
+     ["Top 10", pct(S.top_10_pct), "of the basket"],
+     ["Largest", pct(S.largest_pct), (S.largest_name || "").slice(0, 24)],
+     ["Duplicated", pct(S.shared_pct), `${fmt(S.shared_securities, 0)} names in 2+ funds`],
+     ["Sectors", fmt(S.sectors, 0), S.top_sector ? `top: ${S.top_sector} ${pct(S.top_sector_pct)}` : ""],
+     ["Equity", pct(S.equity_pct), ""],
+     ["Debt", pct(S.debt_pct), ""],
+     ["Cash", pct(S.cash_pct), ""]
+    ].forEach(([k, val, sub]) => t.appendChild(el("div", "tile",
+      `<div class="k">${k}</div><div class="v">${val}</div><div class="s">${esc(sub)}</div>`)));
+    c1.appendChild(t);
+
+    if (S.securities && S.effective_stocks) {
+      c1.appendChild(el("div", "note",
+        `You hold <b>${fmt(S.securities, 0)}</b> distinct securities, but the basket behaves
+         like <b>${fmt(S.effective_stocks, 1)}</b> equally-weighted positions, and
+         <b>${pct(S.shared_pct)}</b> of it sits in names more than one of your funds already
+         owns. Fund count is not diversification.`));
+    }
+    out.appendChild(c1);
+
+    if (prsR.length) {
+      const c2 = el("div", "card");
+      c2.appendChild(el("h2", "", "Where your funds duplicate each other"));
+      c2.appendChild(el("div", "hint",
+        "Pairwise overlap — the sum of min(weight) across shared ISINs. Two funds above " +
+        "70% are close to one position wearing two expense ratios."));
+      c2.appendChild(table(prsR, [
+        { h: "Fund A", fn: r => esc(r.fund_a) },
+        { h: "Fund B", fn: r => esc(r.fund_b) },
+        { h: "Overlap", n: 1, fn: r => `<b class="${Number(r.overlap_pct) > 70 ? "down" : ""}">${pct(r.overlap_pct)}</b>` },
+        { h: "Common", n: 1, fn: r => fmt(r.common, 0) }
+      ]));
+      out.appendChild(c2);
+    }
+
+    const c3 = el("div", "card");
+    c3.appendChild(el("h2", "", "Sector exposure"));
+    c3.appendChild(el("div", "hint", "Combined across every fund in the basket"));
+    const sh = el("div"); c3.appendChild(sh);
+    barList(sh, secR.map(r => ({ label: r.sector, pct: r.weight_pct })),
+      { max: 14, onClick: r => go("#/sector/" + encodeURIComponent(r.label)) });
+    out.appendChild(c3);
+
+    const c4 = el("div", "card");
+    c4.appendChild(el("h2", "", "Combined holdings"));
+    c4.appendChild(el("div", "hint",
+      "Every security, with its true weight in the basket and which of your funds brought it."));
+    c4.appendChild(table(hldR, [
+      { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+      { h: "Instrument", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+          <div class="sub2 mono">${esc(r.isin)}</div>` },
+      { h: "Sector", fn: r => esc(r.sector || "—") },
+      { h: "Weight", n: 1, fn: r => `<b>${pct(r.weight_pct, 3)}</b>` },
+      { h: "Amount", n: 1, fn: r => anyAmt ? "₹" + fmt(r.amount, 0) : "—" },
+      { h: "Via", fn: r => `${r.funds} fund${r.funds > 1 ? "s" : ""}
+          <div class="sub2">${esc((r.via || "").slice(0, 60))}</div>` }
+    ], r => { if (r.isin) go("#/stock/" + r.isin); }));
+    out.appendChild(c4);
+  } catch (e) { out.innerHTML = errCard(e); }
 }
 
 /* ---------- boot ---------- */
