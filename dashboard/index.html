@@ -1818,14 +1818,17 @@ async function viewLeaders(v) {
   const run = async () => {
     out.innerHTML = loading("Ranking…");
     try {
-      const rows = await rpc("return_leaderboard", {
+      const rows = await soft(rpc("return_leaderboard", {
         p_months: Number($("#lPer").value),
-        p_category: $("#lCat").value || null, lim: 100 });
+        p_category: $("#lCat").value || null, lim: 100 }));
       out.innerHTML = "";
-      if (!rows.length) {
+      if (!rows || !rows.length) {
         out.innerHTML = `<div class="card"><div class="empty">
-          <b>No stored NAV yet</b>Run colab/nav_monthly_ingest.py to populate
-          scheme_nav_monthly, then this fills in.</div></div>`;
+          <b>Return data not loaded</b>
+          This table reads month-end NAV from <span class="mono">scheme_nav_monthly</span>.
+          Run the returns half of <span class="mono">sql/returns_and_caps.sql</span>, then
+          <span class="mono">colab/nav_monthly_ingest.py</span>, and it fills in on its own.
+          </div></div>`;
         return;
       }
       const rc = el("div", "card");
