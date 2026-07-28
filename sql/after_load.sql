@@ -88,6 +88,11 @@ refresh materialized view mv_fund_stats;
 
 -- REFRESH resets the planner statistics too, so re-analyze or queries that were
 -- fast yesterday start timing out.
+--
+-- NOTE: refresh is enough for NEW DATA. It was NOT enough after changing the
+-- body of asset_class() -- mv_current kept serving the old classification
+-- through repeated refreshes. If you edit that function, drop and recreate
+-- mv_current and mv_fund_stats (sql/engine_core.sql) rather than refreshing.
 analyze mv_security;
 analyze mv_current;
 analyze mv_previous;

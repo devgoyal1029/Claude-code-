@@ -26,39 +26,69 @@ create index if not exists idx_holdings_amc_scheme_date
 
 
 -- ----------------------------------------------------------------------------
--- asset_class -- one place that decides Equity / Debt / Cash / ...
+-- asset_class -- one place that decides Equity / Debt / Cash / REIT / ...
 --
--- `section` is the real signal, but it is NULL for every HDFC and Nippon row:
--- those two were loaded with a parser that did not read heading labels out of
--- the ISIN column, and the re-load has never been run. So when section is
--- missing we fall back to two weaker signals -- a coupon means debt, and a
--- credit-rating-shaped industry_rating means debt, otherwise equity.
+-- Reads section, sub_section, ISIN and the instrument name, because AMCs split
+-- the signal across all four and no single field is reliable. Embassy Office
+-- Parks REIT alone is filed six different ways: section "Others" with
+-- sub_section "ReIT" (ABSL), section "EQUITY & EQUITY RELATED" with
+-- "(b) Units issued by ReIT" (HDFC), "Units of Real Estate Investment Trust"
+-- (ICICI), plain "Real Estate Investment Trust" (SBI), and 360ONE/Kotak/Axis
+-- file it under listed equity with no REIT marker except the name.
 --
--- That fallback is a heuristic. Once HDFC/Nippon are re-parsed with v4 the
--- section branch takes over on its own and the heuristic stops firing.
+-- Rule ORDER is load-bearing:
+--   * REITs are tested before mutual-fund-units, or ICICI's "Units of Real
+--     Estate Investment Trust" gets swallowed by the "units of" rule.
+--   * REITs are tested before the equity-section rule, or every AMC that files
+--     them under equity reports them as ordinary shares.
+--   * gold/silver require fund/ETF/unit context alongside the word, otherwise
+--     Senco Gold, Sky Gold and Sparkle Gold Rock -- jewellery companies -- get
+--     classified as bullion.
+--
+-- TREPS and repo rows carry ISIN-shaped codes (GSECREPO0992), so the parser
+-- marks them is_security; they are cash equivalents and are caught here.
+--
+-- `section` is NULL for every HDFC and Nippon row -- those were loaded with an
+-- older parser and the re-load has never been run -- so the last three rules
+-- fall back to coupon and rating shape.
+--
+-- CHANGING THIS FUNCTION: refresh alone did not propagate to mv_current in
+-- practice. Drop and recreate mv_current and mv_fund_stats instead.
 -- ----------------------------------------------------------------------------
-create or replace function asset_class(p_section text,
+create or replace function asset_class(p_section     text,
+                                       p_sub_section text,
                                        p_is_security boolean,
-                                       p_industry_rating text,
-                                       p_coupon numeric)
+                                       p_rating      text,
+                                       p_coupon      numeric,
+                                       p_isin        text,
+                                       p_name        text)
 returns text
 language sql immutable
 as $$
+    with t as (select coalesce(p_section,'') || ' | ' || coalesce(p_sub_section,'')
+                      || ' | ' || coalesce(p_name,'') as s)
     select case
-        when coalesce(p_is_security, false) = false      then 'Cash & Equivalents'
-        when p_section ~* 'equity'                       then 'Equity'
+        when coalesce(p_is_security, false) = false          then 'Cash & Equivalents'
+        when (select s from t) ~* 'treps|tri-?party|reverse repo|corporate debt repo'
+                                                             then 'Cash & Equivalents'
+        when p_isin is not null and p_isin !~ '^IN'          then 'Foreign Securities'
+        when (select s from t) ~* 'reit|invit|real estate invest|infrastructure invest|realty trust'
+                                                             then 'REITs / InvITs'
+        when p_section ~* 'equity'                           then 'Equity'
+        when (select s from t) ~* 'gold'
+         and (select s from t) ~* 'etf|fund|unit'            then 'Gold'
+        when (select s from t) ~* 'silver'
+         and (select s from t) ~* 'etf|fund|unit'            then 'Silver'
+        when (select s from t) ~* 'alternative investment'   then 'AIF Units'
+        when (select s from t) ~* 'exchange traded fund|\yetf\y' then 'ETF Units'
+        when (select s from t) ~* 'mutual fund unit|units? of'   then 'Mutual Fund Units'
         when p_section ~* 'debt|money market|government|bond' then 'Debt'
-        when p_section ~* 'mutual fund unit|units? issued'    then 'Mutual Fund Units'
-        when p_section ~* 'reit|invit'                   then 'REITs / InvITs'
-        when p_section ~* 'gold'                         then 'Gold'
-        when p_section ~* 'silver'                       then 'Silver'
-        when p_section ~* 'derivativ'                    then 'Derivatives'
-        when p_section ~* 'foreign'                      then 'Foreign Securities'
-        -- section NULL from here on
-        when p_coupon is not null                        then 'Debt'
-        when p_industry_rating ~* '^(crisil|icra|care|ind-?ra|brickwork|fitch|acuite)|sov|unrated|a1\+|^aaa|^aa|^a\+'
-                                                         then 'Debt'
-        when p_industry_rating is not null               then 'Equity'
+        when p_section ~* 'derivativ'                        then 'Derivatives'
+        when p_section ~* 'foreign'                          then 'Foreign Securities'
+        when p_coupon is not null                            then 'Debt'
+        when p_rating ~* '^(crisil|icra|care|ind-?ra|brickwork|fitch|acuite)|sov|unrated|a1\+|^aaa|^aa|^a\+'
+                                                             then 'Debt'
+        when p_rating is not null                            then 'Equity'
         else 'Unclassified'
     end
 $$;
@@ -172,7 +202,8 @@ as $$
                     '(unnamed)'),
            h.isin,
            coalesce(h.industry_rating, 'Unclassified'),
-           asset_class(h.section, h.is_security, h.industry_rating, h.coupon_pct),
+           asset_class(h.section, h.sub_section, h.is_security,
+                       h.industry_rating, h.coupon_pct, h.isin, h.instrument_name),
            round(h.pct_to_nav, 4),
            round(h.market_value_lacs / 100, 2),
            h.quantity,
@@ -211,7 +242,8 @@ create or replace function holdings_assets(p_scheme_code text)
 returns table (asset_type text, holdings int, pct numeric)
 language sql stable security definer set search_path = public
 as $$
-    select asset_class(section, is_security, industry_rating, coupon_pct),
+    select asset_class(section, sub_section, is_security,
+                       industry_rating, coupon_pct, isin, instrument_name),
            count(*)::int,
            round(sum(pct_to_nav), 2)
     from holdings_by_code(p_scheme_code)
@@ -346,7 +378,8 @@ grant execute on function holdings_assets(text)          to anon, authenticated;
 grant execute on function holdings_metrics(text)         to anon, authenticated;
 grant execute on function fund_overlap(text, text)       to anon, authenticated;
 grant execute on function stock_holders(text, int)       to anon, authenticated;
-grant execute on function asset_class(text, boolean, text, numeric) to anon, authenticated;
+grant execute on function asset_class(text, text, boolean, text, numeric, text, text)
+                                                                     to anon, authenticated;
 
 
 -- ============================================================================
