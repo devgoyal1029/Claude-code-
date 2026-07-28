@@ -49,8 +49,21 @@ returns table (period text, months int, from_date date, to_date date,
                from_nav numeric, to_nav numeric, return_pct numeric, annualised boolean)
 language sql stable security definer set search_path = public
 as $$
-    with s as (select * from scheme_nav_monthly where scheme_code = p_scheme_code),
-    last as (select * from s order by month_end desc limit 1),
+    -- same resolution as return_leaderboard: any plan code of the fund finds
+    -- the stored series, whichever code the ingest happened to save under
+    with me as (
+        select distinct a.amc, a.source_name
+        from scheme_base b join scheme_alias a on a.k = b.k
+        where b.scheme_code::text = p_scheme_code
+    ),
+    s as (
+        select n.month_end, n.nav
+        from scheme_nav_monthly n
+        join scheme_base  b2 on b2.scheme_code::text = n.scheme_code
+        join scheme_alias a2 on a2.k = b2.k
+        join me on me.amc = a2.amc and me.source_name = a2.source_name
+    ),
+    last as (select s.month_end, s.nav from s order by s.month_end desc limit 1),
     spec(period, m) as (values ('1M',1),('3M',3),('6M',6),('1Y',12),
                                ('2Y',24),('3Y',36),('5Y',60),('10Y',120))
     select sp.period, sp.m, b.month_end, l.month_end, b.nav, l.nav,
@@ -61,7 +74,7 @@ as $$
     from spec sp
     cross join last l
     join lateral (
-        select * from s
+        select s.month_end, s.nav from s
         where s.month_end <= l.month_end - (sp.m || ' months')::interval
           and s.month_end >= l.month_end - (sp.m || ' months')::interval - interval '45 days'
         order by s.month_end desc limit 1
@@ -105,7 +118,17 @@ as $$
         select f.scheme_code, f.scheme_name, f.amc, f.category, f.aum_cr, r.*
         from f
         join lateral (
-            with s as (select * from scheme_nav_monthly n where n.scheme_code = f.scheme_code),
+            -- The ingest stores the Direct-Growth code; mv_fund_stats carries
+            -- the fund's lowest code. Those are usually different, so a direct
+            -- comparison matched almost nothing -- resolve the stored code back
+            -- to its fund instead.
+            with s as (
+                select n.month_end, n.nav
+                from scheme_nav_monthly n
+                join scheme_base  b on b.scheme_code::text = n.scheme_code
+                join scheme_alias a on a.k = b.k
+                where a.amc = f.amc and a.source_name = f.scheme_name
+            ),
             l as (select s.month_end, s.nav from s order by s.month_end desc limit 1),
             -- explicit columns: `from s, l` puts two nav and two month_end in
             -- scope, and an unqualified reference to either is ambiguous
