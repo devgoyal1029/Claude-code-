@@ -32,10 +32,24 @@ SUPABASE_KEY = "PASTE_SERVICE_ROLE_KEY_HERE"
 
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-plans = pd.DataFrame(sb.table("v_scheme_plans")
-                       .select("amc,scheme_name,scheme_code,plan_name,plan_type")
-                       .execute().data)
+# PostgREST caps a single response at 1,000 rows. v_scheme_plans holds 4,060,
+# so an unpaged read silently returned the first 1,000 -- which grouped down to
+# 368 funds, and the other 750+ were never fetched. No error, just missing data.
+def fetch_all(tbl, cols, step=1000):
+    out, start = [], 0
+    while True:
+        chunk = (sb.table(tbl).select(cols)
+                   .range(start, start + step - 1).execute().data)
+        out += chunk
+        print(f"  {tbl}: {len(out):,} rows")
+        if len(chunk) < step:
+            return out
+        start += step
+
+plans = pd.DataFrame(fetch_all("v_scheme_plans",
+                               "amc,scheme_name,scheme_code,plan_name,plan_type"))
 print(f"{len(plans):,} plan rows")
+assert len(plans) > 3000, f"only {len(plans)} rows returned -- paging is not working"
 
 def score(name):
     """Lower is better. Direct + Growth wins; IDCW and Regular are penalised."""
