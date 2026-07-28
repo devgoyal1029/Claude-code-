@@ -90,7 +90,15 @@ on conflict do nothing;
 -- the analytical layer is materialised, so it will not see new rows until refreshed
 refresh materialized view mv_security;
 refresh materialized view mv_current;
+refresh materialized view mv_previous;
 refresh materialized view mv_fund_stats;
+
+-- REFRESH discards planner statistics, so skipping this makes queries that were
+-- fast yesterday start hitting the statement timeout
+analyze mv_security;
+analyze mv_current;
+analyze mv_previous;
+analyze mv_fund_stats;
 ```
 
 The dashboard HTML never changes. Everything else downstream is a view or a function
@@ -125,9 +133,14 @@ than only the ~4,060 with a loaded portfolio.
 - **Sector labels are not standardised** across AMCs: "IT - Software" vs "Software".
   Debt schemes report credit ratings in the same column, so ratings appear in sector
   lists too.
-- **No history beyond the latest snapshot.** Only one disclosure date per scheme is
-  kept, so "what did this fund buy or sell" is not answerable yet. Retaining old
-  `portfolio_date` rows instead of delete-then-insert would unlock it.
+- **Change tracking is built but starved.** `sql/changes.sql` compares each scheme's
+  latest disclosure against its previous one, but only one date per scheme is loaded so
+  far, so it returns nothing. `push()` deletes per (amc, date, frequency) — loading older
+  months does not disturb the current one, and the Changes tab appears on its own once a
+  scheme has two.
+- **Market-cap tagging and leaderboards need their Colab runs.** `security_meta` and
+  `scheme_nav_monthly` are empty until `colab/marketcap_tags.py` and
+  `colab/nav_monthly_ingest.py` have run.
 - **`api.mfapi.in` CORS is unverified** from a browser on your domain. If NAV charts
   stay empty while holdings load, check the console — that is the cause, and the fix
   is a Supabase Edge Function proxy.
