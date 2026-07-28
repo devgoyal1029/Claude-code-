@@ -752,3 +752,145 @@ grant execute on function stock_funds(text, int, text) to anon, authenticated;
 
 -- select * from stock_by_amc('INE002A01018');
 -- select * from stock_funds('INE002A01018', 15, 'HDFC');
+
+
+-- ============================================================================
+-- DISCOVERY  (added after market-cap tagging landed)
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- untouched_stocks -- AMFI-listed companies no loaded fund owns at all.
+--
+-- Large and Mid come back empty: every one of those 250 companies is held by
+-- someone. The whole story is in Small Cap, where funds own 934 of 5,177.
+--
+-- Read it as a fact, not a recommendation. Zero fund ownership usually means
+-- thin free float, thin volume, or governance questions -- SEBI's liquidity
+-- norms stop a manager buying these even when they want to.
+-- ----------------------------------------------------------------------------
+create or replace function untouched_stocks(p_class text default 'Small Cap',
+                                            lim     int  default 100)
+returns table (cap_rank         int,
+               company          text,
+               isin             text,
+               symbol           text,
+               market_cap_class text,
+               mcap_cr          numeric)
+language sql stable security definer set search_path = public
+as $$
+    select m.cap_rank, m.company, m.isin, m.symbol, m.market_cap_class,
+           round(m.avg_mcap_cr)
+    from security_meta m
+    where (p_class is null or m.market_cap_class = p_class)
+      and not exists (select 1 from mv_current c
+                       where c.isin = m.isin and c.is_security)
+    order by m.avg_mcap_cr desc nulls last
+    limit least(coalesce(lim, 100), 500)
+$$;
+
+
+-- ----------------------------------------------------------------------------
+-- mf_coverage -- how much of the listed universe funds actually touch.
+-- ----------------------------------------------------------------------------
+create or replace function mf_coverage()
+returns table (market_cap_class text,
+               amfi_companies   int,
+               held_by_funds    int,
+               untouched        int,
+               coverage_pct     numeric)
+language sql stable security definer set search_path = public
+as $$
+    select m.market_cap_class,
+           count(*)::int,
+           count(c.isin)::int,
+           (count(*) - count(c.isin))::int,
+           round(count(c.isin) * 100.0 / nullif(count(*), 0), 1)
+    from security_meta m
+    left join (select distinct isin from mv_current where is_security) c
+           on c.isin = m.isin
+    group by 1
+    order by 2 desc
+$$;
+
+
+-- ----------------------------------------------------------------------------
+-- stock_categories -- which KINDS of fund own a security.
+--
+-- More telling than the raw holder list: a name held only by small-cap and
+-- thematic funds sits differently from one every large-cap fund owns. Shows
+-- where a stock actually lives in the industry's mental model.
+-- ----------------------------------------------------------------------------
+create or replace function stock_categories(p_isin text)
+returns table (category       text,
+               funds_holding  int,
+               funds_in_cat   int,
+               penetration_pct numeric,
+               total_value_cr numeric,
+               avg_weight     numeric,
+               max_weight     numeric)
+language sql stable security definer set search_path = public
+as $$
+    with h as (
+        select coalesce(category, 'Uncategorised') cat, amc, scheme_name,
+               pct_to_nav, market_value_lacs
+        from mv_current
+        where isin = upper(btrim(p_isin)) and is_security
+    ),
+    tot as (
+        select coalesce(category, 'Uncategorised') cat, count(*)::int n
+        from mv_fund_stats group by 1
+    )
+    select h.cat,
+           count(*)::int,
+           max(t.n),
+           round(count(*) * 100.0 / nullif(max(t.n), 0), 1),
+           round(sum(h.market_value_lacs) / 100, 2),
+           round(avg(h.pct_to_nav), 3),
+           round(max(h.pct_to_nav), 2)
+    from h join tot t on t.cat = h.cat
+    group by h.cat
+    order by 5 desc nulls last
+$$;
+
+
+-- ----------------------------------------------------------------------------
+-- market_concentration -- how top-heavy the industry's equity book is.
+--
+-- One number that says a lot: if the top 10 names hold a third of all equity
+-- money across 1,100 funds, the diversification those funds advertise is
+-- shallower than it looks.
+-- ----------------------------------------------------------------------------
+create or replace function market_concentration()
+returns table (bucket text, stocks int, value_cr numeric, share_pct numeric)
+language sql stable security definer set search_path = public
+as $$
+    with s as (
+        select isin, sum(market_value_lacs) v
+        from mv_current where is_security and asset_type = 'Equity' and isin is not null
+        group by isin
+    ),
+    r as (select *, row_number() over (order by v desc) rn, sum(v) over () tot from s)
+    select b.label, count(*)::int,
+           round(sum(r.v) / 100, 2),
+           round(sum(r.v) / max(r.tot) * 100, 2)
+    from r
+    join (values (1,'Top 10',10), (2,'Top 11-50',50), (3,'Top 51-100',100),
+                 (4,'Top 101-500',500), (5,'Beyond 500',2147483647))
+         as b(ord, label, upper_rn) on true
+    where r.rn <= b.upper_rn
+      and r.rn > case b.ord when 1 then 0 when 2 then 10 when 3 then 50
+                            when 4 then 100 else 500 end
+    group by b.ord, b.label
+    order by b.ord
+$$;
+
+
+grant execute on function untouched_stocks(text, int) to anon, authenticated;
+grant execute on function mf_coverage()               to anon, authenticated;
+grant execute on function stock_categories(text)      to anon, authenticated;
+grant execute on function market_concentration()      to anon, authenticated;
+
+-- select * from untouched_stocks('Small Cap', 20);
+-- select * from mf_coverage();
+-- select * from stock_categories('INE002A01018');
+-- select * from market_concentration();
