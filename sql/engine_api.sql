@@ -656,3 +656,99 @@ grant execute on function fund_screener(text, text, text, numeric, numeric, nume
 -- select * from sector_funds('Banks', 20);
 -- select * from category_stats('Large Cap Fund');
 -- select * from fund_screener(p_sector => 'Banks', p_min_sector_pct => 25, p_order => 'match');
+
+
+-- ============================================================================
+-- STOCK x AMC  (added after first release)
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- stock_by_amc -- one security, broken down by fund house.
+--
+-- Two different "percentages", because they answer different questions:
+--   share_of_total_pct -- of all the money the loaded universe has in this
+--     stock, how much sits with this AMC. Size-dominated, so the big houses
+--     lead almost by definition.
+--   pct_of_amc_book -- how much of this AMC's own equity book is in this one
+--     name. This is the conviction read, and it routinely reorders the list:
+--     a small house at 3% is making a far bigger bet than a giant at 0.4%.
+-- ----------------------------------------------------------------------------
+create or replace function stock_by_amc(p_isin text)
+returns table (amc                text,
+               schemes            int,
+               total_value_cr     numeric,
+               share_of_total_pct numeric,
+               avg_weight         numeric,
+               max_weight         numeric,
+               top_scheme         text,
+               top_scheme_pct     numeric,
+               pct_of_amc_book    numeric)
+language sql stable security definer set search_path = public
+as $$
+    with h as (
+        select * from mv_current
+        where isin = upper(btrim(p_isin)) and is_security
+    ),
+    tot as (select sum(market_value_lacs) v from h),
+    book as (
+        select amc, sum(market_value_lacs) v
+        from mv_current
+        where is_security and amc in (select distinct amc from h)
+        group by amc
+    ),
+    agg as (
+        select h.amc, count(*)::int as schemes,
+               sum(h.market_value_lacs)    as v,
+               round(avg(h.pct_to_nav), 3) as avg_weight,
+               round(max(h.pct_to_nav), 2) as max_weight
+        from h group by h.amc
+    )
+    select a.amc, a.schemes,
+           round(a.v / 100, 2),
+           round(a.v / nullif((select v from tot), 0) * 100, 2),
+           a.avg_weight, a.max_weight,
+           (select h2.scheme_name from h h2 where h2.amc = a.amc
+             order by h2.market_value_lacs desc nulls last limit 1),
+           (select round(h2.pct_to_nav, 2) from h h2 where h2.amc = a.amc
+             order by h2.market_value_lacs desc nulls last limit 1),
+           round(a.v / nullif((select v from book b where b.amc = a.amc), 0) * 100, 3)
+    from agg a
+    order by a.v desc nulls last
+$$;
+
+
+-- ----------------------------------------------------------------------------
+-- stock_funds gains an AMC filter, for the drill-down under stock_by_amc.
+-- The parameter list changes, so the old signature is dropped first --
+-- CREATE OR REPLACE would leave a second overload behind and make calls
+-- ambiguous.
+-- ----------------------------------------------------------------------------
+drop function if exists stock_funds(text, int);
+
+create or replace function stock_funds(p_isin text,
+                                       lim    int  default 100,
+                                       p_amc  text default null)
+returns table (amc            text,
+               scheme_name    text,
+               scheme_code    text,
+               category       text,
+               pct_to_nav     numeric,
+               value_cr       numeric,
+               fund_aum_cr    numeric,
+               portfolio_date date)
+language sql stable security definer set search_path = public
+as $$
+    select amc, scheme_name, scheme_code, category,
+           round(pct_to_nav, 2), value_cr, fund_aum_cr, portfolio_date
+    from mv_current
+    where isin = upper(btrim(p_isin)) and is_security
+      and (p_amc is null or amc = p_amc)
+    order by market_value_lacs desc nulls last
+    limit least(coalesce(lim, 100), 500)
+$$;
+
+grant execute on function stock_by_amc(text)           to anon, authenticated;
+grant execute on function stock_funds(text, int, text) to anon, authenticated;
+
+-- select * from stock_by_amc('INE002A01018');
+-- select * from stock_funds('INE002A01018', 15, 'HDFC');

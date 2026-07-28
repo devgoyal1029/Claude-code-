@@ -598,6 +598,7 @@ async function route() {
     else if (p[0] === "stock" && p[1])  { setNav(""); await viewStock(v, decodeURIComponent(p[1])); }
     else if (p[0] === "sector" && p[1]) { setNav("sectors"); await viewSector(v, decodeURIComponent(p[1])); }
     else if (p[0] === "sectors")        { setNav("sectors"); await viewSectors(v); }
+    else if (p[0] === "amc" && p[1])     { setNav("amcs"); await viewAmc(v, decodeURIComponent(p[1])); }
     else if (p[0] === "screener")       { setNav("screener"); await viewScreener(v); }
     else if (p[0] === "amcs")           { setNav("amcs"); await viewAmcs(v); }
     else                                 { setNav("market"); await viewMarket(v); }
@@ -1046,10 +1047,27 @@ async function viewStock(v, isin) {
   c1.appendChild(t);
   v.appendChild(c1);
 
+  /* ---- by AMC, with scheme-level drill-down ---- */
+  const cA = el("div", "card");
+  cA.appendChild(el("h2", "", "By fund house"));
+  cA.appendChild(el("div", "hint",
+    "Two percentages, because they answer different questions. <b>Share</b> is this AMC's " +
+    "slice of all the money in this stock — size-dominated, so the big houses lead almost " +
+    "by definition. <b>Of AMC book</b> is how much of that house's own equity book sits in " +
+    "this one name, which is the conviction read and often reorders the list entirely. " +
+    "Click a row to see the schemes behind it."));
+  const aHost = el("div", "empty", '<span class="spin"></span>');
+  cA.appendChild(aHost);
+  v.appendChild(cA);
+
+  rpc("stock_by_amc", { p_isin: isin }).then(rows => {
+    aHost.replaceWith(buildAmcBreakdown(rows, isin));
+  }).catch(e => aHost.replaceWith(el("div", "note err", esc(e.message))));
+
   const c2 = el("div", "card");
-  c2.appendChild(el("h2", "", "Who holds it"));
+  c2.appendChild(el("h2", "", "Every scheme holding it"));
   c2.appendChild(el("div", "hint",
-    "Every scheme at its own latest disclosure, so dates differ down the list."));
+    "Each scheme at its own latest disclosure, so dates differ down the list."));
   c2.appendChild(table(fR, [
     { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
     { h: "Scheme", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
@@ -1060,6 +1078,180 @@ async function viewStock(v, isin) {
     { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.portfolio_date))}</span>` }
   ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
   v.appendChild(c2);
+}
+
+/* AMC breakdown for one stock, with a scheme-level drill-down per row.
+   Two sort orders because "biggest holder" and "highest conviction" are
+   genuinely different answers. */
+function buildAmcBreakdown(rows, isin) {
+  const wrap = el("div");
+  if (!rows || !rows.length) {
+    wrap.appendChild(el("div", "empty", "No AMC holds this security."));
+    return wrap;
+  }
+
+  const chips = el("div", "chips");
+  const body = el("div");
+  let order = "share";
+
+  const draw = () => {
+    const sorted = [...rows].sort((a, b) => order === "share"
+      ? Number(b.total_value_cr) - Number(a.total_value_cr)
+      : Number(b.pct_of_amc_book) - Number(a.pct_of_amc_book));
+
+    body.innerHTML = "";
+    const box = el("div", "tblwrap");
+    const t = el("table");
+    t.innerHTML = `<thead><tr>
+      <th>AMC</th><th class="n">Schemes</th><th class="n">Value</th>
+      <th class="n">Share</th><th class="n">Of AMC book</th><th>Largest scheme</th>
+    </tr></thead>`;
+    const tb = el("tbody");
+
+    sorted.forEach(r => {
+      const tr = el("tr");
+      tr.innerHTML = `
+        <td><span class="pill gold">${esc(r.amc)}</span></td>
+        <td class="n">${fmt(r.schemes, 0)}</td>
+        <td class="n">${cr(r.total_value_cr)}</td>
+        <td class="n"><b>${pct(r.share_of_total_pct)}</b></td>
+        <td class="n">${pct(r.pct_of_amc_book, 3)}</td>
+        <td><span class="lnk">${esc((r.top_scheme || "—").slice(0, 42))}</span>
+            <div class="sub2">${pct(r.top_scheme_pct)} of that scheme</div></td>`;
+      tb.appendChild(tr);
+
+      let open = null;
+      tr.onclick = async () => {
+        if (open) { open.remove(); open = null; return; }
+        open = el("tr");
+        open.innerHTML = `<td colspan="6"><span class="spin"></span></td>`;
+        tr.after(open);
+        try {
+          const schemes = await rpc("stock_funds", { p_isin: isin, lim: 15, p_amc: r.amc });
+          const cell = el("td"); cell.colSpan = 6;
+          cell.style.cssText = "background:var(--bg);padding:14px 11px";
+          cell.appendChild(el("div", "hint",
+            `Top ${schemes.length} ${esc(r.amc)} scheme${schemes.length === 1 ? "" : "s"} holding this security`));
+          const inner = el("table");
+          inner.style.minWidth = "0";
+          inner.innerHTML = `<thead><tr><th>Scheme</th><th class="n">% to NAV</th>
+            <th class="n">₹ Cr</th><th class="n">Fund AUM</th></tr></thead>`;
+          const itb = el("tbody");
+          schemes.forEach(s => {
+            const str = el("tr");
+            str.innerHTML = `<td><span class="lnk">${esc(s.scheme_name)}</span>
+                ${s.category ? `<div class="sub2">${esc(s.category)}</div>` : ""}</td>
+              <td class="n"><b>${pct(s.pct_to_nav)}</b></td>
+              <td class="n">${fmt(s.value_cr, 1)}</td>
+              <td class="n">${cr(s.fund_aum_cr)}</td>`;
+            str.onclick = ev => { ev.stopPropagation();
+              if (s.scheme_code) go("#/fund/" + s.scheme_code); };
+            itb.appendChild(str);
+          });
+          inner.appendChild(itb);
+          cell.appendChild(inner);
+          open.innerHTML = ""; open.appendChild(cell);
+        } catch (e) {
+          open.innerHTML = `<td colspan="6"><div class="note err">${esc(e.message)}</div></td>`;
+        }
+      };
+    });
+
+    t.appendChild(tb); box.appendChild(t); body.appendChild(box);
+
+    const bh = el("div"); bh.style.marginTop = "20px"; body.appendChild(bh);
+    barList(bh, sorted.map(r => ({
+      label: r.amc,
+      pct: order === "share" ? Number(r.total_value_cr) : Number(r.pct_of_amc_book),
+      raw: order === "share" ? cr(r.total_value_cr) : pct(r.pct_of_amc_book, 3)
+    })), { max: 20 });
+  };
+
+  [["share", "By money"], ["book", "By conviction"]].forEach(([o, label], i) => {
+    const b = el("button", "chip" + (i === 0 ? " on" : ""), label);
+    b.onclick = () => { order = o;
+      [...chips.children].forEach(n => n.classList.remove("on"));
+      b.classList.add("on"); draw(); };
+    chips.appendChild(b);
+  });
+
+  wrap.append(chips, body);
+  draw();
+  return wrap;
+}
+
+/* ==========================================================================
+   VIEW · AMC detail  (the reverse direction: house → stocks)
+   ========================================================================== */
+async function viewAmc(v, amc) {
+  hero(amc, "Everything this fund house holds, aggregated across its schemes.");
+  v.innerHTML = loading("Loading " + amc + "…");
+
+  const [all, stocks, sectors, funds] = await Promise.all([
+    rpc("amc_summary"),
+    rpc("top_stocks",    { lim: 30, p_order: "value", p_amc: amc }),
+    rpc("top_sectors",   { lim: 14, p_amc: amc }),
+    rpc("fund_screener", { p_amc: amc, p_order: "aum", lim: 200 })
+  ]);
+  const s = (all || []).find(r => r.amc === amc);
+  v.innerHTML = "";
+
+  const c0 = el("div", "card");
+  c0.innerHTML = `<div class="crumb"><span onclick="go('#/amcs')">AMCs</span> › ${esc(amc)}</div>`;
+  c0.appendChild(el("h2", "", amc));
+  if (s) {
+    c0.appendChild(el("div", "hint", `Disclosures as on ${dstr(dt(s.latest_date))}`));
+    const t = el("div", "tiles");
+    [["Funds", fmt(s.funds, 0), "with disclosed portfolios"],
+     ["Total", cr(s.total_aum_cr), "disclosed assets"],
+     ["Equity", cr(s.equity_aum_cr), ""], ["Debt", cr(s.debt_aum_cr), ""],
+     ["Avg holdings", fmt(s.avg_holdings, 1), "per fund"],
+     ["Median top-10", pct(s.med_top_10), "concentration"]
+    ].forEach(([k, val, sub]) => t.appendChild(el("div", "tile",
+      `<div class="k">${k}</div><div class="v">${val}</div><div class="s">${esc(sub)}</div>`)));
+    c0.appendChild(t);
+  }
+  v.appendChild(c0);
+
+  const c1 = el("div", "card");
+  c1.appendChild(el("h2", "", "Largest positions"));
+  c1.appendChild(el("div", "hint",
+    "Aggregated across every scheme in the house, by money committed."));
+  c1.appendChild(table(stocks, [
+    { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+    { h: "Stock", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+        <div class="sub2 mono">${esc(r.isin)}</div>` },
+    { h: "Sector", fn: r => esc(r.sector || "—") },
+    { h: "Schemes", n: 1, fn: r => fmt(r.funds_holding, 0) },
+    { h: "Value", n: 1, fn: r => cr(r.total_value_cr) },
+    { h: "Avg wt", n: 1, fn: r => pct(r.avg_weight, 2) },
+    { h: "Max wt", n: 1, fn: r => pct(r.max_weight) }
+  ], r => go("#/stock/" + r.isin)));
+  v.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.appendChild(el("h2", "", "Sector tilt"));
+  c2.appendChild(el("div", "hint", "By money committed across the house"));
+  const sh = el("div"); c2.appendChild(sh);
+  barList(sh, (sectors || []).map(r => ({ label: r.sector, pct: r.total_value_cr,
+      raw: cr(r.total_value_cr) })),
+    { max: 14, onClick: r => go("#/sector/" + encodeURIComponent(r.label)) });
+  v.appendChild(c2);
+
+  const c3 = el("div", "card");
+  c3.appendChild(el("h2", "", `${funds.length} schemes`));
+  c3.appendChild(el("div", "hint", "Click any scheme to open it."));
+  c3.appendChild(table(funds, [
+    { h: "Scheme", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+        ${r.category ? `<div class="sub2">${esc(r.category)}</div>` : ""}` },
+    { h: "AUM", n: 1, fn: r => cr(r.aum_cr) },
+    { h: "Holdings", n: 1, fn: r => fmt(r.securities, 0) },
+    { h: "Top 10", n: 1, fn: r => pct(r.top_10_pct) },
+    { h: "Cash", n: 1, fn: r => pct(r.cash_pct) },
+    { h: "Top sector", fn: r => r.top_sector
+        ? `${esc(r.top_sector)} <span class="sub2">${pct(r.top_sector_pct)}</span>` : "—" }
+  ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+  v.appendChild(c3);
 }
 
 /* ==========================================================================
@@ -1226,7 +1418,8 @@ async function viewAmcs(v) {
   c.appendChild(el("h2", "", `${rows.length} AMCs`));
   c.appendChild(el("div", "hint",
     "AUM here is the sum of disclosed holding values, not an official AUM figure — " +
-    "close enough for ranking, not for reporting. Dates differ by house."));
+    "close enough for ranking, not for reporting. Dates differ by house. " +
+    "Click a house to see everything it holds."));
   c.appendChild(table(rows, [
     { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
     { h: "Funds", n: 1, fn: r => fmt(r.funds, 0) },
@@ -1236,14 +1429,14 @@ async function viewAmcs(v) {
     { h: "Avg holdings", n: 1, fn: r => fmt(r.avg_holdings, 1) },
     { h: "Med top-10", n: 1, fn: r => pct(r.med_top_10) },
     { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.latest_date))}</span>` }
-  ]));
+  ], r => go("#/amc/" + encodeURIComponent(r.amc))));
   v.appendChild(c);
 
   const b = el("div", "card");
   b.appendChild(el("h2", "", "By disclosed assets"));
   const bh = el("div"); b.appendChild(bh);
   barList(bh, rows.map(r => ({ label: r.amc, pct: r.total_aum_cr, raw: cr(r.total_aum_cr) })),
-    { max: 20 });
+    { max: 20, onClick: r => go("#/amc/" + encodeURIComponent(r.label)) });
   v.appendChild(b);
 }
 
