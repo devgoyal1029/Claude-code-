@@ -24,10 +24,13 @@ Run sql/returns_and_caps.sql first (it creates the table).
 import re, time, json, requests, pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from supabase import create_client
-from google.colab import userdata
 
-sb = create_client("https://ulunrpbayvlazzxpqrpj.supabase.co",
-                   userdata.get("SUPABASE_SERVICE_KEY"))
+# service_role, not anon: scheme_nav_monthly has RLS with a read-only policy,
+# so an anon key cannot insert.
+SUPABASE_URL = "https://ulunrpbayvlazzxpqrpj.supabase.co"
+SUPABASE_KEY = "PASTE_SERVICE_ROLE_KEY_HERE"
+
+sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 plans = pd.DataFrame(sb.table("v_scheme_plans")
                        .select("amc,scheme_name,scheme_code,plan_name,plan_type")
