@@ -183,6 +183,18 @@ create index on mv_fund_stats (aum_cr desc);
 create index on mv_fund_stats (top_10_pct desc);
 
 
+-- ----------------------------------------------------------------------------
+-- 4. ANALYZE -- not optional.
+--
+-- A freshly created materialised view carries no statistics, so the planner has
+-- no idea how many rows it holds and picks plans on guesswork. Skipping this is
+-- what made top_stocks hit the statement timeout on first run.
+-- ----------------------------------------------------------------------------
+analyze mv_security;
+analyze mv_current;
+analyze mv_fund_stats;
+
+
 -- ============================================================================
 -- REFRESH -- run in this order after every load, before anything else.
 -- mv_current depends on mv_security; mv_fund_stats depends on mv_current.

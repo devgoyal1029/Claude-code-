@@ -74,38 +74,44 @@ returns table (isin            text,
                top_holder      text)
 language sql stable security definer set search_path = public
 as $$
-    with f as (
-        select c.*
+    -- Aggregate and LIMIT first, then resolve top_holder for only the rows that
+    -- survived. Doing it the other way -- a correlated subquery against the CTE --
+    -- cannot use an index and re-scanned ~69k rows for every one of ~5k ISINs,
+    -- which hit the statement timeout.
+    with agg as (
+        select c.isin,
+               count(*)::int                            as funds_holding,
+               count(distinct c.amc)::int               as amcs_holding,
+               round(sum(c.market_value_lacs) / 100, 2) as total_value_cr,
+               round(avg(c.pct_to_nav), 3)              as avg_weight,
+               round(max(c.pct_to_nav), 2)              as max_weight
         from mv_current c
         where c.is_security and c.isin is not null
           and (p_category is null or c.category = p_category)
           and (p_amc      is null or c.amc      = p_amc)
           and (p_sector   is null or c.sector   = p_sector)
-    ),
-    agg as (
-        select f.isin,
-               min(f.instrument)                    as instrument,
-               min(f.sector)                        as sector,
-               count(*)::int                        as funds_holding,
-               count(distinct f.amc)::int           as amcs_holding,
-               round(sum(f.market_value_lacs) / 100, 2) as total_value_cr,
-               round(avg(f.pct_to_nav), 3)          as avg_weight,
-               round(max(f.pct_to_nav), 2)          as max_weight
-        from f
-        group by f.isin
+        group by c.isin
         having count(*) >= greatest(coalesce(min_funds, 1), 1)
+    ),
+    picked as (
+        select * from agg
+        order by case when p_order = 'value'  then total_value_cr
+                      when p_order = 'weight' then avg_weight
+                      else funds_holding::numeric end desc,
+                 total_value_cr desc nulls last
+        limit least(coalesce(lim, 50), 300)
     )
-    select a.isin, a.instrument, a.sector, a.funds_holding, a.amcs_holding,
-           a.total_value_cr, a.avg_weight, a.max_weight,
-           (select f2.scheme_name from f f2
-             where f2.isin = a.isin
-             order by f2.pct_to_nav desc nulls last limit 1)
-    from agg a
-    order by case when p_order = 'value'  then a.total_value_cr
-                  when p_order = 'weight' then a.avg_weight
-                  else a.funds_holding::numeric end desc,
-             a.total_value_cr desc nulls last
-    limit least(coalesce(lim, 50), 300)
+    select p.isin, s.instrument, s.sector,
+           p.funds_holding, p.amcs_holding, p.total_value_cr, p.avg_weight, p.max_weight,
+           (select c.scheme_name from mv_current c
+             where c.isin = p.isin and c.is_security
+             order by c.pct_to_nav desc nulls last limit 1)
+    from picked p
+    left join mv_security s on s.isin = p.isin
+    order by case when p_order = 'value'  then p.total_value_cr
+                  when p_order = 'weight' then p.avg_weight
+                  else p.funds_holding::numeric end desc,
+             p.total_value_cr desc nulls last
 $$;
 
 
@@ -128,31 +134,40 @@ returns table (sector          text,
                top_stock       text)
 language sql stable security definer set search_path = public
 as $$
-    with f as (
-        select c.*
+    -- Same shape as top_stocks: aggregate, limit, then resolve top_stock for the
+    -- surviving sectors only.
+    with per_fund as (
+        select c.sector, c.amc, c.scheme_name,
+               sum(c.pct_to_nav) w, sum(c.market_value_lacs) v, count(*) n
         from mv_current c
         where c.is_security
           and (p_category is null or c.category = p_category)
           and (p_amc      is null or c.amc      = p_amc)
+        group by 1, 2, 3
     ),
-    per_fund as (
-        select sector, amc, scheme_name, sum(pct_to_nav) w, sum(market_value_lacs) v
-        from f group by 1, 2, 3
+    agg as (
+        select sector,
+               count(*)::int          as funds_holding,
+               sum(n)::int            as holdings,
+               round(sum(v) / 100, 2) as total_value_cr,
+               round(avg(w), 2)       as avg_weight,
+               round(max(w), 2)       as max_weight
+        from per_fund group by sector
+    ),
+    picked as (
+        select * from agg order by total_value_cr desc nulls last
+        limit least(coalesce(lim, 40), 200)
     )
-    select p.sector,
-           count(*)::int,
-           (select count(*)::int from f where f.sector = p.sector),
-           round(sum(p.v) / 100, 2),
-           round(avg(p.w), 2),
-           round(max(p.w), 2),
-           (select f2.instrument from f f2
-             where f2.sector = p.sector
-             group by f2.instrument
-             order by sum(f2.market_value_lacs) desc nulls last limit 1)
-    from per_fund p
-    group by p.sector
-    order by 4 desc nulls last
-    limit least(coalesce(lim, 40), 200)
+    select p.sector, p.funds_holding, p.holdings, p.total_value_cr,
+           p.avg_weight, p.max_weight,
+           (select c.instrument from mv_current c
+             where c.sector = p.sector and c.is_security
+               and (p_category is null or c.category = p_category)
+               and (p_amc      is null or c.amc      = p_amc)
+             group by c.instrument
+             order by sum(c.market_value_lacs) desc nulls last limit 1)
+    from picked p
+    order by p.total_value_cr desc nulls last
 $$;
 
 
