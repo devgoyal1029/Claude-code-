@@ -106,21 +106,27 @@ as $$
         from f
         join lateral (
             with s as (select * from scheme_nav_monthly n where n.scheme_code = f.scheme_code),
-            l as (select * from s order by month_end desc limit 1),
-            b as (select * from s, l
+            l as (select s.month_end, s.nav from s order by s.month_end desc limit 1),
+            -- explicit columns: `from s, l` puts two nav and two month_end in
+            -- scope, and an unqualified reference to either is ambiguous
+            b as (select s.month_end, s.nav
+                    from s, l
                    where s.month_end <= l.month_end - (p_months || ' months')::interval
-                     and s.month_end >= l.month_end - (p_months || ' months')::interval - interval '45 days'
+                     and s.month_end >= l.month_end - (p_months || ' months')::interval
+                                        - interval '45 days'
                    order by s.month_end desc limit 1),
             m as (   -- monthly returns over the window, for volatility
-                select s.month_end, s.nav / lag(s.nav) over (order by s.month_end) - 1 ret
+                select s.month_end,
+                       s.nav / lag(s.nav) over (order by s.month_end) - 1 as ret
                 from s, l
                 where s.month_end >= l.month_end - (p_months || ' months')::interval
             )
-            select (select nav from b)        as from_nav,
-                   (select nav from l)        as to_nav,
-                   (select month_end from b)  as from_date,
-                   (select month_end from l)  as to_date,
-                   (select stddev_samp(ret) * sqrt(12) * 100 from m where ret is not null) as vol
+            select (select b.nav       from b) as from_nav,
+                   (select l.nav       from l) as to_nav,
+                   (select b.month_end from b) as from_date,
+                   (select l.month_end from l) as to_date,
+                   (select stddev_samp(m.ret) * sqrt(12) * 100
+                      from m where m.ret is not null) as vol
         ) r on true
         where r.from_nav > 0 and r.to_nav > 0
     ),
