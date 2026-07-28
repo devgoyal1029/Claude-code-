@@ -110,7 +110,7 @@ def fetch(code):
                 return code, None, str(e)[:60]
             time.sleep(1.5 * (attempt + 1))
 
-codes = pick["scheme_code"].astype(str).tolist()
+codes = sorted(set(pick["scheme_code"].astype(str)))   # same code can back two funds
 frames, failed = [], []
 
 with ThreadPoolExecutor(max_workers=12) as ex:
@@ -138,7 +138,16 @@ print("\nfailures:", failed[:15])
 up = nav.copy()
 up["month_end"] = up["month_end"].dt.strftime("%Y-%m-%d")
 up["nav"] = up["nav"].round(4)
-recs = json.loads(up[["scheme_code", "month_end", "nav"]].to_json(orient="records"))
+
+# One scheme_code can arrive under two funds when two scheme names resolve to
+# the same key in scheme_alias, so the same series gets fetched twice and the
+# (scheme_code, month_end) primary key rejects the second copy mid-push.
+up = up[["scheme_code", "month_end", "nav"]].drop_duplicates(
+        subset=["scheme_code", "month_end"], keep="last")
+print(f"{len(nav):,} rows -> {len(up):,} after dedupe")
+print(f"unique funds: {up.scheme_code.nunique():,}")
+
+recs = json.loads(up.to_json(orient="records"))
 
 # Full replace. upsert would work too, but a clean wipe avoids leaving rows
 # behind for funds that dropped out of the picker since the last run.
