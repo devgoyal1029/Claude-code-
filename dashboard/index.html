@@ -25,86 +25,90 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);
      font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.02em}
-a{color:var(--blue);text-decoration:none}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1320px;margin:0 auto;padding:0 20px}
 
-/* ---------- header + search ---------- */
-header{background:linear-gradient(135deg,var(--navy-dark),var(--navy-mid));color:#fff;
-       padding:28px 0 72px;position:relative}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:-.01em}
-.brand i{width:22px;height:22px;border-radius:6px;display:inline-block;
+/* ---------- top bar ---------- */
+.topbar{background:var(--navy-dark);color:#fff;position:sticky;top:0;z-index:50;
+        box-shadow:0 1px 0 rgba(255,255,255,.07)}
+.topbar .wrap{display:flex;align-items:center;gap:22px;height:56px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14.5px;
+       letter-spacing:-.01em;flex-shrink:0;cursor:pointer}
+.brand i{width:20px;height:20px;border-radius:6px;display:inline-block;
          background:linear-gradient(135deg,var(--gold-bright),var(--gold-deep))}
-header h1{font-size:26px;margin:22px 0 6px}
-header p{margin:0;color:rgba(255,255,255,.62);font-size:13.5px;max-width:620px}
+nav{display:flex;gap:2px;overflow-x:auto;flex:1}
+nav a{padding:7px 13px;border-radius:99px;color:rgba(255,255,255,.62);font-weight:600;
+      font-size:13px;cursor:pointer;white-space:nowrap;text-decoration:none}
+nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+nav a.on{color:var(--navy-dark);background:var(--gold-bright)}
 
-.searchbox{position:relative;margin-top:22px;max-width:680px}
-.searchbox input{width:100%;padding:15px 17px;border-radius:var(--r-md);border:1px solid transparent;
+/* ---------- search ---------- */
+.hero{background:linear-gradient(135deg,var(--navy-dark),var(--navy-mid));color:#fff;
+      padding:26px 0 66px}
+.hero h1{font-size:24px;margin-bottom:5px}
+.hero p{margin:0;color:rgba(255,255,255,.6);font-size:13.5px;max-width:640px}
+.searchbox{position:relative;margin-top:20px;max-width:720px}
+.searchrow{display:flex;gap:8px}
+.sw{display:flex;background:rgba(255,255,255,.12);border-radius:var(--r-md);padding:3px;flex-shrink:0}
+.sw button{border:0;background:transparent;color:rgba(255,255,255,.7);font-family:var(--font);
+  font-weight:700;font-size:12px;padding:8px 13px;border-radius:var(--r);cursor:pointer}
+.sw button.on{background:#fff;color:var(--navy-dark)}
+.searchbox input{width:100%;padding:14px 16px;border-radius:var(--r-md);border:1px solid transparent;
   background:rgba(255,255,255,.97);font-family:var(--font);font-size:15px;color:var(--text);
   box-shadow:var(--shadow-lg);outline:none}
 .searchbox input:focus{border-color:var(--gold)}
-/* color must be re-declared: the dropdown sits inside <header>, which sets
-   color:#fff, so anything without an explicit colour renders white-on-white */
 .results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
-  color:var(--text);
-  border-radius:var(--r-md);box-shadow:var(--shadow-lg);max-height:420px;overflow-y:auto;
-  z-index:40;display:none;border:1px solid var(--border)}
+  color:var(--text);border-radius:var(--r-md);box-shadow:var(--shadow-lg);max-height:430px;
+  overflow-y:auto;z-index:40;display:none;border:1px solid var(--border)}
 .results.on{display:block}
 .res{padding:11px 15px;cursor:pointer;border-bottom:1px solid var(--border-soft);display:flex;
      gap:10px;align-items:flex-start}
 .res:last-child{border-bottom:0}
 .res:hover,.res.sel{background:var(--primary-soft)}
-.res .nm{font-weight:600;font-size:13.5px;line-height:1.35}
+.res .nm{font-weight:600;font-size:13.5px;line-height:1.35;color:var(--text)}
 .res .sub{color:var(--muted);font-size:11.5px;margin-top:2px}
 .res .rt{margin-left:auto;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
 .pill{font-size:10px;font-weight:700;padding:2.5px 7px;border-radius:99px;letter-spacing:.02em;
-      text-transform:uppercase;white-space:nowrap}
+      text-transform:uppercase;white-space:nowrap;display:inline-block}
 .pill.ok{background:var(--primary-light);color:var(--primary-deep)}
 .pill.no{background:var(--border-soft);color:var(--muted)}
 .pill.gold{background:var(--gold-soft);color:var(--gold-deep)}
+.pill.blue{background:#DBEAFE;color:#1D4ED8}
 
 /* ---------- layout ---------- */
-main{margin-top:-46px;padding-bottom:64px}
+main{margin-top:-44px;padding-bottom:70px;min-height:60vh}
 .card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);
       border:1px solid var(--border);padding:22px;margin-bottom:18px}
 .card h2{font-size:15px;margin-bottom:3px}
-.card .hint{color:var(--muted);font-size:12px;margin-bottom:16px}
+.card h3{font-size:13.5px;margin-bottom:3px}
+.hint{color:var(--muted);font-size:12px;margin-bottom:15px}
 .row{display:grid;gap:18px}
-@media(min-width:900px){.row.two{grid-template-columns:1fr 1fr}}
+@media(min-width:960px){.row.two{grid-template-columns:1fr 1fr}
+  .row.side{grid-template-columns:320px 1fr}}
 
-/* ---------- fund header ---------- */
-.fhead{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
-.fhead .t{flex:1;min-width:260px}
-.fhead h2{font-size:20px;line-height:1.3}
-.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
-.navbox{text-align:right;min-width:150px}
-.navbox .v{font-size:30px;font-weight:800;letter-spacing:-.03em;font-family:var(--mono)}
-.navbox .d{color:var(--muted);font-size:11.5px;margin-top:2px}
-.chg{font-weight:700;font-size:13px;font-family:var(--mono)}
+/* ---------- tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px}
+.tile{background:var(--bg);border-radius:var(--r-md);padding:13px 14px;border:1px solid var(--border-soft)}
+.tile .k{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:19px;font-weight:700;margin-top:5px;font-family:var(--mono);letter-spacing:-.02em}
+.tile .s{color:var(--muted);font-size:11px;margin-top:2px}
 .up{color:var(--primary)} .down{color:var(--red)} .flat{color:var(--muted)}
 
-/* ---------- tabs ---------- */
+/* ---------- tabs / chips ---------- */
 .tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto}
 .tab{padding:10px 15px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);
      border-bottom:2px solid transparent;white-space:nowrap}
 .tab:hover{color:var(--text)}
 .tab.on{color:var(--navy);border-bottom-color:var(--gold)}
 .pane{display:none} .pane.on{display:block}
-
-/* ---------- stat tiles ---------- */
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:11px}
-.tile{background:var(--bg);border-radius:var(--r-md);padding:13px 14px;border:1px solid var(--border-soft)}
-.tile .k{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.tile .v{font-size:19px;font-weight:700;margin-top:5px;font-family:var(--mono);letter-spacing:-.02em}
-.tile .s{color:var(--muted);font-size:11px;margin-top:2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface);
+    cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);font-family:var(--font)}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 
 /* ---------- chart ---------- */
 .chartwrap{position:relative}
-.rangebar{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
-.rg{padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface);
-    cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);font-family:var(--font)}
-.rg:hover{border-color:var(--gold)}
-.rg.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 svg.chart{width:100%;height:280px;display:block;overflow:visible}
 .tip{position:absolute;pointer-events:none;background:var(--navy);color:#fff;padding:7px 10px;
      border-radius:var(--r);font-size:11.5px;white-space:nowrap;opacity:0;transition:opacity .12s;
@@ -115,6 +119,8 @@ svg.chart{width:100%;height:280px;display:block;overflow:visible}
 .bars{display:flex;flex-direction:column;gap:9px}
 .bar{display:grid;grid-template-columns:1fr auto;gap:4px}
 .bar .lbl{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .lbl.clk{cursor:pointer;color:var(--blue)}
+.bar .lbl.clk:hover{text-decoration:underline}
 .bar .pc{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
 .bar .tr{grid-column:1/-1;height:7px;background:var(--border-soft);border-radius:99px;overflow:hidden}
 .bar .fl{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
@@ -126,10 +132,11 @@ th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05e
    font-weight:700;padding:9px 11px;border-bottom:1px solid var(--border);white-space:nowrap}
 td{padding:9px 11px;border-bottom:1px solid var(--border-soft)}
 tbody tr:hover{background:var(--bg)}
-td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
-th.n{text-align:right}
+td.n,th.n{text-align:right}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .lnk{cursor:pointer;color:var(--blue);font-weight:600}
 .lnk:hover{text-decoration:underline}
+.sub2{font-size:10.5px;color:var(--muted)}
 
 /* ---------- misc ---------- */
 .empty{padding:40px 20px;text-align:center;color:var(--muted)}
@@ -140,58 +147,63 @@ th.n{text-align:right}
 .spin{width:17px;height:17px;border:2px solid var(--border);border-top-color:var(--gold);
       border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-3px}
 @keyframes sp{to{transform:rotate(360deg)}}
-.cmp{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
-.cmp input{flex:1;min-width:220px;padding:10px 13px;border-radius:var(--r);border:1px solid var(--border);
-  font-family:var(--font);font-size:13.5px;outline:none}
-.cmp input:focus{border-color:var(--gold)}
-.drawer{position:fixed;inset:0;background:rgba(11,31,58,.45);z-index:60;display:none;
-        align-items:flex-end;justify-content:center}
-.drawer.on{display:flex}
-.drawer .inner{background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;width:100%;
-  max-width:760px;max-height:82vh;overflow-y:auto;padding:24px}
-@media(min-width:700px){.drawer{align-items:center}
-  .drawer .inner{border-radius:var(--r-xl);max-height:78vh}}
-.dclose{float:right;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-weight:300}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:11px;margin-bottom:16px}
+.filters label{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+.filters input,.filters select{width:100%;padding:9px 11px;border-radius:var(--r);
+  border:1px solid var(--border);font-family:var(--font);font-size:13px;outline:none;
+  background:var(--surface);color:var(--text)}
+.filters input:focus,.filters select:focus{border-color:var(--gold)}
+.btn{padding:10px 18px;border-radius:var(--r);border:0;background:var(--navy);color:#fff;
+  font-family:var(--font);font-weight:700;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--navy-mid)}
+.btn.ghost{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--gold);color:var(--text)}
+.crumb{font-size:12px;color:var(--muted);margin-bottom:10px}
+.crumb span{cursor:pointer;color:var(--blue)}
+.crumb span:hover{text-decoration:underline}
 </style>
 
-<header>
-  <div class="wrap">
-    <div class="brand"><i></i> InvestVerdict</div>
-    <h1>Fund Analyzer</h1>
-    <p>Search any AMFI-registered scheme for live NAV, returns and risk. Schemes with a
-       disclosed portfolio also carry full holdings analytics.</p>
-    <div class="searchbox">
-      <input id="q" type="text" placeholder="Search a fund — e.g. flexi cap, corporate bond, nifty 50"
-             autocomplete="off" spellcheck="false">
-      <div class="results" id="res"></div>
-    </div>
-  </div>
-</header>
+<div class="topbar"><div class="wrap">
+  <div class="brand" onclick="go('#/market')"><i></i> InvestVerdict</div>
+  <nav id="nav">
+    <a href="#/market">Market</a>
+    <a href="#/sectors">Sectors</a>
+    <a href="#/screener">Screener</a>
+    <a href="#/amcs">AMCs</a>
+  </nav>
+</div></div>
 
-<main class="wrap">
-  <div id="boot" class="card">
-    <div class="empty">
-      <b>Start by searching a fund</b>
-      Type at least two characters. Funds marked <span class="pill ok">Portfolio</span>
-      have holdings loaded.
+<div class="hero"><div class="wrap">
+  <h1 id="heroTitle">Fund Analyzer</h1>
+  <p id="heroSub">Every AMFI scheme for NAV, returns and risk. Schemes with a disclosed
+     portfolio carry full holdings analytics and cross-fund intelligence.</p>
+  <div class="searchbox">
+    <div class="searchrow">
+      <div class="sw">
+        <button id="mFund" class="on" onclick="setMode('fund')">Funds</button>
+        <button id="mStock" onclick="setMode('stock')">Stocks</button>
+      </div>
+      <input id="q" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Search a fund — flexi cap, corporate bond, nifty 50">
     </div>
+    <div class="results" id="res"></div>
   </div>
-  <div id="app" style="display:none"></div>
-</main>
+</div></div>
 
-<div class="drawer" id="drawer"><div class="inner" id="drawerBody"></div></div>
+<main class="wrap"><div id="view"></div></main>
 
 <script>
 /* ==========================================================================
-   CONFIG  —  paste the ANON key, never the service_role key.
-   This file ships to the browser; anything in it is public.
-   Supabase → Project Settings → API Keys → anon / public
+   CONFIG — anon key only. This file runs in the browser; everything in it
+   is public. The RPCs are SECURITY DEFINER so this key can call functions
+   but cannot read tables directly.
    ========================================================================== */
 const SUPABASE_URL = "https://ulunrpbayvlazzxpqrpj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsdW5ycGJheXZsYXp6eHBxcnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODM1MDcsImV4cCI6MjA5NTU1OTUwN30.y7BxUVuGqpaGumYm9bU5W7Yg-0XemuHC07CHcA_Mn6Q";
 
-const MFAPI = "https://api.mfapi.in/mf/";   // NAV history, keyed by AMFI scheme_code
-const RISK_FREE = 6.5;                       // % p.a., used for Sharpe / Sortino
+const MFAPI = "https://api.mfapi.in/mf/";
+const RISK_FREE = 6.5;
 const TRADING_DAYS = 252;
 
 /* ---------- helpers ---------- */
@@ -203,10 +215,20 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
 const fmt = (n, d = 2) => n == null || !isFinite(n) ? "—"
   : Number(n).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (n, d = 2) => n == null || !isFinite(n) ? "—" : fmt(n, d) + "%";
-const sign = n => n == null || !isFinite(n) ? "flat" : n > 0.0001 ? "up" : n < -0.0001 ? "down" : "flat";
+const signOf = n => n == null || !isFinite(n) ? "flat" : n > 1e-4 ? "up" : n < -1e-4 ? "down" : "flat";
 const signed = (n, d = 2) => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : "") + fmt(n, d) + "%";
 const dstr = d => d instanceof Date && !isNaN(d)
   ? d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+const dt = s => s ? new Date(s) : null;
+
+/* ₹ in crore, abbreviated once it stops being readable */
+function cr(n) {
+  if (n == null || !isFinite(n)) return "—";
+  n = Number(n);
+  if (Math.abs(n) >= 1e5) return "₹" + fmt(n / 1e5, 2) + " L Cr";
+  if (Math.abs(n) >= 1e3) return "₹" + fmt(n / 1e3, 2) + " K Cr";
+  return "₹" + fmt(n, 0) + " Cr";
+}
 
 async function rpc(fn, args) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -215,128 +237,33 @@ async function rpc(fn, args) {
                "Content-Type": "application/json" },
     body: JSON.stringify(args || {})
   });
-  if (!r.ok) throw new Error(`${fn}: ${r.status} ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) throw new Error(`${fn}: ${r.status} ${(await r.text()).slice(0, 220)}`);
   return r.json();
 }
+const one = rows => (rows && rows.length) ? rows[0] : null;
 
-/* ==========================================================================
-   NAV history — api.mfapi.in, fetched in the browser.
-   Response: { meta:{...}, data:[{date:"DD-MM-YYYY", nav:"107.65"}, ...] }
-   Newest first, so it gets reversed into chronological order.
-   ========================================================================== */
-async function loadNav(code) {
-  const r = await fetch(MFAPI + encodeURIComponent(code));
-  if (!r.ok) throw new Error("mfapi " + r.status);
-  const j = await r.json();
-  if (!j || !Array.isArray(j.data)) throw new Error("mfapi: unexpected shape");
-  const series = j.data.map(d => {
-    const [dd, mm, yy] = String(d.date).split("-");
-    return { t: new Date(+yy, +mm - 1, +dd), v: parseFloat(d.nav) };
-  }).filter(p => p.t instanceof Date && !isNaN(p.t) && isFinite(p.v) && p.v > 0)
-    .sort((a, b) => a.t - b.t);
-  return { meta: j.meta || {}, series };
+function loading(msg) {
+  return `<div class="card"><div class="empty"><span class="spin"></span>&nbsp; ${esc(msg)}</div></div>`;
 }
-
-const addM = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
-const addY = (d, n) => { const x = new Date(d); x.setFullYear(x.getFullYear() + n); return x; };
-
-/* last observation on or before `target` — binary search, series is sorted */
-function navOn(series, target) {
-  let lo = 0, hi = series.length - 1, out = null;
-  while (lo <= hi) { const m = (lo + hi) >> 1;
-    if (series[m].t <= target) { out = series[m]; lo = m + 1; } else hi = m - 1; }
-  return out;
-}
-
-const PERIODS = [
-  ["1M", d => addM(d, -1)], ["3M", d => addM(d, -3)], ["6M", d => addM(d, -6)],
-  ["YTD", d => new Date(d.getFullYear(), 0, 1)],
-  ["1Y", d => addY(d, -1)], ["3Y", d => addY(d, -3)],
-  ["5Y", d => addY(d, -5)], ["10Y", d => addY(d, -10)]
-];
-
-/* Returns beyond a year are annualised (CAGR); shorter ones stay absolute.
-   Quoting an absolute 3-year number next to a 1-year one would flatter the
-   longer period for no reason other than elapsed time. */
-function returns(series) {
-  if (!series.length) return [];
-  const last = series[series.length - 1], first = series[0];
-  const out = [];
-  for (const [name, back] of PERIODS) {
-    const target = back(last.t);
-    if (target < first.t) continue;
-    const base = navOn(series, target);
-    if (!base || !base.v) continue;
-    const days = (last.t - base.t) / 864e5;
-    const abs = (last.v / base.v - 1) * 100;
-    const ann = days > 400 ? (Math.pow(last.v / base.v, 365.25 / days) - 1) * 100 : null;
-    out.push({ name, abs, ann, from: base.t, days });
-  }
-  const days = (last.t - first.t) / 864e5;
-  if (days > 30) out.push({ name: "Since inception",
-    abs: (last.v / first.v - 1) * 100,
-    ann: days > 400 ? (Math.pow(last.v / first.v, 365.25 / days) - 1) * 100 : null,
-    from: first.t, days });
-  return out;
-}
-
-/* Risk over a trailing window. Daily NAV only lands on business days, so the
-   annualisation factor is 252, not 365. */
-function risk(series, years = 3) {
-  if (series.length < 30) return null;
-  const end = series[series.length - 1].t;
-  const s = series.filter(p => p.t >= addY(end, -years));
-  if (s.length < 30) return null;
-
-  const r = [];
-  for (let i = 1; i < s.length; i++) {
-    if (s[i - 1].v > 0) r.push(s[i].v / s[i - 1].v - 1);
-  }
-  if (r.length < 20) return null;
-
-  const mean = r.reduce((a, b) => a + b, 0) / r.length;
-  const varc = r.reduce((a, b) => a + (b - mean) ** 2, 0) / (r.length - 1);
-  const vol = Math.sqrt(varc * TRADING_DAYS) * 100;
-
-  const down = r.filter(x => x < 0);
-  const dvar = down.length
-    ? down.reduce((a, b) => a + b * b, 0) / down.length : 0;
-  const dvol = Math.sqrt(dvar * TRADING_DAYS) * 100;
-
-  const days = (s[s.length - 1].t - s[0].t) / 864e5;
-  const cagr = (Math.pow(s[s.length - 1].v / s[0].v, 365.25 / days) - 1) * 100;
-
-  let peak = -Infinity, mdd = 0, mddAt = null;
-  for (const p of s) {
-    if (p.v > peak) peak = p.v;
-    const dd = p.v / peak - 1;
-    if (dd < mdd) { mdd = dd; mddAt = p.t; }
-  }
-
-  return {
-    years, cagr, vol,
-    sharpe:  vol  > 0 ? (cagr - RISK_FREE) / vol  : null,
-    sortino: dvol > 0 ? (cagr - RISK_FREE) / dvol : null,
-    maxdd: mdd * 100, maxddAt: mddAt,
-    best: Math.max(...r) * 100, worst: Math.min(...r) * 100,
-    posDays: r.filter(x => x > 0).length / r.length * 100,
-    obs: r.length
-  };
+function errCard(e) {
+  return `<div class="card"><div class="note err">${esc(e.message || e)}</div></div>`;
 }
 
 /* ==========================================================================
-   Charts — inline SVG, no libraries
+   Charts
    ========================================================================== */
 const NS = "http://www.w3.org/2000/svg";
 const mk = (t, a) => { const n = document.createElementNS(NS, t);
   for (const k in a) n.setAttribute(k, a[k]); return n; };
+const PALETTE = ["#0B1F3A","#059669","#C9A961","#2563EB","#7C3AED","#F59E0B",
+                 "#DC2626","#0891B2","#DB2777","#65A30D","#475569","#B45309"];
 
-function lineChart(host, series) {
+function lineChart(host, series, yLabel) {
   host.innerHTML = "";
-  if (series.length < 2) { host.appendChild(el("div", "empty", "Not enough data to plot")); return; }
+  if (!series || series.length < 2) { host.appendChild(el("div", "empty", "Not enough data to plot")); return; }
 
   const wrap = el("div", "chartwrap");
-  const W = 1000, H = 280, P = { t: 14, r: 54, b: 26, l: 8 };
+  const W = 1000, H = 280, P = { t: 14, r: 58, b: 26, l: 8 };
   const svg = mk("svg", { class: "chart", viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none" });
 
   const xs = series.map(p => +p.t), ys = series.map(p => p.v);
@@ -344,11 +271,9 @@ function lineChart(host, series) {
   let y0 = Math.min(...ys), y1 = Math.max(...ys);
   const pad = (y1 - y0) * 0.12 || y1 * 0.02 || 1;
   y0 -= pad; y1 += pad;
-
   const X = v => P.l + (v - x0) / (x1 - x0 || 1) * (W - P.l - P.r);
   const Y = v => P.t + (1 - (v - y0) / (y1 - y0 || 1)) * (H - P.t - P.b);
 
-  /* gridlines + right-hand axis */
   for (let i = 0; i <= 4; i++) {
     const v = y0 + (y1 - y0) * i / 4, y = Y(v);
     svg.appendChild(mk("line", { x1: P.l, x2: W - P.r, y1: y, y2: y,
@@ -362,24 +287,21 @@ function lineChart(host, series) {
   const d = series.map((p, i) => `${i ? "L" : "M"}${X(+p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join("");
   const gain = series[series.length - 1].v >= series[0].v;
   const col = gain ? "#059669" : "#DC2626";
-
   const gid = "g" + Math.random().toString(36).slice(2, 8);
   const grad = mk("linearGradient", { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
-  grad.appendChild(mk("stop", { offset: "0%",   "stop-color": col, "stop-opacity": .18 }));
+  grad.appendChild(mk("stop", { offset: "0%", "stop-color": col, "stop-opacity": .18 }));
   grad.appendChild(mk("stop", { offset: "100%", "stop-color": col, "stop-opacity": 0 }));
   const defs = mk("defs"); defs.appendChild(grad); svg.appendChild(defs);
-
   svg.appendChild(mk("path", { d: `${d}L${X(x1)},${Y(y0)}L${X(x0)},${Y(y0)}Z`, fill: `url(#${gid})` }));
   svg.appendChild(mk("path", { d, fill: "none", stroke: col, "stroke-width": 2,
-    "stroke-linejoin": "round", "stroke-linecap": "round",
-    "vector-effect": "non-scaling-stroke" }));
+    "stroke-linejoin": "round", "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" }));
 
-  /* date ticks */
   [0, .25, .5, .75, 1].forEach(f => {
     const t = new Date(x0 + (x1 - x0) * f);
     const tx = mk("text", { x: X(+t), y: H - 6, fill: "#94A3B8", "font-size": 11,
       "text-anchor": f === 0 ? "start" : f === 1 ? "end" : "middle" });
-    tx.textContent = t.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    tx.textContent = yLabel === "rank" ? "#" + Math.round(1 + (series.length - 1) * f)
+      : t.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
     svg.appendChild(tx);
   });
 
@@ -387,7 +309,6 @@ function lineChart(host, series) {
   const vln = mk("line", { stroke: "#94A3B8", "stroke-width": 1, "stroke-dasharray": "3 3",
     y1: P.t, y2: H - P.b, opacity: 0 });
   svg.appendChild(vln); svg.appendChild(dot);
-
   wrap.appendChild(svg);
   const tip = el("div", "tip"); wrap.appendChild(tip);
 
@@ -401,48 +322,44 @@ function lineChart(host, series) {
     const px = X(+p.t) / W * box.width, py = Y(p.v) / H * box.height;
     dot.setAttribute("cx", X(+p.t)); dot.setAttribute("cy", Y(p.v)); dot.setAttribute("opacity", 1);
     vln.setAttribute("x1", X(+p.t)); vln.setAttribute("x2", X(+p.t)); vln.setAttribute("opacity", 1);
-    tip.innerHTML = `${dstr(p.t)}<br><span class="tv">₹${fmt(p.v, 4)}</span>`;
+    tip.innerHTML = (p.label ? esc(p.label) : dstr(p.t)) +
+      `<br><span class="tv">${yLabel === "rank" ? fmt(p.v) + "%" : "₹" + fmt(p.v, 4)}</span>`;
     tip.style.opacity = 1;
-    tip.style.left = Math.min(Math.max(px - 55, 0), box.width - 130) + "px";
+    tip.style.left = Math.min(Math.max(px - 55, 0), box.width - 150) + "px";
     tip.style.top = Math.max(py - 52, 0) + "px";
   });
   svg.addEventListener("mouseleave", () => {
     tip.style.opacity = 0; dot.setAttribute("opacity", 0); vln.setAttribute("opacity", 0);
   });
-
   host.appendChild(wrap);
 }
 
-const PALETTE = ["#0B1F3A","#059669","#C9A961","#2563EB","#7C3AED","#F59E0B",
-                 "#DC2626","#0891B2","#DB2777","#65A30D","#475569","#B45309"];
-
-function barList(host, rows, { max = 12, colorFn = null } = {}) {
+function barList(host, rows, opt = {}) {
+  const { max = 12, colorFn = null, onClick = null } = opt;
   host.innerHTML = "";
-  if (!rows.length) { host.appendChild(el("div", "empty", "No data")); return; }
-  const top = rows.slice(0, max);
-  const rest = rows.slice(max);
-  if (rest.length) {
-    const p = rest.reduce((a, b) => a + Number(b.pct || 0), 0);
-    top.push({ label: `Other (${rest.length})`, pct: p, other: true });
-  }
+  if (!rows || !rows.length) { host.appendChild(el("div", "empty", "No data")); return; }
+  const top = rows.slice(0, max), rest = rows.slice(max);
+  if (rest.length) top.push({ label: `Other (${rest.length})`,
+    pct: rest.reduce((a, b) => a + Number(b.pct || 0), 0), other: true });
   const peak = Math.max(...top.map(r => Math.abs(Number(r.pct) || 0)), 0.01);
   const box = el("div", "bars");
   top.forEach((r, i) => {
     const b = el("div", "bar");
-    b.appendChild(el("div", "lbl", esc(r.label)));
-    b.appendChild(el("div", "pc", pct(Number(r.pct))));
+    const lbl = el("div", "lbl" + (onClick && !r.other ? " clk" : ""), esc(r.label));
+    if (onClick && !r.other) lbl.onclick = () => onClick(r);
+    b.appendChild(lbl);
+    b.appendChild(el("div", "pc", r.raw != null ? r.raw : pct(Number(r.pct))));
     const tr = el("div", "tr"), fl = el("div", "fl");
     fl.style.width = Math.abs(Number(r.pct) || 0) / peak * 100 + "%";
-    fl.style.background = r.other ? "#CBD5E1"
-      : colorFn ? colorFn(r) : PALETTE[i % PALETTE.length];
+    fl.style.background = r.other ? "#CBD5E1" : colorFn ? colorFn(r) : PALETTE[i % PALETTE.length];
     tr.appendChild(fl); b.appendChild(tr); box.appendChild(b);
   });
   host.appendChild(box);
 }
 
-function donut(host, rows) {
+function donut(host, rows, centerLabel) {
   host.innerHTML = "";
-  const data = rows.filter(r => Number(r.pct) > 0);
+  const data = (rows || []).filter(r => Number(r.pct) > 0);
   if (!data.length) { host.appendChild(el("div", "empty", "No data")); return; }
   const total = data.reduce((a, b) => a + Number(b.pct), 0);
   const S = 200, R = 74, C = 2 * Math.PI * R;
@@ -450,43 +367,148 @@ function donut(host, rows) {
   let off = 0;
   data.forEach((r, i) => {
     const frac = Number(r.pct) / total;
-    svg.appendChild(mk("circle", { cx: S / 2, cy: S / 2, r: R, fill: "none",
+    svg.appendChild(mk("circle", { cx: S/2, cy: S/2, r: R, fill: "none",
       stroke: PALETTE[i % PALETTE.length], "stroke-width": 26,
-      "stroke-dasharray": `${(frac * C).toFixed(2)} ${C.toFixed(2)}`,
-      "stroke-dashoffset": (-off * C).toFixed(2),
-      transform: `rotate(-90 ${S / 2} ${S / 2})` }));
+      "stroke-dasharray": `${(frac*C).toFixed(2)} ${C.toFixed(2)}`,
+      "stroke-dashoffset": (-off*C).toFixed(2), transform: `rotate(-90 ${S/2} ${S/2})` }));
     off += frac;
   });
-  const t1 = mk("text", { x: S / 2, y: S / 2 - 4, "text-anchor": "middle",
-    "font-size": 25, "font-weight": 700, fill: "#0F172A", "font-family": "DM Mono, monospace" });
+  const t1 = mk("text", { x: S/2, y: S/2 - 4, "text-anchor": "middle", "font-size": 25,
+    "font-weight": 700, fill: "#0F172A", "font-family": "DM Mono, monospace" });
   t1.textContent = data.length;
-  const t2 = mk("text", { x: S / 2, y: S / 2 + 16, "text-anchor": "middle",
-    "font-size": 11, fill: "#64748B", "font-family": "Plus Jakarta Sans, sans-serif" });
-  t2.textContent = "asset types";
+  const t2 = mk("text", { x: S/2, y: S/2 + 16, "text-anchor": "middle", "font-size": 11,
+    fill: "#64748B", "font-family": "Plus Jakarta Sans, sans-serif" });
+  t2.textContent = centerLabel || "types";
   svg.appendChild(t1); svg.appendChild(t2);
 
-  const legend = el("div", "", "");
-  legend.style.cssText = "flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px";
+  const legend = el("div");
+  legend.style.cssText = "flex:1;min-width:170px;display:flex;flex-direction:column;gap:8px";
   data.forEach((r, i) => {
-    const row = el("div", "", "");
+    const row = el("div");
     row.style.cssText = "display:flex;align-items:center;gap:9px;font-size:12.5px";
-    const sw = el("i"); sw.style.cssText =
-      `width:11px;height:11px;border-radius:3px;flex:0 0 auto;background:${PALETTE[i % PALETTE.length]}`;
-    const nm = el("span", "", esc(r.label)); nm.style.cssText = "flex:1";
+    const sw = el("i");
+    sw.style.cssText = `width:11px;height:11px;border-radius:3px;flex:0 0 auto;background:${PALETTE[i%PALETTE.length]}`;
+    const nm = el("span", "", esc(r.label)); nm.style.flex = "1";
     const vv = el("span", "mono", pct(Number(r.pct))); vv.style.fontWeight = 600;
     row.append(sw, nm, vv); legend.appendChild(row);
   });
-
   const wrap = el("div");
   wrap.style.cssText = "display:flex;gap:22px;align-items:center;flex-wrap:wrap";
   wrap.append(svg, legend);
   host.appendChild(wrap);
 }
 
+/* build a table quickly: cols = [{h, k, n?, fn?, cls?}] */
+function table(rows, cols, onRow) {
+  const box = el("div", "tblwrap");
+  const t = el("table");
+  t.innerHTML = `<thead><tr>${cols.map(c =>
+    `<th class="${c.n ? "n" : ""}">${esc(c.h)}</th>`).join("")}</tr></thead>`;
+  const tb = el("tbody");
+  (rows || []).forEach((r, i) => {
+    const tr = el("tr");
+    tr.innerHTML = cols.map(c => {
+      const v = c.fn ? c.fn(r, i) : r[c.k];
+      return `<td class="${c.n ? "n" : ""} ${c.cls || ""}">${v == null ? "—" : v}</td>`;
+    }).join("");
+    if (onRow) tr.onclick = () => onRow(r);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); box.appendChild(t);
+  if (!rows || !rows.length) box.appendChild(el("div", "empty", "Nothing here"));
+  return box;
+}
+
+/* ==========================================================================
+   NAV history + metrics (client-side; api.mfapi.in)
+   ========================================================================== */
+async function loadNav(code) {
+  const r = await fetch(MFAPI + encodeURIComponent(code));
+  if (!r.ok) throw new Error("mfapi " + r.status);
+  const j = await r.json();
+  if (!j || !Array.isArray(j.data)) throw new Error("mfapi: unexpected shape");
+  const series = j.data.map(d => {
+    const [dd, mm, yy] = String(d.date).split("-");
+    return { t: new Date(+yy, +mm - 1, +dd), v: parseFloat(d.nav) };
+  }).filter(p => !isNaN(p.t) && isFinite(p.v) && p.v > 0).sort((a, b) => a.t - b.t);
+  return { meta: j.meta || {}, series };
+}
+const addM = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
+const addY = (d, n) => { const x = new Date(d); x.setFullYear(x.getFullYear() + n); return x; };
+
+function navOn(series, target) {
+  let lo = 0, hi = series.length - 1, out = null;
+  while (lo <= hi) { const m = (lo + hi) >> 1;
+    if (series[m].t <= target) { out = series[m]; lo = m + 1; } else hi = m - 1; }
+  return out;
+}
+
+const PERIODS = [["1M", d => addM(d,-1)], ["3M", d => addM(d,-3)], ["6M", d => addM(d,-6)],
+  ["YTD", d => new Date(d.getFullYear(),0,1)], ["1Y", d => addY(d,-1)], ["3Y", d => addY(d,-3)],
+  ["5Y", d => addY(d,-5)], ["10Y", d => addY(d,-10)]];
+
+/* Beyond a year, returns are annualised. Quoting an absolute 3-year figure
+   beside a 1-year one flatters the longer period purely for elapsed time. */
+function returns(series) {
+  if (!series || !series.length) return [];
+  const last = series[series.length - 1], first = series[0], out = [];
+  for (const [name, back] of PERIODS) {
+    const target = back(last.t);
+    if (target < first.t) continue;
+    const base = navOn(series, target);
+    if (!base || !base.v) continue;
+    const days = (last.t - base.t) / 864e5;
+    out.push({ name, abs: (last.v / base.v - 1) * 100,
+      ann: days > 400 ? (Math.pow(last.v / base.v, 365.25 / days) - 1) * 100 : null,
+      from: base.t });
+  }
+  const days = (last.t - first.t) / 864e5;
+  if (days > 30) out.push({ name: "Since inception", abs: (last.v / first.v - 1) * 100,
+    ann: days > 400 ? (Math.pow(last.v / first.v, 365.25 / days) - 1) * 100 : null, from: first.t });
+  return out;
+}
+
+/* NAV lands on business days only, so annualise over 252, not 365. */
+function risk(series, years = 3) {
+  if (!series || series.length < 30) return null;
+  const end = series[series.length - 1].t;
+  const s = series.filter(p => p.t >= addY(end, -years));
+  if (s.length < 30) return null;
+  const r = [];
+  for (let i = 1; i < s.length; i++) if (s[i-1].v > 0) r.push(s[i].v / s[i-1].v - 1);
+  if (r.length < 20) return null;
+  const mean = r.reduce((a,b) => a+b, 0) / r.length;
+  const vol = Math.sqrt(r.reduce((a,b) => a + (b-mean)**2, 0) / (r.length-1) * TRADING_DAYS) * 100;
+  const down = r.filter(x => x < 0);
+  const dvol = down.length
+    ? Math.sqrt(down.reduce((a,b) => a + b*b, 0) / down.length * TRADING_DAYS) * 100 : 0;
+  const days = (s[s.length-1].t - s[0].t) / 864e5;
+  const cagr = (Math.pow(s[s.length-1].v / s[0].v, 365.25 / days) - 1) * 100;
+  let peak = -Infinity, mdd = 0, mddAt = null;
+  for (const p of s) { if (p.v > peak) peak = p.v;
+    const dd = p.v / peak - 1; if (dd < mdd) { mdd = dd; mddAt = p.t; } }
+  return { years, cagr, vol,
+    sharpe: vol > 0 ? (cagr - RISK_FREE) / vol : null,
+    sortino: dvol > 0 ? (cagr - RISK_FREE) / dvol : null,
+    maxdd: mdd * 100, maxddAt: mddAt,
+    best: Math.max(...r) * 100, worst: Math.min(...r) * 100,
+    posDays: r.filter(x => x > 0).length / r.length * 100, obs: r.length };
+}
+
 /* ==========================================================================
    Search
    ========================================================================== */
-let searchTimer = null, cursor = -1, hits = [];
+let MODE = "fund", searchTimer = null, cursor = -1, hits = [];
+
+function setMode(m) {
+  MODE = m;
+  $("#mFund").classList.toggle("on", m === "fund");
+  $("#mStock").classList.toggle("on", m === "stock");
+  $("#q").placeholder = m === "fund"
+    ? "Search a fund — flexi cap, corporate bond, nifty 50"
+    : "Search a stock — reliance, hdfc bank, or an ISIN";
+  $("#q").value = ""; $("#res").classList.remove("on"); $("#q").focus();
+}
 
 $("#q").addEventListener("input", e => {
   const q = e.target.value.trim();
@@ -494,46 +516,54 @@ $("#q").addEventListener("input", e => {
   if (q.length < 2) { $("#res").classList.remove("on"); return; }
   searchTimer = setTimeout(() => runSearch(q), 220);
 });
-
 $("#q").addEventListener("keydown", e => {
   const box = $("#res");
   if (!box.classList.contains("on")) return;
-  if (e.key === "ArrowDown") { e.preventDefault(); cursor = Math.min(cursor + 1, hits.length - 1); paintCursor(); }
-  else if (e.key === "ArrowUp") { e.preventDefault(); cursor = Math.max(cursor - 1, 0); paintCursor(); }
-  else if (e.key === "Enter" && cursor >= 0) { e.preventDefault(); pick(hits[cursor]); }
+  if (e.key === "ArrowDown") { e.preventDefault(); cursor = Math.min(cursor+1, hits.length-1); paintCursor(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); cursor = Math.max(cursor-1, 0); paintCursor(); }
+  else if (e.key === "Enter" && cursor >= 0) { e.preventDefault(); choose(hits[cursor]); }
   else if (e.key === "Escape") box.classList.remove("on");
 });
-
 function paintCursor() {
   [...$("#res").children].forEach((n, i) => n.classList.toggle("sel", i === cursor));
-  const n = $("#res").children[cursor];
-  if (n) n.scrollIntoView({ block: "nearest" });
+  const n = $("#res").children[cursor]; if (n) n.scrollIntoView({ block: "nearest" });
 }
+document.addEventListener("click", e => {
+  if (!e.target.closest(".searchbox")) $("#res").classList.remove("on");
+});
 
 async function runSearch(q) {
   const box = $("#res");
   box.innerHTML = `<div class="res"><span class="spin"></span>&nbsp; Searching…</div>`;
   box.classList.add("on");
   try {
-    hits = await rpc("search_schemes", { q, lim: 25 });
+    hits = MODE === "fund"
+      ? await rpc("search_schemes", { q, lim: 25 })
+      : await rpc("search_stocks", { q, lim: 25 });
     cursor = -1;
     if (!hits.length) {
       box.innerHTML = `<div class="res"><div><div class="nm">No match</div>
-        <div class="sub">Try a shorter phrase — "flexi", "bond", "nifty"</div></div></div>`;
+        <div class="sub">Try a shorter phrase</div></div></div>`;
       return;
     }
     box.innerHTML = "";
     hits.forEach((h, i) => {
       const r = el("div", "res");
-      r.innerHTML = `<div style="flex:1;min-width:0">
-          <div class="nm">${esc(h.scheme_name)}</div>
-          <div class="sub">${esc(h.amc_name || "—")}${h.category ? " · " + esc(h.category) : ""}</div>
-        </div>
-        <div class="rt">
-          <span class="pill ${h.has_holdings ? "ok" : "no"}">${h.has_holdings ? "Portfolio" : "NAV only"}</span>
-          <span class="sub mono">${esc(h.scheme_code)}</span>
-        </div>`;
-      r.onclick = () => pick(h);
+      r.innerHTML = MODE === "fund"
+        ? `<div style="flex:1;min-width:0">
+             <div class="nm">${esc(h.scheme_name)}</div>
+             <div class="sub">${esc(h.amc_name || "—")}${h.category ? " · " + esc(h.category) : ""}</div>
+           </div>
+           <div class="rt"><span class="pill ${h.has_holdings ? "ok" : "no"}">
+             ${h.has_holdings ? "Portfolio" : "NAV only"}</span>
+             <span class="sub mono">${esc(h.scheme_code)}</span></div>`
+        : `<div style="flex:1;min-width:0">
+             <div class="nm">${esc(h.instrument)}</div>
+             <div class="sub">${esc(h.sector || "—")} · ${esc(h.isin)}</div>
+           </div>
+           <div class="rt"><span class="pill blue">${h.funds_holding} funds</span>
+             <span class="sub mono">${cr(h.total_value_cr)}</span></div>`;
+      r.onclick = () => choose(h);
       r.onmouseenter = () => { cursor = i; paintCursor(); };
       box.appendChild(r);
     });
@@ -543,99 +573,177 @@ async function runSearch(q) {
   }
 }
 
-document.addEventListener("click", e => {
-  if (!e.target.closest(".searchbox")) $("#res").classList.remove("on");
-});
-
-/* ==========================================================================
-   Fund page
-   ========================================================================== */
-let CUR = null;
-
-async function pick(hit) {
+function choose(h) {
   $("#res").classList.remove("on");
-  $("#q").value = hit.scheme_name;
-  $("#boot").style.display = "none";
-  const app = $("#app");
-  app.style.display = "block";
-  app.innerHTML = `<div class="card"><div class="empty"><span class="spin"></span>
-    &nbsp; Loading ${esc(hit.scheme_name)}…</div></div>`;
-
-  CUR = { hit, code: String(hit.scheme_code) };
-
-  /* NAV and holdings are independent — fetch together, let either fail alone */
-  const [navRes, ovRes, mxRes, asRes, seRes, hlRes] = await Promise.allSettled([
-    loadNav(CUR.code),
-    hit.has_holdings ? rpc("fund_overview",   { p_scheme_code: CUR.code }) : Promise.resolve([]),
-    hit.has_holdings ? rpc("holdings_metrics",{ p_scheme_code: CUR.code }) : Promise.resolve([]),
-    hit.has_holdings ? rpc("holdings_assets", { p_scheme_code: CUR.code }) : Promise.resolve([]),
-    hit.has_holdings ? rpc("holdings_sectors",{ p_scheme_code: CUR.code }) : Promise.resolve([]),
-    hit.has_holdings ? rpc("holdings_list",   { p_scheme_code: CUR.code }) : Promise.resolve([])
-  ]);
-
-  const get = r => r.status === "fulfilled" ? r.value : null;
-  CUR.nav      = get(navRes);
-  CUR.navErr   = navRes.status === "rejected" ? navRes.reason.message : null;
-  CUR.overview = (get(ovRes) || [])[0] || null;
-  CUR.metrics  = (get(mxRes) || [])[0] || null;
-  CUR.assets   = get(asRes) || [];
-  CUR.sectors  = get(seRes) || [];
-  CUR.holdings = get(hlRes) || [];
-  CUR.series   = CUR.nav ? CUR.nav.series : [];
-  CUR.returns  = returns(CUR.series);
-  CUR.risk     = risk(CUR.series, 3);
-
-  render();
+  if (MODE === "fund") { $("#q").value = h.scheme_name; go("#/fund/" + h.scheme_code); }
+  else { $("#q").value = h.instrument; go("#/stock/" + h.isin); }
 }
 
-function render() {
-  const { hit, series, nav, navErr } = CUR;
+/* ==========================================================================
+   Router
+   ========================================================================== */
+function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
+window.addEventListener("hashchange", route);
+
+function setNav(name) {
+  [...$("#nav").children].forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#/" + name));
+}
+function hero(title, sub) { $("#heroTitle").textContent = title; $("#heroSub").textContent = sub; }
+
+async function route() {
+  const p = (location.hash || "#/market").slice(2).split("/");
+  const v = $("#view");
+  try {
+    if (p[0] === "fund" && p[1])        { setNav(""); await viewFund(v, p[1]); }
+    else if (p[0] === "stock" && p[1])  { setNav(""); await viewStock(v, decodeURIComponent(p[1])); }
+    else if (p[0] === "sector" && p[1]) { setNav("sectors"); await viewSector(v, decodeURIComponent(p[1])); }
+    else if (p[0] === "sectors")        { setNav("sectors"); await viewSectors(v); }
+    else if (p[0] === "screener")       { setNav("screener"); await viewScreener(v); }
+    else if (p[0] === "amcs")           { setNav("amcs"); await viewAmcs(v); }
+    else                                 { setNav("market"); await viewMarket(v); }
+  } catch (e) { v.innerHTML = errCard(e); }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ==========================================================================
+   VIEW · Market
+   ========================================================================== */
+async function viewMarket(v) {
+  hero("Market intelligence",
+       "What every disclosed portfolio in the database owns, aggregated across AMCs.");
+  v.innerHTML = loading("Loading market…");
+
+  const [ovR, stR, seR] = await Promise.all([
+    rpc("market_overview"), rpc("top_stocks", { lim: 25, p_order: "funds" }), rpc("top_sectors", { lim: 14 })
+  ]);
+  const ov = one(ovR);
+  v.innerHTML = "";
+
+  const c1 = el("div", "card");
+  c1.appendChild(el("h2", "", "Coverage"));
+  c1.appendChild(el("div", "hint",
+    `Snapshots span ${dstr(dt(ov.oldest_snapshot))} to ${dstr(dt(ov.newest_snapshot))} — AMCs
+     disclose on different cycles, and each fund is shown at its own latest date.`));
+  const t = el("div", "tiles");
+  [["Funds", fmt(ov.funds, 0), "with disclosed portfolios"],
+   ["AMCs", fmt(ov.amcs, 0), "fund houses loaded"],
+   ["Securities", fmt(ov.securities, 0), "unique ISINs"],
+   ["Total AUM", cr(ov.total_aum_cr), "sum of disclosed values"],
+   ["Equity", cr(ov.equity_aum_cr), ""],
+   ["Debt", cr(ov.debt_aum_cr), ""],
+   ["Categories", fmt(ov.categories, 0), ""],
+   ["Sectors", fmt(ov.sectors, 0), ""]
+  ].forEach(([k, val, s]) => t.appendChild(el("div", "tile",
+    `<div class="k">${k}</div><div class="v">${val}</div><div class="s">${esc(s)}</div>`)));
+  c1.appendChild(t);
+  v.appendChild(c1);
+
+  /* top stocks, three orderings */
+  const c2 = el("div", "card");
+  c2.appendChild(el("h2", "", "Most-held stocks"));
+  c2.appendChild(el("div", "hint",
+    "These three orderings disagree, and the disagreement is the point: a name held by " +
+    "400 funds at 1% each is a different bet from one held by 12 funds at 8% each."));
+  const chips = el("div", "chips");
+  const host = el("div");
+  const orders = [["funds", "By fund count"], ["value", "By rupees"], ["weight", "By avg weight"]];
+  const drawStocks = async (ord, btn) => {
+    [...chips.children].forEach(n => n.classList.remove("on"));
+    if (btn) btn.classList.add("on");
+    host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+    const rows = await rpc("top_stocks", { lim: 25, p_order: ord });
+    host.innerHTML = "";
+    host.appendChild(table(rows, [
+      { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+      { h: "Stock", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+          <div class="sub2 mono">${esc(r.isin)}</div>` },
+      { h: "Sector", fn: r => esc(r.sector || "—") },
+      { h: "Funds", n: 1, fn: r => fmt(r.funds_holding, 0) },
+      { h: "AMCs", n: 1, fn: r => fmt(r.amcs_holding, 0) },
+      { h: "Total value", n: 1, fn: r => cr(r.total_value_cr) },
+      { h: "Avg wt", n: 1, fn: r => pct(r.avg_weight, 2) },
+      { h: "Max wt", n: 1, fn: r => pct(r.max_weight) }
+    ], r => go("#/stock/" + r.isin)));
+  };
+  orders.forEach(([o, label], i) => {
+    const b = el("button", "chip" + (i === 0 ? " on" : ""), label);
+    b.onclick = () => drawStocks(o, b);
+    chips.appendChild(b);
+  });
+  c2.append(chips, host);
+  v.appendChild(c2);
+  drawStocks("funds", chips.children[0]);
+
+  /* sectors */
+  const c3 = el("div", "card");
+  c3.appendChild(el("h2", "", "Where the money sits"));
+  c3.appendChild(el("div", "hint",
+    "Total disclosed value by sector. Click a sector to open it."));
+  const sh = el("div");
+  c3.appendChild(sh);
+  barList(sh, seR.map(r => ({ label: r.sector, pct: r.total_value_cr,
+      raw: cr(r.total_value_cr), sector: r.sector })),
+    { max: 14, onClick: r => go("#/sector/" + encodeURIComponent(r.sector)) });
+  v.appendChild(c3);
+}
+
+/* ==========================================================================
+   VIEW · Fund
+   ========================================================================== */
+async function viewFund(v, code) {
+  v.innerHTML = loading("Loading fund…");
+
+  const [ovR, navR] = await Promise.allSettled([
+    rpc("fund_overview", { p_scheme_code: code }),
+    loadNav(code)
+  ]);
+  const ov = ovR.status === "fulfilled" ? one(ovR.value) : null;
+  const navData = navR.status === "fulfilled" ? navR.value : null;
+  const navErr = navR.status === "rejected" ? navR.reason.message : null;
+  const series = navData ? navData.series : [];
+  const name = (ov && ov.plan_name) || (navData && navData.meta.scheme_name) || "Scheme " + code;
+  const hasPortfolio = !!(ov && ov.has_holdings);
+
+  hero(name, hasPortfolio
+    ? "NAV, returns, risk and the full disclosed portfolio."
+    : "NAV, returns and risk. No portfolio disclosure loaded for this scheme.");
+
   const last = series.length ? series[series.length - 1] : null;
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const dayChg = last && prev ? (last.v / prev.v - 1) * 100 : null;
-  const app = $("#app");
-  app.innerHTML = "";
 
-  /* ---- header card ---- */
+  v.innerHTML = "";
   const head = el("div", "card");
-  head.innerHTML = `
-    <div class="fhead">
-      <div class="t">
-        <h2>${esc(hit.scheme_name)}</h2>
-        <div class="meta">
-          <span class="pill gold">${esc(hit.amc_name || "—")}</span>
-          ${hit.category ? `<span class="pill no">${esc(hit.category)}</span>` : ""}
-          <span class="pill ${hit.has_holdings ? "ok" : "no"}">
-            ${hit.has_holdings ? "Portfolio available" : "NAV only"}</span>
-          <span class="pill no mono">Code ${esc(hit.scheme_code)}</span>
-        </div>
+  head.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+    <div style="flex:1;min-width:260px">
+      <h2>${esc(name)}</h2>
+      <div class="chips" style="margin-top:9px;margin-bottom:0">
+        ${ov && ov.master_amc ? `<span class="pill gold">${esc(ov.master_amc)}</span>` : ""}
+        ${ov && ov.category ? `<span class="pill no">${esc(ov.category)}</span>` : ""}
+        <span class="pill ${hasPortfolio ? "ok" : "no"}">${hasPortfolio ? "Portfolio" : "NAV only"}</span>
+        <span class="pill no mono">${esc(code)}</span>
       </div>
-      <div class="navbox">
-        <div class="v">${last ? "₹" + fmt(last.v, 4) : "—"}</div>
-        <div class="chg ${sign(dayChg)}">${dayChg == null ? "" : signed(dayChg)} <span
-          style="color:var(--muted);font-weight:500">1D</span></div>
-        <div class="d">NAV as on ${last ? dstr(last.t) : "—"}</div>
-      </div>
-    </div>`;
-  app.appendChild(head);
+    </div>
+    <div style="text-align:right;min-width:150px">
+      <div style="font-size:30px;font-weight:800;letter-spacing:-.03em;font-family:var(--mono)">
+        ${last ? "₹" + fmt(last.v, 4) : "—"}</div>
+      <div class="mono ${signOf(dayChg)}" style="font-weight:700;font-size:13px">
+        ${dayChg == null ? "" : signed(dayChg)}
+        <span style="color:var(--muted);font-weight:500">1D</span></div>
+      <div style="color:var(--muted);font-size:11.5px;margin-top:2px">
+        NAV as on ${last ? dstr(last.t) : "—"}</div>
+    </div></div>`;
+  v.appendChild(head);
 
-  if (navErr) {
-    app.appendChild(el("div", "note err",
-      `NAV history unavailable — ${esc(navErr)}. Returns and risk need
-       <span class="mono">api.mfapi.in</span>; holdings below are unaffected.`));
-  }
+  if (navErr) v.appendChild(el("div", "note err",
+    `NAV history unavailable — ${esc(navErr)}. Returns and risk need api.mfapi.in.`));
 
-  /* ---- tabs ---- */
-  const tabs = [
-    ["perf", "Performance", true],
-    ["port", "Portfolio", hit.has_holdings],
-    ["anly", "Analytics", hit.has_holdings],
-    ["cmp",  "Compare",   hit.has_holdings]
-  ].filter(t => t[2]);
-
-  const bar = el("div", "tabs");
-  const panes = el("div");
-  tabs.forEach(([id, label], i) => {
+  const tabDefs = [["perf", "Performance", true], ["port", "Portfolio", hasPortfolio],
+    ["anly", "Analytics", hasPortfolio], ["peer", "Peers & overlap", hasPortfolio]]
+    .filter(t => t[2]);
+  const shell = el("div", "card");
+  const bar = el("div", "tabs"), panes = el("div");
+  tabDefs.forEach(([id, label], i) => {
     const t = el("div", "tab" + (i === 0 ? " on" : ""), label);
     t.onclick = () => {
       [...bar.children].forEach(n => n.classList.remove("on"));
@@ -646,114 +754,94 @@ function render() {
     const p = el("div", "pane" + (i === 0 ? " on" : "")); p.id = "pane-" + id;
     panes.appendChild(p);
   });
-  const shell = el("div", "card");
   shell.append(bar, panes);
-  app.appendChild(shell);
+  v.appendChild(shell);
 
-  paintPerf($("#pane-perf"));
-  if (hit.has_holdings) {
-    paintPortfolio($("#pane-port"));
-    paintAnalytics($("#pane-anly"));
-    paintCompare($("#pane-cmp"));
+  paintPerf($("#pane-perf"), series);
+
+  if (hasPortfolio) {
+    const [mx, as, se, hl, rk] = await Promise.all([
+      rpc("holdings_metrics", { p_scheme_code: code }),
+      rpc("holdings_assets",  { p_scheme_code: code }),
+      rpc("holdings_sectors", { p_scheme_code: code }),
+      rpc("holdings_list",    { p_scheme_code: code }),
+      rpc("fund_rank",        { p_scheme_code: code })
+    ]);
+    paintPortfolio($("#pane-port"), one(mx), as, se, hl, ov);
+    paintFundAnalytics($("#pane-anly"), code, hl, one(mx), one(rk));
+    paintPeers($("#pane-peer"), code, hl);
   }
 }
 
-/* ---------- Performance ---------- */
-function paintPerf(host) {
-  const { series, returns: rets, risk: rk } = CUR;
+function paintPerf(host, series) {
   host.innerHTML = "";
-
   if (!series.length) {
     host.appendChild(el("div", "empty",
-      "<b>No NAV history</b>This scheme code returned nothing from api.mfapi.in."));
+      "<b>No NAV history</b>api.mfapi.in returned nothing for this scheme code."));
     return;
   }
+  const rets = returns(series), rk = risk(series, 3);
 
-  /* returns tiles */
   host.appendChild(el("h2", "", "Returns"));
   host.appendChild(el("div", "hint",
     "Periods beyond one year are annualised (CAGR). Shorter periods are absolute."));
   const tiles = el("div", "tiles");
   rets.forEach(r => {
-    const v = r.ann != null ? r.ann : r.abs;
-    const t = el("div", "tile");
-    t.innerHTML = `<div class="k">${esc(r.name)}</div>
-      <div class="v ${sign(v)}">${signed(v)}</div>
-      <div class="s">${r.ann != null ? "CAGR · from " : "from "}${dstr(r.from)}</div>`;
-    tiles.appendChild(t);
+    const val = r.ann != null ? r.ann : r.abs;
+    tiles.appendChild(el("div", "tile",
+      `<div class="k">${esc(r.name)}</div>
+       <div class="v ${signOf(val)}">${signed(val)}</div>
+       <div class="s">${r.ann != null ? "CAGR · " : ""}from ${dstr(r.from)}</div>`));
   });
   host.appendChild(tiles);
 
-  /* chart */
   const ch = el("div"); ch.style.marginTop = "26px";
   ch.appendChild(el("h2", "", "NAV history"));
-  ch.appendChild(el("div", "hint", `${series.length.toLocaleString("en-IN")} observations ·
-     ${dstr(series[0].t)} to ${dstr(series[series.length - 1].t)}`));
-  const rangebar = el("div", "rangebar");
-  const plot = el("div");
-  const RANGES = [["1M",1/12],["6M",.5],["1Y",1],["3Y",3],["5Y",5],["10Y",10],["MAX",null]];
+  ch.appendChild(el("div", "hint",
+    `${series.length.toLocaleString("en-IN")} observations · ${dstr(series[0].t)} to ${dstr(series[series.length-1].t)}`));
+  const chips = el("div", "chips"), plot = el("div");
   const draw = yrs => {
     const end = series[series.length - 1].t;
     const s = yrs == null ? series : series.filter(p => p.t >= addY(end, -yrs));
     lineChart(plot, s.length > 1 ? s : series);
   };
-  RANGES.forEach(([label, yrs], i) => {
-    const b = el("button", "rg" + (label === "3Y" ? " on" : ""), label);
-    b.onclick = () => {
-      [...rangebar.children].forEach(n => n.classList.remove("on"));
-      b.classList.add("on"); draw(yrs);
-    };
-    rangebar.appendChild(b);
+  [["1M",1/12],["6M",.5],["1Y",1],["3Y",3],["5Y",5],["10Y",10],["MAX",null]].forEach(([label, yrs]) => {
+    const b = el("button", "chip" + (label === "3Y" ? " on" : ""), label);
+    b.onclick = () => { [...chips.children].forEach(n => n.classList.remove("on"));
+      b.classList.add("on"); draw(yrs); };
+    chips.appendChild(b);
   });
-  ch.append(rangebar, plot);
-  host.appendChild(ch);
-  draw(3);
+  ch.append(chips, plot); host.appendChild(ch); draw(3);
 
-  /* risk */
   const rw = el("div"); rw.style.marginTop = "26px";
   rw.appendChild(el("h2", "", "Risk"));
-  if (!rk) {
-    rw.appendChild(el("div", "empty", "Not enough history for risk metrics."));
-    host.appendChild(rw); return;
-  }
+  if (!rk) { rw.appendChild(el("div", "empty", "Not enough history.")); host.appendChild(rw); return; }
   rw.appendChild(el("div", "hint",
     `Trailing ${rk.years} years · ${rk.obs.toLocaleString("en-IN")} daily observations ·
-     risk-free ${RISK_FREE}% p.a. · annualised over ${TRADING_DAYS} trading days`));
+     risk-free ${RISK_FREE}% · annualised over ${TRADING_DAYS} trading days`));
   const rt = el("div", "tiles");
-  const cards = [
-    ["CAGR", signed(rk.cagr), sign(rk.cagr), `${rk.years}-year annualised`],
-    ["Volatility", pct(rk.vol), "", "annualised σ of daily returns"],
-    ["Sharpe", fmt(rk.sharpe), sign(rk.sharpe), "return per unit of total risk"],
-    ["Sortino", fmt(rk.sortino), sign(rk.sortino), "return per unit of downside risk"],
-    ["Max drawdown", pct(rk.maxdd), "down", rk.maxddAt ? "trough " + dstr(rk.maxddAt) : ""],
-    ["Best day", signed(rk.best), "up", ""],
-    ["Worst day", signed(rk.worst), "down", ""],
-    ["Positive days", pct(rk.posDays, 1), "", "share of sessions up"]
-  ];
-  cards.forEach(([k, v, cls, s]) => {
-    const t = el("div", "tile");
-    t.innerHTML = `<div class="k">${k}</div><div class="v ${cls}">${v}</div>
-                   <div class="s">${s}</div>`;
-    rt.appendChild(t);
-  });
-  rw.appendChild(rt);
-  host.appendChild(rw);
+  [["CAGR", signed(rk.cagr), signOf(rk.cagr), `${rk.years}-year annualised`],
+   ["Volatility", pct(rk.vol), "", "annualised σ of daily returns"],
+   ["Sharpe", fmt(rk.sharpe), signOf(rk.sharpe), "per unit of total risk"],
+   ["Sortino", fmt(rk.sortino), signOf(rk.sortino), "per unit of downside risk"],
+   ["Max drawdown", pct(rk.maxdd), "down", rk.maxddAt ? "trough " + dstr(rk.maxddAt) : ""],
+   ["Best day", signed(rk.best), "up", ""], ["Worst day", signed(rk.worst), "down", ""],
+   ["Positive days", pct(rk.posDays, 1), "", "share of sessions up"]
+  ].forEach(([k, val, cls, s]) => rt.appendChild(el("div", "tile",
+    `<div class="k">${k}</div><div class="v ${cls}">${val}</div><div class="s">${s}</div>`)));
+  rw.appendChild(rt); host.appendChild(rw);
 }
 
-/* ---------- Portfolio ---------- */
-function paintPortfolio(host) {
-  const { metrics: m, assets, sectors, holdings, overview: ov } = CUR;
+function paintPortfolio(host, m, assets, sectors, holdings, ov) {
   host.innerHTML = "";
-
-  if (!holdings.length) {
-    host.appendChild(el("div", "empty", "<b>No holdings returned</b>The scheme is mapped but the query came back empty."));
+  if (!holdings || !holdings.length) {
+    host.appendChild(el("div", "empty", "<b>No holdings returned</b>"));
     return;
   }
-
   const pd = m ? m.portfolio_date : (ov ? ov.portfolio_date : null);
   host.appendChild(el("h2", "", "Portfolio snapshot"));
   host.appendChild(el("div", "hint",
-    `Disclosure as on ${pd ? dstr(new Date(pd)) : "—"} · weights sum to ${m ? pct(m.pct_sum) : "—"}`));
+    `Disclosure as on ${pd ? dstr(dt(pd)) : "—"} · weights sum to ${m ? pct(m.pct_sum) : "—"}`));
 
   if (m && Math.abs(Number(m.pct_sum) - 100) > 2) {
     host.appendChild(el("div", "note",
@@ -765,112 +853,93 @@ function paintPortfolio(host) {
   if (m) {
     const tiles = el("div", "tiles");
     [["Holdings", m.total_holdings, `${m.securities} securities`],
-     ["Top 5", pct(m.top_5_pct), "of net assets"],
-     ["Top 10", pct(m.top_10_pct), "of net assets"],
+     ["Top 5", pct(m.top_5_pct), "of net assets"], ["Top 10", pct(m.top_10_pct), "of net assets"],
      ["Largest", pct(m.largest_pct), "single position"],
      ["Cash", pct(m.cash_pct), "TREPS + net current assets"],
-     ["Sectors", m.sectors, m.top_sector ? `top: ${m.top_sector}` : ""],
+     ["Sectors", m.sectors, m.top_sector ? "top: " + m.top_sector : ""],
      ["HHI", fmt(m.hhi, 0), "concentration index"],
      ["Effective stocks", fmt(m.effective_stocks, 1), "10000 / HHI"]
-    ].forEach(([k, v, s]) => {
-      const t = el("div", "tile");
-      t.innerHTML = `<div class="k">${k}</div><div class="v">${v ?? "—"}</div>
-                     <div class="s">${esc(s || "")}</div>`;
-      tiles.appendChild(t);
-    });
+    ].forEach(([k, val, s]) => tiles.appendChild(el("div", "tile",
+      `<div class="k">${k}</div><div class="v">${val ?? "—"}</div><div class="s">${esc(s || "")}</div>`)));
     host.appendChild(tiles);
   }
 
   const two = el("div", "row two"); two.style.marginTop = "26px";
-
   const a = el("div");
-  a.appendChild(el("h2", "", "Asset allocation"));
+  a.appendChild(el("h3", "", "Asset allocation"));
   a.appendChild(el("div", "hint", "Equity / debt / cash split"));
   const ah = el("div"); a.appendChild(ah);
-  donut(ah, assets.map(r => ({ label: r.asset_type, pct: r.pct })));
+  donut(ah, (assets || []).map(r => ({ label: r.asset_type, pct: r.pct })), "asset types");
 
   const s = el("div");
-  s.appendChild(el("h2", "", "Sector allocation"));
-  s.appendChild(el("div", "hint", "Equity sectors; credit ratings for debt schemes"));
+  s.appendChild(el("h3", "", "Sector allocation"));
+  s.appendChild(el("div", "hint", "Click a sector to see the whole market's exposure"));
   const sh = el("div"); s.appendChild(sh);
-  barList(sh, sectors.map(r => ({ label: r.sector, pct: r.pct })), { max: 12 });
+  barList(sh, (sectors || []).map(r => ({ label: r.sector, pct: r.pct })),
+    { max: 12, onClick: r => go("#/sector/" + encodeURIComponent(r.label)) });
+  two.append(a, s); host.appendChild(two);
 
-  two.append(a, s);
-  host.appendChild(two);
-
-  /* holdings table */
   const tw = el("div"); tw.style.marginTop = "26px";
-  tw.appendChild(el("h2", "", "All holdings"));
-  tw.appendChild(el("div", "hint",
-    "Click any row to see which other funds hold the same security."));
-
-  const filter = el("div", "cmp");
+  tw.appendChild(el("h3", "", "All holdings"));
+  tw.appendChild(el("div", "hint", "Click any row to open that security across all funds."));
   const fi = el("input");
   fi.placeholder = "Filter by name, ISIN or sector…";
-  filter.appendChild(fi);
-  tw.appendChild(filter);
-
-  const box = el("div", "tblwrap");
-  tw.appendChild(box);
-  host.appendChild(tw);
+  fi.style.cssText = "width:100%;max-width:340px;padding:9px 12px;border-radius:var(--r);border:1px solid var(--border);font-family:var(--font);font-size:13px;outline:none;margin-bottom:14px";
+  tw.appendChild(fi);
+  const box = el("div"); tw.appendChild(box); host.appendChild(tw);
 
   const paint = q => {
     const rows = !q ? holdings : holdings.filter(h =>
       [h.instrument, h.isin, h.sector, h.asset_type].join(" ").toLowerCase().includes(q.toLowerCase()));
     box.innerHTML = "";
-    const t = el("table");
-    t.innerHTML = `<thead><tr><th>#</th><th>Instrument</th><th>Sector / Rating</th>
-      <th>Type</th><th class="n">% to NAV</th><th class="n">₹ Cr</th></tr></thead>`;
-    const tb = el("tbody");
-    rows.forEach((h, i) => {
-      const tr = el("tr");
-      tr.innerHTML = `<td class="n" style="color:var(--muted)">${i + 1}</td>
-        <td>${h.isin ? `<span class="lnk">${esc(h.instrument)}</span>` : esc(h.instrument)}
-            ${h.isin ? `<div class="sub mono" style="font-size:10.5px;color:var(--muted)">${esc(h.isin)}</div>` : ""}</td>
-        <td>${esc(h.sector)}</td>
-        <td><span class="pill no">${esc(h.asset_type)}</span></td>
-        <td class="n" style="font-weight:600">${pct(h.pct_to_nav)}</td>
-        <td class="n">${h.value_cr == null ? "—" : fmt(h.value_cr, 1)}</td>`;
-      if (h.isin) tr.onclick = () => showHolders(h);
-      tb.appendChild(tr);
-    });
-    t.appendChild(tb);
-    box.appendChild(t);
-    if (!rows.length) box.appendChild(el("div", "empty", "Nothing matches that filter"));
+    box.appendChild(table(rows, [
+      { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+      { h: "Instrument", fn: r => (r.isin ? `<span class="lnk">${esc(r.instrument)}</span>
+          <div class="sub2 mono">${esc(r.isin)}</div>` : esc(r.instrument)) },
+      { h: "Sector / Rating", fn: r => esc(r.sector) },
+      { h: "Type", fn: r => `<span class="pill no">${esc(r.asset_type)}</span>` },
+      { h: "% to NAV", n: 1, fn: r => `<b>${pct(r.pct_to_nav)}</b>` },
+      { h: "₹ Cr", n: 1, fn: r => r.value_cr == null ? "—" : fmt(r.value_cr, 1) }
+    ], r => { if (r.isin) go("#/stock/" + r.isin); }));
   };
   paint("");
   fi.addEventListener("input", e => paint(e.target.value.trim()));
 }
 
-/* ---------- Analytics ---------- */
-function paintAnalytics(host) {
-  const { holdings, metrics: m } = CUR;
+async function paintFundAnalytics(host, code, holdings, m, rank) {
   host.innerHTML = "";
+  const secs = (holdings || []).filter(h => h.is_security);
 
-  host.appendChild(el("h2", "", "Concentration"));
-  host.appendChild(el("div", "hint",
-    "How much of the fund rides on its largest positions. Effective stocks is 10000/HHI — " +
-    "the number of equally-weighted positions the portfolio actually behaves like, " +
-    "usually far below the raw holding count."));
-  const secs = holdings.filter(h => h.is_security);
-  barList(host.appendChild(el("div")),
-    secs.slice(0, 15).map(h => ({ label: h.instrument, pct: h.pct_to_nav })),
-    { max: 15, colorFn: () => "#0B1F3A" });
+  if (rank) {
+    host.appendChild(el("h2", "", "Versus category"));
+    host.appendChild(el("div", "hint",
+      `Percentile among ${fmt(rank.peers, 0)} funds in ${esc(rank.category || "its category")}.
+       Higher percentile just means a higher value — for concentration that is not
+       automatically better.`));
+    const t = el("div", "tiles");
+    [["AUM", cr(rank.aum_cr), rank.aum_pctile], ["Holdings", fmt(rank.securities, 0), rank.holdings_pctile],
+     ["Top 10", pct(rank.top_10_pct), rank.top10_pctile], ["HHI", fmt(rank.hhi, 0), rank.hhi_pctile],
+     ["Cash", pct(rank.cash_pct), rank.cash_pctile]
+    ].forEach(([k, val, p]) => t.appendChild(el("div", "tile",
+      `<div class="k">${k}</div><div class="v">${val}</div>
+       <div class="s">${p == null ? "" : fmt(p, 0) + "th pctile"}</div>`)));
+    host.appendChild(t);
+  }
 
-  /* cumulative weight curve */
-  const cw = el("div"); cw.style.marginTop = "26px";
-  cw.appendChild(el("h2", "", "Cumulative weight"));
-  cw.appendChild(el("div", "hint", "How quickly the portfolio's weight accumulates across ranked holdings"));
-  const plot = el("div"); cw.appendChild(plot);
-  host.appendChild(cw);
+  const cc = el("div"); cc.style.marginTop = "26px";
+  cc.appendChild(el("h2", "", "Concentration"));
+  cc.appendChild(el("div", "hint", "Largest positions, and how fast weight accumulates."));
+  const bh = el("div"); cc.appendChild(bh);
+  barList(bh, secs.slice(0, 15).map(h => ({ label: h.instrument, pct: h.pct_to_nav })),
+    { max: 15, colorFn: () => "#0B1F3A", onClick: null });
+  const plot = el("div"); plot.style.marginTop = "18px"; cc.appendChild(plot);
   let run = 0;
   const cum = secs.map((h, i) => { run += Number(h.pct_to_nav) || 0;
-    return { t: new Date(2000, 0, 1 + i), v: run }; });
-  if (cum.length > 1) lineChart(plot, cum);
-  else plot.appendChild(el("div", "empty", "Not enough securities"));
+    return { t: new Date(2000, 0, 1 + i), v: run, label: `Top ${i + 1}: ${h.instrument}` }; });
+  if (cum.length > 1) lineChart(plot, cum, "rank");
+  host.appendChild(cc);
 
-  /* debt detail, only where it means something */
-  const debt = holdings.filter(h => h.asset_type === "Debt");
+  const debt = (holdings || []).filter(h => h.asset_type === "Debt");
   if (debt.length) {
     const d = el("div"); d.style.marginTop = "26px";
     d.appendChild(el("h2", "", "Credit quality"));
@@ -878,191 +947,311 @@ function paintAnalytics(host) {
     const agg = {};
     debt.forEach(h => { agg[h.sector] = (agg[h.sector] || 0) + Number(h.pct_to_nav || 0); });
     const dh = el("div"); d.appendChild(dh);
-    barList(dh, Object.entries(agg).map(([label, pct]) => ({ label, pct }))
+    barList(dh, Object.entries(agg).map(([label, p]) => ({ label, pct: p }))
       .sort((a, b) => b.pct - a.pct), { max: 14 });
-    host.appendChild(d);
-
-    const withYield = debt.filter(h => h.yield_pct != null);
-    if (withYield.length) {
-      const wsum = withYield.reduce((a, h) => a + Number(h.pct_to_nav || 0), 0);
-      const wavg = wsum > 0 ? withYield.reduce((a, h) =>
-        a + Number(h.yield_pct) * Number(h.pct_to_nav || 0), 0) / wsum : null;
+    const wy = debt.filter(h => h.yield_pct != null);
+    if (wy.length) {
+      const ws = wy.reduce((a, h) => a + Number(h.pct_to_nav || 0), 0);
+      const wavg = ws > 0 ? wy.reduce((a, h) => a + Number(h.yield_pct) * Number(h.pct_to_nav || 0), 0) / ws : null;
       const t = el("div", "tiles"); t.style.marginTop = "16px";
-      t.innerHTML = `<div class="tile"><div class="k">Weighted yield</div>
-        <div class="v">${pct(wavg)}</div><div class="s">across ${withYield.length} rated papers</div></div>`;
-      host.appendChild(t);
+      t.innerHTML = `<div class="tile"><div class="k">Weighted yield</div><div class="v">${pct(wavg)}</div>
+        <div class="s">across ${wy.length} rated papers</div></div>`;
+      d.appendChild(t);
     }
+    host.appendChild(d);
   }
 
-  if (m) {
-    const n = el("div", "note"); n.style.marginTop = "26px";
-    n.innerHTML = `Portfolio turnover, YTM and Macaulay duration are published in the same
-      AMC disclosure files but are not captured in this database yet — only holdings are stored.`;
-    host.appendChild(n);
-  }
-}
-
-/* ---------- Compare ---------- */
-function paintCompare(host) {
-  host.innerHTML = "";
-  host.appendChild(el("h2", "", "Portfolio overlap"));
-  host.appendChild(el("div", "hint",
-    "Overlap is the sum of min(weight) across shared ISINs, so two funds holding the same " +
-    "names at different weights score below 100. Matched on ISIN — instrument names differ " +
-    "across AMCs for the same security."));
-
-  const bar = el("div", "cmp");
-  const inp = el("input");
-  inp.placeholder = "Search a second fund to compare…";
-  bar.appendChild(inp);
-  host.appendChild(bar);
-
-  const drop = el("div", "results"); drop.style.position = "static"; drop.style.marginTop = "-8px";
-  host.appendChild(drop);
-  const out = el("div"); host.appendChild(out);
-
-  let tmr = null;
-  inp.addEventListener("input", e => {
-    const q = e.target.value.trim();
-    clearTimeout(tmr);
-    if (q.length < 2) { drop.classList.remove("on"); return; }
-    tmr = setTimeout(async () => {
-      try {
-        const rows = (await rpc("search_schemes", { q, lim: 12 }))
-          .filter(r => r.has_holdings && String(r.scheme_code) !== CUR.code);
-        drop.innerHTML = "";
-        if (!rows.length) {
-          drop.innerHTML = `<div class="res"><div><div class="nm">No comparable fund</div>
-            <div class="sub">Only schemes with a loaded portfolio can be compared</div></div></div>`;
-          drop.classList.add("on"); return;
-        }
-        rows.forEach(r => {
-          const n = el("div", "res", `<div style="flex:1"><div class="nm">${esc(r.scheme_name)}</div>
-            <div class="sub">${esc(r.amc_name || "")}</div></div>`);
-          n.onclick = () => { inp.value = r.scheme_name; drop.classList.remove("on"); doCompare(r, out); };
-          drop.appendChild(n);
-        });
-        drop.classList.add("on");
-      } catch (err) { drop.classList.remove("on"); }
-    }, 220);
-  });
-}
-
-async function doCompare(other, out) {
-  out.innerHTML = `<div class="empty"><span class="spin"></span>&nbsp; Comparing…</div>`;
+  const uw = el("div"); uw.style.marginTop = "26px";
+  uw.appendChild(el("h2", "", "Off-consensus positions"));
+  uw.appendChild(el("div", "hint",
+    "Names that at most one other loaded fund holds — either genuine conviction, " +
+    "or a position nobody else wants."));
+  const uh = el("div", "empty", '<span class="spin"></span>'); uw.appendChild(uh);
+  host.appendChild(uw);
   try {
-    const [ovRows, hlRows] = await Promise.all([
-      rpc("fund_overlap", { p_code_a: CUR.code, p_code_b: String(other.scheme_code) }),
-      rpc("holdings_list", { p_scheme_code: String(other.scheme_code) })
-    ]);
-    const o = ovRows[0] || {};
-    out.innerHTML = "";
+    const rows = await rpc("unique_holdings", { p_scheme_code: code, lim: 40 });
+    uh.replaceWith(rows.length ? table(rows, [
+      { h: "Instrument", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+          <div class="sub2 mono">${esc(r.isin)}</div>` },
+      { h: "Sector", fn: r => esc(r.sector || "—") },
+      { h: "% to NAV", n: 1, fn: r => `<b>${pct(r.pct_to_nav)}</b>` },
+      { h: "₹ Cr", n: 1, fn: r => fmt(r.value_cr, 1) },
+      { h: "Held by", n: 1, fn: r => `${r.held_by} fund${r.held_by > 1 ? "s" : ""}` }
+    ], r => go("#/stock/" + r.isin))
+      : el("div", "empty", "Every holding is shared with other funds."));
+  } catch (e) { uh.replaceWith(el("div", "note err", esc(e.message))); }
 
-    if (o.comparable === false) {
-      out.appendChild(el("div", "note",
-        `These two disclose on different dates — ${dstr(new Date(o.date_a))} vs
-         ${dstr(new Date(o.date_b))}. The overlap below compares two different points in
-         time and should be read loosely.`));
-    }
+  host.appendChild(el("div", "note",
+    "Portfolio turnover, YTM and Macaulay duration are published in the same AMC files " +
+    "but are not captured in this database yet — only holdings are stored."));
+}
 
-    const tiles = el("div", "tiles");
-    [["Overlap", pct(o.overlap_pct), "sum of min(weight)"],
-     ["Common", o.common_holdings ?? "—", "shared securities"],
-     ["Only in A", o.only_a ?? "—", CUR.hit.scheme_name.slice(0, 28)],
-     ["Only in B", o.only_b ?? "—", other.scheme_name.slice(0, 28)]
-    ].forEach(([k, v, s]) => {
-      const t = el("div", "tile");
-      t.innerHTML = `<div class="k">${k}</div><div class="v">${v}</div>
-                     <div class="s">${esc(s)}</div>`;
-      tiles.appendChild(t);
-    });
-    out.appendChild(tiles);
+async function paintPeers(host, code, holdings) {
+  host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+  try {
+    const peers = await rpc("peer_funds", { p_scheme_code: code, lim: 20 });
+    host.innerHTML = "";
+    host.appendChild(el("h2", "", "Most similar portfolios"));
+    host.appendChild(el("div", "hint",
+      "Ranked by overlap — the sum of min(weight) across shared ISINs, so funds holding " +
+      "the same names at very different weights rank lower. Not restricted to the same " +
+      "category: a Large Cap and a Focused fund running the same book is worth seeing."));
+    host.appendChild(table(peers, [
+      { h: "Fund", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+          <div class="sub2">${esc(r.amc)}${r.category ? " · " + esc(r.category) : ""}</div>` },
+      { h: "Overlap", n: 1, fn: r => `<b>${pct(r.overlap_pct)}</b>` },
+      { h: "Common", n: 1, fn: r => fmt(r.common, 0) },
+      { h: "AUM", n: 1, fn: r => cr(r.fund_aum_cr) }
+    ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+  } catch (e) { host.innerHTML = errCard(e); }
+}
 
-    /* side-by-side of the shared names */
-    const bMap = {};
-    (hlRows || []).forEach(h => { if (h.isin) bMap[h.isin] = h; });
-    const shared = CUR.holdings
-      .filter(h => h.isin && bMap[h.isin])
-      .map(h => ({ name: h.instrument, a: Number(h.pct_to_nav), b: Number(bMap[h.isin].pct_to_nav) }))
-      .sort((x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b))
-      .slice(0, 25);
+/* ==========================================================================
+   VIEW · Stock
+   ========================================================================== */
+async function viewStock(v, isin) {
+  v.innerHTML = loading("Loading security…");
+  const [dR, fR] = await Promise.all([
+    rpc("stock_detail", { p_isin: isin }),
+    rpc("stock_funds",  { p_isin: isin, lim: 200 })
+  ]);
+  const d = one(dR);
+  if (!d || !d.funds_holding) {
+    hero("Security", isin);
+    v.innerHTML = `<div class="card"><div class="empty">
+      <b>Not held by any loaded fund</b>${esc(isin)}</div></div>`;
+    return;
+  }
+  hero(d.instrument || isin, `${esc(d.sector || "—")} · held by ${d.funds_holding} schemes across ${d.amcs_holding} AMCs`);
+  v.innerHTML = "";
 
-    if (shared.length) {
-      const w = el("div"); w.style.marginTop = "26px";
-      w.appendChild(el("h2", "", "Shared holdings"));
-      w.appendChild(el("div", "hint", "Ranked by the smaller of the two weights"));
-      const box = el("div", "tblwrap");
-      const t = el("table");
-      t.innerHTML = `<thead><tr><th>Instrument</th>
-        <th class="n">${esc(CUR.hit.scheme_name.slice(0, 24))}</th>
-        <th class="n">${esc(other.scheme_name.slice(0, 24))}</th>
-        <th class="n">Min</th></tr></thead>`;
-      const tb = el("tbody");
-      shared.forEach(s => {
-        tb.appendChild(el("tr", "", `<td>${esc(s.name)}</td>
-          <td class="n">${pct(s.a)}</td><td class="n">${pct(s.b)}</td>
-          <td class="n" style="font-weight:600">${pct(Math.min(s.a, s.b))}</td>`));
+  const c1 = el("div", "card");
+  c1.innerHTML = `<div class="crumb"><span onclick="go('#/market')">Market</span> ›
+    <span onclick="go('#/sector/${encodeURIComponent(d.sector || "")}')">${esc(d.sector || "—")}</span> ›
+    ${esc(d.instrument || isin)}</div>`;
+  c1.appendChild(el("h2", "", d.instrument || isin));
+  c1.appendChild(el("div", "hint", `ISIN ${esc(isin)}${d.name_variants > 1
+    ? ` · spelled ${d.name_variants} different ways across AMCs, which is why every join here uses ISIN` : ""}`));
+  const t = el("div", "tiles");
+  [["Funds holding", fmt(d.funds_holding, 0), "schemes"],
+   ["AMCs", fmt(d.amcs_holding, 0), "fund houses"],
+   ["Total value", cr(d.total_value_cr), "disclosed across funds"],
+   ["Avg weight", pct(d.avg_weight, 3), "where held"],
+   ["Max weight", pct(d.max_weight), "highest conviction"],
+   ["Min weight", pct(d.min_weight, 3), ""],
+   ["Top holder", esc((d.top_holder || "—").slice(0, 22)), pct(d.top_holder_pct)]
+  ].forEach(([k, val, s]) => t.appendChild(el("div", "tile",
+    `<div class="k">${k}</div><div class="v" style="font-size:${String(val).length > 12 ? 13 : 19}px">${val}</div>
+     <div class="s">${s}</div>`)));
+  c1.appendChild(t);
+  v.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.appendChild(el("h2", "", "Who holds it"));
+  c2.appendChild(el("div", "hint",
+    "Every scheme at its own latest disclosure, so dates differ down the list."));
+  c2.appendChild(table(fR, [
+    { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
+    { h: "Scheme", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+        ${r.category ? `<div class="sub2">${esc(r.category)}</div>` : ""}` },
+    { h: "% to NAV", n: 1, fn: r => `<b>${pct(r.pct_to_nav)}</b>` },
+    { h: "₹ Cr", n: 1, fn: r => fmt(r.value_cr, 1) },
+    { h: "Fund AUM", n: 1, fn: r => cr(r.fund_aum_cr) },
+    { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.portfolio_date))}</span>` }
+  ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+  v.appendChild(c2);
+}
+
+/* ==========================================================================
+   VIEW · Sectors
+   ========================================================================== */
+async function viewSectors(v) {
+  hero("Sectors", "Every sector across every disclosed portfolio, by money behind it.");
+  v.innerHTML = loading("Loading sectors…");
+  const rows = await rpc("list_sectors");
+  v.innerHTML = "";
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", `${rows.length} sectors`));
+  c.appendChild(el("div", "hint",
+    "Sector labels come from the AMCs themselves and are not perfectly standardised — " +
+    "one house writes “IT - Software”, another “Software”. Debt schemes report credit " +
+    "ratings in the same field, so ratings appear here too."));
+  c.appendChild(table(rows, [
+    { h: "Sector", fn: r => `<span class="lnk">${esc(r.sector)}</span>` },
+    { h: "Stocks", n: 1, fn: r => fmt(r.stocks, 0) },
+    { h: "Funds holding", n: 1, fn: r => fmt(r.funds_holding, 0) },
+    { h: "Total value", n: 1, fn: r => cr(r.total_value_cr) }
+  ], r => go("#/sector/" + encodeURIComponent(r.sector))));
+  v.appendChild(c);
+}
+
+async function viewSector(v, sector) {
+  hero(sector, "Stocks in this sector, and the funds most exposed to it.");
+  v.innerHTML = loading("Loading sector…");
+  const [st, fn] = await Promise.all([
+    rpc("sector_stocks", { p_sector: sector, lim: 60 }),
+    rpc("sector_funds",  { p_sector: sector, lim: 60 })
+  ]);
+  v.innerHTML = "";
+
+  const c0 = el("div", "card");
+  c0.innerHTML = `<div class="crumb"><span onclick="go('#/sectors')">Sectors</span> › ${esc(sector)}</div>`;
+  c0.appendChild(el("h2", "", sector));
+  c0.appendChild(el("div", "hint",
+    `${st.length} securities · ${fn.length} funds hold something in this sector`));
+  v.appendChild(c0);
+
+  const c1 = el("div", "card");
+  c1.appendChild(el("h2", "", "Stocks"));
+  c1.appendChild(el("div", "hint", "Ranked by total disclosed value across all funds"));
+  c1.appendChild(table(st, [
+    { h: "#", n: 1, fn: (r, i) => `<span style="color:var(--muted)">${i + 1}</span>` },
+    { h: "Stock", fn: r => `<span class="lnk">${esc(r.instrument)}</span>
+        <div class="sub2 mono">${esc(r.isin)}</div>` },
+    { h: "Funds", n: 1, fn: r => fmt(r.funds_holding, 0) },
+    { h: "Total value", n: 1, fn: r => cr(r.total_value_cr) },
+    { h: "Avg wt", n: 1, fn: r => pct(r.avg_weight, 3) }
+  ], r => go("#/stock/" + r.isin)));
+  v.appendChild(c1);
+
+  const c2 = el("div", "card");
+  c2.appendChild(el("h2", "", "Funds most exposed"));
+  c2.appendChild(el("div", "hint", "By share of the fund's own net assets, not by size"));
+  c2.appendChild(table(fn, [
+    { h: "Fund", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+        <div class="sub2">${esc(r.amc)}${r.category ? " · " + esc(r.category) : ""}</div>` },
+    { h: "Sector wt", n: 1, fn: r => `<b>${pct(r.sector_pct)}</b>` },
+    { h: "Stocks", n: 1, fn: r => fmt(r.stocks, 0) },
+    { h: "Value", n: 1, fn: r => cr(r.value_cr) },
+    { h: "Fund AUM", n: 1, fn: r => cr(r.fund_aum_cr) }
+  ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+  v.appendChild(c2);
+}
+
+/* ==========================================================================
+   VIEW · Screener
+   ========================================================================== */
+async function viewScreener(v) {
+  hero("Screener", "Filter every disclosed portfolio by size, concentration and exposure.");
+  v.innerHTML = loading("Loading filters…");
+  const [cats, secs] = await Promise.all([rpc("list_categories"), rpc("list_sectors")]);
+  v.innerHTML = "";
+
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", "Filters"));
+  c.appendChild(el("div", "hint",
+    "Leave anything blank to ignore it. Setting a sector also enables the sector-weight " +
+    "filter and the “sector weight” sort."));
+
+  const f = el("div", "filters");
+  f.innerHTML = `
+    <div><label>Category</label><select id="fCat"><option value="">Any</option>
+      ${cats.map(x => `<option value="${esc(x.category)}">${esc(x.category)} (${x.funds})</option>`).join("")}
+    </select></div>
+    <div><label>Sector</label><select id="fSec"><option value="">Any</option>
+      ${secs.slice(0, 120).map(x => `<option value="${esc(x.sector)}">${esc(x.sector)}</option>`).join("")}
+    </select></div>
+    <div><label>Min sector wt %</label><input id="fSecPct" type="number" step="1" placeholder="e.g. 25"></div>
+    <div><label>Min AUM (Cr)</label><input id="fMinAum" type="number" step="100" placeholder="e.g. 1000"></div>
+    <div><label>Max AUM (Cr)</label><input id="fMaxAum" type="number" step="100"></div>
+    <div><label>Min holdings</label><input id="fMinH" type="number" step="1"></div>
+    <div><label>Max holdings</label><input id="fMaxH" type="number" step="1" placeholder="e.g. 40"></div>
+    <div><label>Min top-10 %</label><input id="fMinT" type="number" step="1"></div>
+    <div><label>Max top-10 %</label><input id="fMaxT" type="number" step="1"></div>
+    <div><label>Holds ISIN</label><input id="fIsin" placeholder="INE002A01018"></div>
+    <div><label>Sort by</label><select id="fOrd">
+      <option value="aum">AUM</option><option value="holdings">Holdings</option>
+      <option value="top10">Top-10 concentration</option><option value="hhi">HHI</option>
+      <option value="cash">Cash</option><option value="match">Sector / stock weight</option>
+    </select></div>`;
+  c.appendChild(f);
+  const btns = el("div"); btns.style.cssText = "display:flex;gap:9px";
+  const run = el("button", "btn", "Run screen");
+  const clear = el("button", "btn ghost", "Clear");
+  btns.append(run, clear); c.appendChild(btns);
+  v.appendChild(c);
+
+  const out = el("div"); v.appendChild(out);
+  const num = id => { const x = $("#" + id).value.trim(); return x === "" ? null : Number(x); };
+  const str = id => { const x = $("#" + id).value.trim(); return x === "" ? null : x; };
+
+  const doRun = async () => {
+    out.innerHTML = loading("Screening…");
+    try {
+      const rows = await rpc("fund_screener", {
+        p_category: str("fCat"), p_sector: str("fSec"),
+        p_min_sector_pct: num("fSecPct"),
+        p_min_aum: num("fMinAum"), p_max_aum: num("fMaxAum"),
+        p_min_holdings: num("fMinH"), p_max_holdings: num("fMaxH"),
+        p_min_top10: num("fMinT"), p_max_top10: num("fMaxT"),
+        p_holds_isin: str("fIsin"), p_order: $("#fOrd").value, lim: 200
       });
-      t.appendChild(tb); box.appendChild(t); w.appendChild(box);
-      out.appendChild(w);
-    }
-  } catch (err) {
-    out.innerHTML = `<div class="note err">Compare failed — ${esc(err.message)}</div>`;
-  }
+      out.innerHTML = "";
+      const rc = el("div", "card");
+      rc.appendChild(el("h2", "", `${rows.length} fund${rows.length === 1 ? "" : "s"}`));
+      rc.appendChild(el("div", "hint", rows.length === 200
+        ? "Capped at 200 — tighten the filters to see the full set." : "Click a row to open the fund."));
+      const cols = [
+        { h: "Fund", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
+            <div class="sub2">${esc(r.amc)}${r.category ? " · " + esc(r.category) : ""}</div>` },
+        { h: "AUM", n: 1, fn: r => cr(r.aum_cr) },
+        { h: "Holdings", n: 1, fn: r => fmt(r.securities, 0) },
+        { h: "Top 10", n: 1, fn: r => pct(r.top_10_pct) },
+        { h: "Eff. stocks", n: 1, fn: r => fmt(r.effective_stocks, 1) },
+        { h: "Cash", n: 1, fn: r => pct(r.cash_pct) },
+        { h: "Top sector", fn: r => r.top_sector
+            ? `${esc(r.top_sector)} <span class="sub2">${pct(r.top_sector_pct)}</span>` : "—" }
+      ];
+      if (rows.some(r => r.match_pct != null))
+        cols.splice(1, 0, { h: "Match wt", n: 1, fn: r => `<b>${pct(r.match_pct)}</b>` });
+      rc.appendChild(table(rows, cols, r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
+      out.appendChild(rc);
+    } catch (e) { out.innerHTML = errCard(e); }
+  };
+  run.onclick = doRun;
+  clear.onclick = () => { f.querySelectorAll("input").forEach(i => i.value = "");
+    f.querySelectorAll("select").forEach(s => s.selectedIndex = 0); out.innerHTML = ""; };
+  doRun();
 }
 
-/* ---------- who else holds this security ---------- */
-async function showHolders(h) {
-  const d = $("#drawer"), b = $("#drawerBody");
-  d.classList.add("on");
-  b.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
-    <h2>${esc(h.instrument)}</h2>
-    <div class="hint mono">${esc(h.isin)}</div>
-    <div class="empty"><span class="spin"></span>&nbsp; Finding funds…</div>`;
-  try {
-    const rows = await rpc("stock_holders", { p_isin: h.isin, lim: 60 });
-    const box = el("div");
-    box.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
-      <h2>${esc(h.instrument)}</h2>
-      <div class="hint mono">${esc(h.isin)}</div>`;
-    if (!rows.length) {
-      box.appendChild(el("div", "empty", "No other loaded fund holds this security."));
-    } else {
-      const head = el("div", "hint",
-        `Held by ${rows.length} scheme${rows.length > 1 ? "s" : ""} across the loaded AMCs.
-         Each row uses that scheme's own latest disclosure, so dates differ.`);
-      box.appendChild(head);
-      const tw = el("div", "tblwrap");
-      const t = el("table");
-      t.innerHTML = `<thead><tr><th>AMC</th><th>Scheme</th>
-        <th class="n">% to NAV</th><th class="n">₹ Cr</th><th>As on</th></tr></thead>`;
-      const tb = el("tbody");
-      rows.forEach(r => tb.appendChild(el("tr", "",
-        `<td><span class="pill gold">${esc(r.amc)}</span></td>
-         <td>${esc(r.scheme_name)}</td>
-         <td class="n" style="font-weight:600">${pct(r.pct_to_nav)}</td>
-         <td class="n">${r.value_cr == null ? "—" : fmt(r.value_cr, 1)}</td>
-         <td class="mono" style="font-size:11.5px;color:var(--muted)">${dstr(new Date(r.portfolio_date))}</td>`)));
-      t.appendChild(tb); tw.appendChild(t); box.appendChild(tw);
-    }
-    b.innerHTML = ""; b.appendChild(box);
-  } catch (err) {
-    b.innerHTML = `<span class="dclose" onclick="document.getElementById('drawer').classList.remove('on')">&times;</span>
-      <div class="note err">${esc(err.message)}</div>`;
-  }
+/* ==========================================================================
+   VIEW · AMCs
+   ========================================================================== */
+async function viewAmcs(v) {
+  hero("Fund houses", "Every AMC loaded, by disclosed assets.");
+  v.innerHTML = loading("Loading AMCs…");
+  const rows = await rpc("amc_summary");
+  v.innerHTML = "";
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", `${rows.length} AMCs`));
+  c.appendChild(el("div", "hint",
+    "AUM here is the sum of disclosed holding values, not an official AUM figure — " +
+    "close enough for ranking, not for reporting. Dates differ by house."));
+  c.appendChild(table(rows, [
+    { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
+    { h: "Funds", n: 1, fn: r => fmt(r.funds, 0) },
+    { h: "Total", n: 1, fn: r => cr(r.total_aum_cr) },
+    { h: "Equity", n: 1, fn: r => cr(r.equity_aum_cr) },
+    { h: "Debt", n: 1, fn: r => cr(r.debt_aum_cr) },
+    { h: "Avg holdings", n: 1, fn: r => fmt(r.avg_holdings, 1) },
+    { h: "Med top-10", n: 1, fn: r => pct(r.med_top_10) },
+    { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.latest_date))}</span>` }
+  ]));
+  v.appendChild(c);
+
+  const b = el("div", "card");
+  b.appendChild(el("h2", "", "By disclosed assets"));
+  const bh = el("div"); b.appendChild(bh);
+  barList(bh, rows.map(r => ({ label: r.amc, pct: r.total_aum_cr, raw: cr(r.total_aum_cr) })),
+    { max: 20 });
+  v.appendChild(b);
 }
 
-$("#drawer").addEventListener("click", e => {
-  if (e.target.id === "drawer") e.target.classList.remove("on");
-});
-
-/* config guard */
-if (SUPABASE_ANON_KEY === "PASTE_YOUR_ANON_KEY_HERE") {
-  $("#boot").innerHTML = `<div class="note err"><b>Anon key not set.</b><br>
-    Open <span class="mono">dashboard/index.html</span> and replace
-    <span class="mono">PASTE_YOUR_ANON_KEY_HERE</span> with the project's
-    <b>anon / public</b> key from Supabase → Project Settings → API Keys.<br><br>
-    Use the anon key, never the service_role key — this file runs in the browser
-    and everything in it is readable by anyone.</div>`;
+/* ---------- boot ---------- */
+if (SUPABASE_ANON_KEY.startsWith("PASTE_")) {
+  $("#view").innerHTML = `<div class="card"><div class="note err"><b>Anon key not set.</b><br>
+    Replace PASTE_YOUR_ANON_KEY_HERE with the project's anon / public key.</div></div>`;
+} else {
+  route();
 }
 </script>

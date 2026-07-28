@@ -75,7 +75,19 @@ order by 1, 2;
 
 
 -- ----------------------------------------------------------------------------
--- A4. Confirm the dashboard sees the new funds.
+-- A4. Rebuild the analytical layer. REQUIRED -- these are materialised, so new
+--     holdings are invisible to every market-wide query until they refresh.
+--
+--     Order matters: mv_current reads mv_security, mv_fund_stats reads
+--     mv_current.
+-- ----------------------------------------------------------------------------
+refresh materialized view mv_security;
+refresh materialized view mv_current;
+refresh materialized view mv_fund_stats;
+
+
+-- ----------------------------------------------------------------------------
+-- A5. Confirm the dashboard sees the new funds.
 -- ----------------------------------------------------------------------------
 select amc,
        count(*)                   as funds,
