@@ -98,6 +98,12 @@ analyze mv_current;
 analyze mv_previous;
 analyze mv_fund_stats;
 
+-- Only after a colab/nav_monthly_ingest.py run, not after a holdings load --
+-- mv_fund_returns reads NAV history, which a portfolio file does not carry.
+-- Harmless to run anyway; it just rebuilds the same numbers.
+refresh materialized view mv_fund_returns;
+analyze mv_fund_returns;
+
 
 -- ----------------------------------------------------------------------------
 -- A5. Confirm the dashboard sees the new funds.
