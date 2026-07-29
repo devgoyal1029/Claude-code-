@@ -103,17 +103,60 @@ def detect_frequency(fname):
 
 
 # ============================================================================
-# 2. Upload
+# 2. Where the files come from -- URLs, uploads, or both
 #
-# Drag every workbook in at once -- different houses, different months, mixed.
+# URLs are the easier route where the AMC exposes one: nothing to download and
+# re-upload, and re-running next month is a one-character edit. Paste them here.
+# Leave the list empty to go straight to the upload box.
+#
+# These links change every month and some AMCs render their disclosure page in
+# JavaScript, so there is no link to copy -- those you download by hand and
+# drag in. Both paths run through exactly the same checks below.
 # ============================================================================
-print("Upload the portfolio workbooks (any number, any AMC, any month):\n")
-uploaded = files.upload()
+SOURCES = [
+    # "https://www.example-amc.com/monthly-portfolio-june-2026.xlsx",
+]
 
-# What the database already calls each house. A file that resolves to a code
-# NOT in this list is a new house -- fine, but worth seeing before it is created.
-known = {r["amc"] for r in
-         sb.table("mf_holdings").select("amc").execute().data} if uploaded else set()
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"}
+
+uploaded = {}
+
+for url in SOURCES:
+    name = url.rsplit("/", 1)[-1].split("?")[0] or url
+    try:
+        r = requests.get(url, headers=UA, timeout=300)
+        # An AMC that has moved the file usually serves an HTML error page with
+        # status 200, which would then "parse" to zero rows and look like a
+        # parser bug. Catch it here where the cause is obvious.
+        if r.status_code != 200:
+            print(f"  {name}: http {r.status_code} -- skipped"); continue
+        if r.content[:200].lstrip()[:1] == b"<":
+            print(f"  {name}: got HTML, not a workbook -- link is stale, skipped")
+            continue
+        uploaded[name] = r.content
+        print(f"  {name}: {len(r.content):,} bytes")
+    except Exception as e:
+        print(f"  {name}: download failed -- {e}")
+
+print("\nUpload any workbooks you downloaded by hand "
+      "(any number, any AMC, any month) -- or cancel if the URLs above covered it:\n")
+try:
+    uploaded.update(files.upload())
+except Exception:
+    pass          # cancelled upload box is not an error
+
+# What the database already calls each house. A file resolving to a code that is
+# NOT here is a new house -- fine, but worth seeing before it gets created.
+#
+# Read through amc_summary(), which returns one row per house. A plain
+# select on mf_holdings would be capped at 1,000 rows by PostgREST and hand back
+# whichever AMC happened to sort first, making every other house look new.
+try:
+    known = {r["amc"] for r in sb.rpc("amc_summary", {}).execute().data}
+except Exception as e:
+    print(f"(could not read existing AMC list: {e})")
+    known = set()
 
 # ============================================================================
 # 3. Parse and check -- nothing is pushed in this loop
