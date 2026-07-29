@@ -21,7 +21,12 @@ frequency), so June does not disturb July. That is how you light up the Changes
 tab: load any house's previous month and every one of its schemes gains history.
 """
 
-# !pip -q install requests pandas openpyxl xlrd supabase
+# Self-installing, because a fresh Colab session has no supabase client and a
+# commented-out !pip line is a trap. subprocess rather than !pip so this works
+# whether or not the cell is being run by IPython.
+import subprocess, sys
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "requests", "pandas", "openpyxl", "xlrd", "supabase"], check=False)
 
 import io, re, requests, pandas as pd
 from supabase import create_client
