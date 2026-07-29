@@ -186,6 +186,7 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
     <a href="#/leaders">Leaders</a>
     <a href="#/xray">X-ray</a>
     <a href="#/amcs">AMCs</a>
+    <a href="#/compare">Compare</a>
   </nav>
 </div></div>
 
@@ -1017,6 +1018,7 @@ async function viewFund(v, code) {
         <span class="pill ${hasPortfolio ? "ok" : "no"}">${hasPortfolio ? "Portfolio" : "NAV only"}</span>
         <span class="pill no mono">${esc(code)}</span>
       </div>
+      <div id="fundCmp" style="margin-top:12px;display:flex;gap:9px"></div>
     </div>
     <div style="text-align:right;min-width:150px">
       <div style="font-size:30px;font-weight:800;letter-spacing:-.03em;font-family:var(--mono)">
@@ -1028,6 +1030,15 @@ async function viewFund(v, code) {
         NAV as on ${last ? dstr(last.t) : "—"}</div>
     </div></div>`;
   v.appendChild(head);
+
+  if (hasPortfolio) {
+    const box = $("#fundCmp");
+    box.append(cmpButton("+ Compare", () => cmpAddFund(code, name, ov && ov.master_amc)));
+    const g = el("button", "btn ghost", "Open compare");
+    g.style.cssText += ";padding:7px 13px;font-size:12px";
+    g.onclick = () => go("#/compare");
+    box.appendChild(g);
+  }
 
   if (navErr) v.appendChild(el("div", "note err",
     `NAV history unavailable — ${esc(navErr)}. Returns and risk need api.mfapi.in.`));
@@ -2066,17 +2077,35 @@ async function viewAmcs(v) {
   c.appendChild(el("div", "hint",
     "AUM here is the sum of disclosed holding values, not an official AUM figure — close " +
     "enough for ranking, not for reporting. Dates differ by house. Click one to see " +
-    "everything it holds."));
-  c.appendChild(table(rows, [
-    { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
-    { h: "Funds", n: 1, fn: r => fmt(r.funds, 0) },
-    { h: "Total", n: 1, fn: r => cr(r.total_aum_cr) },
-    { h: "Equity", n: 1, fn: r => cr(r.equity_aum_cr) },
-    { h: "Debt", n: 1, fn: r => cr(r.debt_aum_cr) },
-    { h: "Avg holdings", n: 1, fn: r => fmt(r.avg_holdings, 1) },
-    { h: "Med top-10", n: 1, fn: r => pct(r.med_top_10) },
-    { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.latest_date))}</span>` }
-  ], r => go("#/amc/" + encodeURIComponent(r.amc))));
+    "everything it holds, or add it to a comparison."));
+
+  const chips = el("div", "chips"), body = el("div");
+  let order = "az";
+  const draw = () => {
+    const sorted = order === "az"
+      ? [...rows].sort((a, b) => a.amc.localeCompare(b.amc))
+      : [...rows].sort((a, b) => Number(b.total_aum_cr) - Number(a.total_aum_cr));
+    body.innerHTML = "";
+    body.appendChild(table(sorted, [
+      { h: "AMC", fn: r => `<span class="pill gold">${esc(r.amc)}</span>` },
+      { h: "Funds", n: 1, fn: r => fmt(r.funds, 0) },
+      { h: "Total", n: 1, fn: r => cr(r.total_aum_cr) },
+      { h: "Equity", n: 1, fn: r => cr(r.equity_aum_cr) },
+      { h: "Debt", n: 1, fn: r => cr(r.debt_aum_cr) },
+      { h: "Avg holdings", n: 1, fn: r => fmt(r.avg_holdings, 1) },
+      { h: "Med top-10", n: 1, fn: r => pct(r.med_top_10) },
+      { h: "As on", fn: r => `<span class="sub2 mono">${dstr(dt(r.latest_date))}</span>` }
+    ], r => go("#/amc/" + encodeURIComponent(r.amc))));
+  };
+  [["az", "A – Z"], ["aum", "By assets"]].forEach(([o, label], i) => {
+    const b = el("button", "chip" + (i === 0 ? " on" : ""), label);
+    b.onclick = () => { order = o;
+      [...chips.children].forEach(n => n.classList.remove("on"));
+      b.classList.add("on"); draw(); };
+    chips.appendChild(b);
+  });
+  c.append(chips, body);
+  draw();
   v.appendChild(c);
 
   const b = el("div", "card");
@@ -2101,7 +2130,15 @@ async function viewAmc(v, amc) {
 
   const c0 = el("div", "card");
   c0.innerHTML = `<div class="crumb"><span onclick="go('#/amcs')">AMCs</span> › ${esc(amc)}</div>`;
-  c0.appendChild(el("h2", "", amc));
+  const hd = el("div");
+  hd.style.cssText = "display:flex;gap:12px;align-items:center;flex-wrap:wrap";
+  hd.appendChild(el("h2", "", amc));
+  const addBtn = cmpButton("+ Compare", () => cmpAddAmc(amc));
+  const goBtn = el("button", "btn ghost", "Open compare");
+  goBtn.style.cssText += ";padding:7px 13px;font-size:12px";
+  goBtn.onclick = () => go("#/compare");
+  hd.append(addBtn, goBtn);
+  c0.appendChild(hd);
   if (s) {
     c0.appendChild(el("div", "hint", `Disclosures as on ${dstr(dt(s.latest_date))}`));
     c0.appendChild(tiles([
@@ -2142,7 +2179,8 @@ async function viewAmc(v, amc) {
 
   const c3 = el("div", "card");
   c3.appendChild(el("h2", "", `${funds.length} schemes`));
-  c3.appendChild(el("div", "hint", "Click any scheme to open it."));
+  c3.appendChild(el("div", "hint", "Sorted A – Z. Click any scheme to open it."));
+  funds.sort((a, b) => String(a.scheme_name).localeCompare(String(b.scheme_name)));
   c3.appendChild(table(funds, [
     { h: "Scheme", fn: r => `<span class="lnk">${esc(r.scheme_name)}</span>
         ${r.category ? `<div class="sub2">${esc(r.category)}</div>` : ""}` },
@@ -2154,6 +2192,303 @@ async function viewAmc(v, amc) {
         ? `${esc(short(r.top_sector, 20))} <span class="sub2">${pct(r.top_sector_pct)}</span>` : "—" }
   ], r => { if (r.scheme_code) go("#/fund/" + r.scheme_code); }));
   v.appendChild(c3);
+}
+
+
+/* ==========================================================================
+   Compare — funds and fund houses, any mix
+   ========================================================================== */
+const CMP_MAX_FUNDS = 10, CMP_MAX_AMCS = 5;
+let CMP = { funds: [], amcs: [] };   // funds: [{code,name,amc}], amcs: [name]
+
+function cmpAddFund(code, name, amc) {
+  code = String(code);
+  if (CMP.funds.some(f => f.code === code)) return "already added";
+  if (CMP.funds.length >= CMP_MAX_FUNDS) return `max ${CMP_MAX_FUNDS} funds`;
+  CMP.funds.push({ code, name, amc });
+  return null;
+}
+function cmpAddAmc(name) {
+  if (CMP.amcs.includes(name)) return "already added";
+  if (CMP.amcs.length >= CMP_MAX_AMCS) return `max ${CMP_MAX_AMCS} AMCs`;
+  CMP.amcs.push(name);
+  return null;
+}
+const cmpCount = () => CMP.funds.length + CMP.amcs.length;
+
+/* small "+ Compare" button used on AMC and fund pages */
+function cmpButton(label, addFn) {
+  const b = el("button", "btn ghost", label);
+  b.style.cssText += ";padding:7px 13px;font-size:12px";
+  b.onclick = ev => {
+    ev.stopPropagation();
+    const err = addFn();
+    if (err) { b.textContent = err; setTimeout(() => b.textContent = label, 1400); return; }
+    b.textContent = `Added (${cmpCount()})`;
+    setTimeout(() => b.textContent = label, 1400);
+  };
+  return b;
+}
+
+async function viewCompare(v) {
+  hero("Compare", `Up to ${CMP_MAX_AMCS} fund houses and ${CMP_MAX_FUNDS} funds, side by side.`);
+  v.innerHTML = loading("Loading…");
+  const amcs = await rpc("amc_summary");
+  v.innerHTML = "";
+
+  const c = el("div", "card");
+  c.appendChild(el("h2", "", "What to compare"));
+  c.appendChild(el("div", "hint",
+    "A fund house is pooled into one portfolio — every holding across its schemes, summed " +
+    "by ISIN and re-expressed as a share of the whole house. That is what lets a single " +
+    "fund be measured against an AMC on the same scale. Comparing an AMC with one of its " +
+    "own funds will read high on overlap by construction, since the fund is inside that pool."));
+
+  /* AMC chips */
+  c.appendChild(el("h3", "", "Fund houses"));
+  const achips = el("div", "chips");
+  [...amcs].sort((a, b) => a.amc.localeCompare(b.amc)).forEach(a => {
+    const b = el("button", "chip" + (CMP.amcs.includes(a.amc) ? " on" : ""), esc(a.amc));
+    b.onclick = () => {
+      const i = CMP.amcs.indexOf(a.amc);
+      if (i >= 0) { CMP.amcs.splice(i, 1); b.classList.remove("on"); }
+      else {
+        const err = cmpAddAmc(a.amc);
+        if (err) { b.textContent = err; setTimeout(() => b.textContent = a.amc, 1400); return; }
+        b.classList.add("on");
+      }
+      paintSel();
+    };
+    achips.appendChild(b);
+  });
+  c.appendChild(achips);
+
+  /* fund search */
+  c.appendChild(el("h3", "", "Funds"));
+  const bar = el("div", "cmp");
+  const inp = el("input");
+  inp.placeholder = "Search a fund to add…";
+  bar.appendChild(inp);
+  c.appendChild(bar);
+  const drop = el("div", "results");
+  drop.style.position = "static"; drop.style.marginTop = "-8px";
+  c.appendChild(drop);
+
+  const sel = el("div"); c.appendChild(sel);
+  const actions = el("div"); actions.style.cssText = "display:flex;gap:9px;margin-top:14px";
+  const run = el("button", "btn", "Compare");
+  const clr = el("button", "btn ghost", "Clear all");
+  actions.append(run, clr); c.appendChild(actions);
+  v.appendChild(c);
+
+  const out = el("div"); v.appendChild(out);
+
+  const paintSel = () => {
+    sel.innerHTML = "";
+    if (!cmpCount()) { sel.appendChild(el("div", "empty", "Nothing selected yet.")); return; }
+    const row = el("div", "chips"); row.style.marginTop = "12px";
+    CMP.amcs.forEach((a, i) => {
+      const t = el("button", "chip on", `${esc(a)} ✕`);
+      t.onclick = () => { CMP.amcs.splice(i, 1);
+        [...achips.children].forEach(n => n.classList.toggle("on", CMP.amcs.includes(n.textContent)));
+        paintSel(); };
+      row.appendChild(t);
+    });
+    CMP.funds.forEach((f, i) => {
+      const t = el("button", "chip on", `${esc(short(f.name, 34))} ✕`);
+      t.onclick = () => { CMP.funds.splice(i, 1); paintSel(); };
+      row.appendChild(t);
+    });
+    sel.appendChild(row);
+    sel.appendChild(el("div", "hint",
+      `${CMP.amcs.length}/${CMP_MAX_AMCS} houses · ${CMP.funds.length}/${CMP_MAX_FUNDS} funds`));
+  };
+  paintSel();
+
+  let tmr = null;
+  inp.addEventListener("input", e => {
+    const q = e.target.value.trim();
+    clearTimeout(tmr);
+    if (q.length < 2) { drop.classList.remove("on"); return; }
+    tmr = setTimeout(async () => {
+      try {
+        const rows = (await rpc("search_schemes", { q, lim: 12 }))
+          .filter(r => r.has_holdings && !CMP.funds.some(f => f.code === String(r.scheme_code)));
+        drop.innerHTML = "";
+        if (!rows.length) {
+          drop.innerHTML = `<div class="res"><div><div class="nm">Nothing to add</div>
+            <div class="sub">Only schemes with a loaded portfolio can be compared</div></div></div>`;
+          drop.classList.add("on"); return;
+        }
+        rows.forEach(r => {
+          const n = el("div", "res", `<div style="flex:1"><div class="nm">${esc(r.scheme_name)}</div>
+            <div class="sub">${esc(r.amc_name || "")}</div></div>`);
+          n.onclick = () => {
+            const err = cmpAddFund(r.scheme_code, r.scheme_name, r.amc_name);
+            if (err) return;
+            inp.value = ""; drop.classList.remove("on"); paintSel();
+          };
+          drop.appendChild(n);
+        });
+        drop.classList.add("on");
+      } catch (err) { drop.classList.remove("on"); }
+    }, 220);
+  });
+
+  clr.onclick = () => { CMP = { funds: [], amcs: [] };
+    [...achips.children].forEach(n => n.classList.remove("on"));
+    paintSel(); out.innerHTML = ""; };
+  run.onclick = () => runCompare(out);
+  if (cmpCount() >= 2) runCompare(out);
+}
+
+async function runCompare(out) {
+  if (cmpCount() < 2) {
+    out.innerHTML = `<div class="card"><div class="empty">
+      Pick at least two things to compare.</div></div>`;
+    return;
+  }
+  out.innerHTML = loading("Comparing…");
+  const args = { p_funds: CMP.funds.map(f => f.code), p_amcs: CMP.amcs };
+
+  try {
+    const [sumR, ovR, secR, hldR] = await Promise.all([
+      rpc("compare_summary",  args),
+      rpc("compare_overlap",  args),
+      rpc("compare_sectors",  { ...args, lim: 18 }),
+      rpc("compare_holdings", { ...args, lim: 35 })
+    ]);
+    out.innerHTML = "";
+    const names = sumR.map(r => r.entity);
+
+    /* ---- headline table ---- */
+    const c1 = el("div", "card");
+    c1.appendChild(el("h2", "", "Side by side"));
+    c1.appendChild(el("div", "hint",
+      "Read <b>effective stocks</b> against <b>securities</b>: a house pooling 900 names can " +
+      "still behave like 40 positions if its schemes crowd the same book."));
+    c1.appendChild(table(sumR, [
+      { h: "", fn: r => `<span class="pill ${r.kind === "AMC" ? "gold" : "blue"}">${r.kind}</span>` },
+      { h: "Name", fn: r => `<b>${esc(r.entity)}</b>${r.kind === "AMC"
+          ? `<div class="sub2">${fmt(r.schemes, 0)} schemes</div>` : ""}` },
+      { h: "AUM", n: 1, fn: r => cr(r.aum_cr) },
+      { h: "Securities", n: 1, fn: r => fmt(r.securities, 0) },
+      { h: "Top 10", n: 1, fn: r => pct(r.top_10_pct) },
+      { h: "Largest", n: 1, fn: r => `${pct(r.largest_pct)}
+          <div class="sub2">${esc(short(r.largest_name, 18))}</div>` },
+      { h: "Eff. stocks", n: 1, fn: r => `<b>${fmt(r.effective_stocks, 1)}</b>` },
+      { h: "Sectors", n: 1, fn: r => fmt(r.sectors, 0) },
+      { h: "Top sector", fn: r => r.top_sector
+          ? `${esc(short(r.top_sector, 18))} <span class="sub2">${pct(r.top_sector_pct)}</span>` : "—" },
+      { h: "Equity", n: 1, fn: r => pct(r.equity_pct) },
+      { h: "Debt", n: 1, fn: r => pct(r.debt_pct) },
+      { h: "Cash", n: 1, fn: r => pct(r.cash_pct) }
+    ]));
+    out.appendChild(c1);
+
+    /* ---- overlap matrix ---- */
+    if (ovR.length) {
+      const c2 = el("div", "card");
+      c2.appendChild(el("h2", "", "Overlap"));
+      c2.appendChild(el("div", "hint",
+        "Sum of min(weight) across shared ISINs. Two funds above 70% are close to one " +
+        "position wearing two expense ratios. Two large houses will always overlap heavily — " +
+        "they own the same top of the market."));
+      const map = {};
+      ovR.forEach(o => {
+        (map[o.entity_a] = map[o.entity_a] || {})[o.entity_b] = o;
+        (map[o.entity_b] = map[o.entity_b] || {})[o.entity_a] = o;
+      });
+      const box = el("div", "tblwrap");
+      const t = el("table");
+      t.innerHTML = `<thead><tr><th></th>${names.map(n =>
+        `<th class="n">${esc(short(n, 16))}</th>`).join("")}</tr></thead>`;
+      const tb = el("tbody");
+      names.forEach(a => {
+        const tr = el("tr");
+        tr.innerHTML = `<td><b>${esc(short(a, 26))}</b></td>` + names.map(b => {
+          if (a === b) return `<td class="n" style="color:var(--border)">—</td>`;
+          const o = (map[a] || {})[b];
+          const val = o ? Number(o.overlap_pct) : null;
+          const col = val == null ? "" : val > 70 ? "down" : val > 40 ? "" : "up";
+          return `<td class="n ${col}">${val == null ? "—" : pct(val)}</td>`;
+        }).join("");
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); box.appendChild(t); c2.appendChild(box);
+      out.appendChild(c2);
+    }
+
+    /* ---- sector grid ---- */
+    if (secR.length) {
+      const c3 = el("div", "card");
+      c3.appendChild(el("h2", "", "Sector exposure"));
+      c3.appendChild(el("div", "hint",
+        "Weight in each entity's own book. Blank means the entity holds nothing in that sector."));
+      const piv = {};
+      secR.forEach(r => { (piv[r.sector] = piv[r.sector] || {})[r.entity] = Number(r.weight); });
+      const rows = Object.entries(piv)
+        .map(([sector, byEnt]) => ({ sector, byEnt,
+          peak: Math.max(...Object.values(byEnt)) }))
+        .sort((a, b) => b.peak - a.peak);
+      const box = el("div", "tblwrap");
+      const t = el("table");
+      t.innerHTML = `<thead><tr><th>Sector</th>${names.map(n =>
+        `<th class="n">${esc(short(n, 16))}</th>`).join("")}</tr></thead>`;
+      const tb = el("tbody");
+      rows.forEach(r => {
+        const tr = el("tr");
+        const best = Math.max(...names.map(n => r.byEnt[n] || 0));
+        tr.innerHTML = `<td><span class="lnk">${esc(r.sector)}</span></td>` + names.map(n => {
+          const v = r.byEnt[n];
+          if (v == null) return `<td class="n" style="color:var(--border)">—</td>`;
+          return `<td class="n"${v === best ? ' style="font-weight:700"' : ""}>${pct(v)}</td>`;
+        }).join("");
+        tr.onclick = () => go("#/sector/" + encodeURIComponent(r.sector));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); box.appendChild(t); c3.appendChild(box);
+      out.appendChild(c3);
+    }
+
+    /* ---- holdings grid ---- */
+    if (hldR.length) {
+      const c4 = el("div", "card");
+      c4.appendChild(el("h2", "", "Holdings"));
+      c4.appendChild(el("div", "hint",
+        "Ranked by the highest weight any one entity gives the name, so a heavy single-fund " +
+        "position is not buried under names everyone holds lightly."));
+      const piv = {};
+      hldR.forEach(r => {
+        const k = r.isin;
+        piv[k] = piv[k] || { isin: r.isin, instrument: r.instrument, sector: r.sector,
+                             held_by: r.held_by, byEnt: {} };
+        piv[k].byEnt[r.entity] = Number(r.weight);
+      });
+      const rows = Object.values(piv)
+        .sort((a, b) => Math.max(...Object.values(b.byEnt)) - Math.max(...Object.values(a.byEnt)));
+      const box = el("div", "tblwrap");
+      const t = el("table");
+      t.innerHTML = `<thead><tr><th>Instrument</th><th class="n">Held by</th>${names.map(n =>
+        `<th class="n">${esc(short(n, 14))}</th>`).join("")}</tr></thead>`;
+      const tb = el("tbody");
+      rows.forEach(r => {
+        const tr = el("tr");
+        const best = Math.max(...names.map(n => r.byEnt[n] || 0));
+        tr.innerHTML = `<td><span class="lnk">${esc(r.instrument)}</span>
+            <div class="sub2">${esc(short(r.sector, 22))}</div></td>
+          <td class="n">${r.held_by}/${names.length}</td>` + names.map(n => {
+          const v = r.byEnt[n];
+          if (v == null) return `<td class="n" style="color:var(--border)">—</td>`;
+          return `<td class="n"${v === best ? ' style="font-weight:700"' : ""}>${pct(v)}</td>`;
+        }).join("");
+        tr.onclick = () => go("#/stock/" + r.isin);
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); box.appendChild(t); c4.appendChild(box);
+      out.appendChild(c4);
+    }
+  } catch (e) { out.innerHTML = errCard(e); }
 }
 
 /* ---------- boot ---------- */
