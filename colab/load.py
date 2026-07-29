@@ -86,13 +86,19 @@ AMC_PATTERNS = [
 # Filename says nothing useful? Map it by hand here: {"weird_name.xlsx": "HDFC"}
 AMC_OVERRIDE = {}
 
+# Set this when every file in this run belongs to one house and the filenames do
+# not say so -- an AMC that publishes one file per scheme names them after the
+# scheme ("largecap-fund-june-2026.xlsx"), and writing 60 AMC_OVERRIDE entries by
+# hand is not a workflow. Leave as None to require the filename to identify it.
+DEFAULT_AMC = None
+
 
 def detect_amc(fname):
     if fname in AMC_OVERRIDE: return AMC_OVERRIDE[fname]
     low = fname.lower()
     for code, pat in AMC_PATTERNS:
         if re.search(pat, low): return code
-    return None
+    return DEFAULT_AMC
 
 
 def detect_frequency(fname):
@@ -170,8 +176,9 @@ for fname, blob in uploaded.items():
 
     if not amc:
         print("  SKIPPED -- cannot tell which AMC this is.")
-        print("  Fix: add a pattern to AMC_PATTERNS, or")
-        print(f'        AMC_OVERRIDE = {{"{fname}": "SHORTCODE"}}')
+        print("  Fix: set DEFAULT_AMC if this whole run is one house, or add a")
+        print("       pattern to AMC_PATTERNS, or")
+        print(f'       AMC_OVERRIDE = {{"{fname}": "SHORTCODE"}}')
         skipped.append((fname, "unknown AMC"))
         continue
 
@@ -195,41 +202,79 @@ for fname, blob in uploaded.items():
     dates = sorted(d for d in df["portfolio_date"].dropna().unique())
     print(f"  dates           {', '.join(pd.Timestamp(d).strftime('%d-%b-%Y') for d in dates)}")
 
-    # Two failures are worth stopping for, because pushing them corrupts the
-    # database rather than merely adding nothing:
-    #   NULL dates  -- push() asserts on these anyway
-    #   <70% of schemes summing to 100 -- usually the 100x scale detection
-    #                                     misfiring, which silently ruins AUM
     if df["portfolio_date"].isna().any():
         print("  SKIPPED -- some rows have no portfolio date.")
         skipped.append((fname, "null dates")); continue
-    if n_sch and ok / n_sch < 0.70:
+
+    # The failure that actually corrupts data is the 100x scale decision going
+    # the wrong way: every weight and every AUM comes out a hundred times off,
+    # and nothing downstream complains. A real portfolio sums near 100 -- an
+    # arbitrage or equity-savings book can reach 130 -- so a median outside
+    # 20..400 means the scale was misread, not that the fund is unusual.
+    med = df.groupby("scheme_name")["pct_to_nav"].sum().median()
+    if pd.notna(med) and not (20 < med < 400):
+        print(f"  SKIPPED -- scheme weights sum to a median of {med:.2f}, which is "
+              "not a percentage. The %NAV column was misread.")
+        skipped.append((fname, f"scale wrong (median {med:.1f})")); continue
+
+    # The 100-percent check only means something across a set of schemes. On a
+    # one-scheme file it would reject every arbitrage fund, which legitimately
+    # sums past 102 -- so warn there instead of skipping. push() flags those rows
+    # needs_review either way.
+    if n_sch >= 5 and ok / n_sch < 0.70:
         print(f"  SKIPPED -- only {ok}/{n_sch} schemes sum to ~100%. Check the "
               "%NAV column before trusting this file.")
         skipped.append((fname, f"weights off ({ok}/{n_sch})")); continue
+    if n_sch < 5 and ok < n_sch:
+        print(f"  note: {n_sch - ok} of {n_sch} scheme(s) sum outside 98-102% "
+              "(normal for arbitrage and equity-savings) -- flagged, not skipped.")
 
     parsed.append((fname, amc, df))
 
 # ============================================================================
-# 4. Summary, then push
+# 4. Combine per house, then push ONCE
 #
-# Everything that reaches here has passed. Nothing to confirm by hand -- the
-# checks above are the confirmation, and anything doubtful was already skipped.
+# This is not a tidiness choice, it is required. push() deletes by
+# (amc, portfolio_date, frequency) before inserting, so pushing 60 single-scheme
+# files one after another would have each one wipe the 59 before it and leave a
+# single scheme standing. Some AMCs -- Invesco among them -- publish one file per
+# scheme rather than one workbook with a sheet per scheme, so this is the normal
+# case, not an edge case.
+#
+# Concatenating first means one delete and one insert per (house, date), which is
+# also what makes a re-run safe: it replaces that house's snapshot wholesale.
 # ============================================================================
 print(f"\n{'=' * 70}\nREADY TO PUSH\n")
+
+by_amc = {}
 for fname, amc, df in parsed:
+    by_amc.setdefault(amc, []).append(df)
+
+combined = {}
+for amc, frames in by_amc.items():
+    df = pd.concat(frames, ignore_index=True)
+    # The same scheme arriving in two files at the same date would double every
+    # weight. Drop exact duplicates on the natural key before it reaches the DB.
+    before = len(df)
+    df = df.drop_duplicates(
+        subset=["amc", "scheme_name", "portfolio_date", "isin",
+                "instrument_name", "market_value_lacs"])
+    combined[amc] = df
+    dup = before - len(df)
     print(f"  {amc:10s} {df['scheme_name'].nunique():4d} schemes  "
-          f"{len(df):7,} rows   {fname}")
+          f"{len(df):7,} rows   from {len(frames)} file(s)"
+          + (f"   ({dup:,} duplicate rows dropped)" if dup else ""))
+
 if skipped:
     print("\nSKIPPED")
     for fname, why in skipped:
         print(f"  {why:24s} {fname}")
 
-if not parsed:
+if not combined:
     print("\nNothing to push.")
 else:
     print()
-    for fname, amc, df in parsed:
+    for amc, df in combined.items():
         push(df)
 
     print(f"\n{'=' * 70}")
