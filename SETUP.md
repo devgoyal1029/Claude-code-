@@ -57,8 +57,9 @@ select * from market_overview();
 select * from top_stocks(10, 'value');
 ```
 
-`total_aum_cr` in the ₹40–50 lakh crore range is about right for 16 AMCs. Far off in
-either direction means something upstream is wrong — check before building on it.
+`total_aum_cr` lands around ₹62 lakh crore for these 16 AMCs — the Indian industry runs
+about ₹70–75 lakh crore and these houses are most of it. Far off in either direction
+means something upstream is wrong; check before building on it.
 
 ---
 
@@ -127,9 +128,10 @@ than only the ~4,060 with a loaded portfolio.
 - **HDFC and Nippon have NULL `section`/`sub_section`** — loaded with an older parser,
   re-load never run. `asset_class()` falls back to coupon and rating shape for those
   rows. Re-parsing them with the v4 parser fixes it with no code change.
-- **AUM is derived** from `sum(market_value_lacs)`, not an official figure. Fine for
-  ranking, not for reporting. Funds flagged `needs_review` (arbitrage, equity-savings,
-  dynamic allocation — their weights do not sum to 100) will be off.
+- **AUM is derived** from `sum(market_value_lacs)`, not an official figure. It reconciles
+  to the AMC's own "Total Net Assets" line — verified against ICICI Active Momentum at
+  ₹1,691.07 Cr — but funds flagged `needs_review` (arbitrage, equity-savings, dynamic
+  allocation, whose weights do not sum to 100) will still be off.
 - **Sector labels are not standardised** across AMCs: "IT - Software" vs "Software".
   Debt schemes report credit ratings in the same column, so ratings appear in sector
   lists too.

@@ -66,8 +66,13 @@ rows as (
 ),
 fund as (
     select amc, scheme_name,
-           sum(market_value_lacs) filter (where market_value_lacs > 0) as aum_lacs,
-           sum(pct_to_nav)                                             as pct_sum
+           -- No positive-only filter. Net Current Assets is routinely negative
+           -- (payables, unsettled trades, derivative margin) and the AMC counts
+           -- it in its own "Total Net Assets"; excluding it inflated AUM by
+           -- exactly that amount -- 4.8% on ICICI Active Momentum, where the
+           -- file says 169,106.88 lakhs and the filtered sum said 177,163.78.
+           sum(market_value_lacs) as aum_lacs,
+           sum(pct_to_nav)        as pct_sum
     from rows
     group by 1, 2
 ),
