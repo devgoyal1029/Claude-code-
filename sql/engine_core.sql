@@ -63,6 +63,14 @@ rows as (
     from mf_holdings h
     join latest l
       on l.amc = h.amc and l.scheme_name = h.scheme_name and l.pd = h.portfolio_date
+    -- Empty section headings ("Term Deposits  Nil") and repeated column-header
+    -- rows that older parsers let through. No ISIN, no weight, no value -- so
+    -- they move no total, they only inflate holdings counts. parser.py v6 stops
+    -- them at the source; this is the guard for anything already loaded, or
+    -- reloaded with an older parser.
+    where not (h.isin is null
+               and h.pct_to_nav is null
+               and h.market_value_lacs is null)
 ),
 fund as (
     select amc, scheme_name,
