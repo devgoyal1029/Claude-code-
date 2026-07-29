@@ -35,6 +35,40 @@ from google.colab import files
 SUPABASE_URL = "https://ulunrpbayvlazzxpqrpj.supabase.co"
 SUPABASE_KEY = "PASTE_SERVICE_ROLE_KEY_HERE"      # service_role, not anon
 
+# ----------------------------------------------------------------------------
+# Key guard -- check the key BEFORE anything is downloaded or pushed.
+#
+# This has bitten twice: a key from a different Supabase project looks identical
+# and fails with a bare "401 Invalid API key" only at the push, after every file
+# has already been fetched and parsed. The project ref and the role both live in
+# the JWT payload, so both are checkable up front without calling anything.
+# ----------------------------------------------------------------------------
+def check_key(url, key):
+    import base64, json
+    if key.startswith("PASTE_"):
+        raise SystemExit("SUPABASE_KEY is still the placeholder. Paste the "
+                         "service_role key from Settings > API.")
+    try:
+        body = key.split(".")[1]
+        body += "=" * (-len(body) % 4)                # JWT strips the padding
+        claims = json.loads(base64.urlsafe_b64decode(body))
+    except Exception:
+        raise SystemExit("SUPABASE_KEY is not a JWT. Copy it again, whole.")
+
+    want = url.split("//")[1].split(".")[0]
+    ref, role = claims.get("ref"), claims.get("role")
+    print(f"key: role={role}  project={ref}  (expected {want})")
+
+    if ref != want:
+        raise SystemExit(f"WRONG PROJECT -- this key belongs to '{ref}', not "
+                         f"'{want}'. Nothing was pushed.")
+    if role != "service_role":
+        raise SystemExit(f"This is the '{role}' key. Writing to mf_holdings "
+                         "needs service_role -- anon is blocked by RLS.")
+
+
+check_key(SUPABASE_URL, SUPABASE_KEY)
+
 sb   = create_client(SUPABASE_URL, SUPABASE_KEY)
 push = make_push(sb)                               # from parser.py
 
