@@ -1,5 +1,5 @@
 """
-AMC portfolio-disclosure parser -- v5
+AMC portfolio-disclosure parser -- v6
 
 Columns are matched by HEADER TEXT, not position, so one parser handles every
 AMC's layout. Paste as one Colab cell; parse_workbook() and push() are what the
@@ -14,6 +14,13 @@ showing everywhere the AMC's own name is displayed.
 
 Re-parse and re-push Quant, Tata, Motilal and SBI to pick this up. Everything
 else is unchanged, so other AMCs do not need reloading.
+
+v6 stops empty section headings becoming holdings. An AMC writes "Nil" beside a
+category it holds nothing in ("Term Deposits  Nil"), and pd.notna("Nil") is
+True, so the row read as a position -- KEEP_NO_ISIN's deposit/margin patterns
+then rescued it from the heading branch. A value now has to parse as a NUMBER.
+That produced 1,606 phantom rows across Tata, SBI, ICICI and Quantum; they carry
+no ISIN, no weight and no value, so nothing downstream moves when they go.
 """
 
 # !pip -q install requests pandas openpyxl xlrd supabase
@@ -148,7 +155,13 @@ def parse_sheet(d, sheet=""):
         name = r.iloc[c_name] if c_name < len(r) else None
         pct = r.iloc[c_pct] if c_pct < len(r) else None
         mv = r.iloc[c_mv] if c_mv is not None and c_mv < len(r) else None
-        has_val = pd.notna(pct) or pd.notna(mv)
+        # A value must be a NUMBER, not merely present. AMCs write "Nil" beside
+        # an empty category ("Term Deposits  Nil"), and pd.notna("Nil") is True --
+        # so the row looked like a holding, and KEEP_NO_ISIN's deposit/margin
+        # patterns then rescued it from the heading branch below. That is how
+        # 1,606 empty headings across Tata, SBI, ICICI and Quantum became rows.
+        has_val = _num(pct) is not None and pd.notna(_num(pct)) \
+               or _num(mv)  is not None and pd.notna(_num(mv))
         label = "" if pd.isna(name) else re.sub(r"\s+", " ", str(name)).strip()
 
         iv = r.iloc[c_isin] if c_isin < len(r) else None
@@ -167,7 +180,10 @@ def parse_sheet(d, sheet=""):
 
         if label and STOP_RE.match(label): break
         if label and SKIP_RE.match(label): continue
-        if label and not has_val:
+        # An ISIN is proof of a position, so such a row is never a heading --
+        # even if its value cell is blank or unreadable, keep it and let the
+        # null show rather than losing a holding silently.
+        if label and not has_val and not has_isin:
             if SECTION_RE.match(label): section, sub = label, None
             else: sub = label
             continue
@@ -176,7 +192,7 @@ def parse_sheet(d, sheet=""):
             if SECTION_RE.match(label): section, sub = label, None
             else: sub = label
             continue
-        if not has_val or not (label or has_isin): continue
+        if not (has_val or has_isin) or not (label or has_isin): continue
 
         rec = {f: (r.iloc[c] if c < len(r) else None) for f, c in colmap.items()}
         rec["instrument_name"] = re.sub(r"[£^#*@~+\s]+$", "", label).strip() or None

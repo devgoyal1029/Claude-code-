@@ -117,6 +117,19 @@ language sql stable as $$
     join tgt t on t.amc = h.amc and t.source_name = h.scheme_name
     cross join d
     where h.portfolio_date = d.dt
+      -- Empty section headings the parser let through: "Term Deposits",
+      -- "Deposits (Placed as Margin)", and repeated column-header rows like
+      -- "NAME OF THE INSTRUMENT". The AMC writes "Nil" beside them, meaning the
+      -- category is empty -- they are labels, not positions. A real holding
+      -- always carries at least one of ISIN, value or weight; these carry none,
+      -- so no weight or rupee moves when they go (ICICI Active Momentum: 52
+      -- rows -> 49, AUM 1691.07 both ways).
+      --
+      -- parser.py v6 stops them at the source; this stays as the guard, because
+      -- a reload with an older parser would put them straight back.
+      and not (h.isin is null
+               and h.pct_to_nav is null
+               and h.market_value_lacs is null)
 $$;
 
 
