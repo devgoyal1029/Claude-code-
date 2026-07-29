@@ -193,6 +193,7 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
     <a href="#/screener">Screener</a>
     <a href="#/leaders">Leaders</a>
     <a href="#/xray">X-ray</a>
+    <a href="#/changes">Changes</a>
     <a href="#/amcs">AMCs</a>
     <a href="#/compare">Compare</a>
   </nav>
@@ -666,7 +667,10 @@ async function route() {
     else if (p[0] === "screener")         { setNav("screener"); await viewScreener(v); }
     else if (p[0] === "leaders")          { setNav("leaders"); await viewLeaders(v); }
     else if (p[0] === "xray")             { setNav("xray"); await viewXray(v); }
+    else if (p[0] === "changes")          { setNav("changes"); await viewChanges(v); }
     else if (p[0] === "amcs")             { setNav("amcs"); await viewAmcs(v); }
+    // compare had no branch at all, so the nav link fell through to Market
+    else if (p[0] === "compare")          { setNav("compare"); await viewCompare(v); }
     else                                   { setNav("market"); await viewMarket(v); }
   } catch (e) { v.innerHTML = errCard(e); }
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2084,6 +2088,129 @@ async function doXray(out) {
     out.appendChild(c4);
   } catch (e) { out.innerHTML = errCard(e); }
 }
+
+/* ==========================================================================
+   VIEW · Changes — what funds bought and sold between disclosures
+
+   Every fund holding two snapshots is compared position by position. Coverage
+   is not the whole market and saying so matters: a house appears here only
+   once a second portfolio_date exists for it. Debt schemes disclose
+   fortnightly under SEBI rules while everything else is monthly, so they are
+   the first to show movement.
+   ========================================================================== */
+const CHG_ACTIONS = [
+  ["bought", "Bought",        "Positions whose disclosed value went up"],
+  ["sold",   "Sold",          "Positions whose disclosed value went down"],
+  ["new",    "New positions", "Names not held at the previous disclosure"],
+  ["exit",   "Exited",        "Names held then, gone now"]
+];
+
+async function viewChanges(v) {
+  hero("Changes", "What funds bought and sold between their last two disclosures.");
+  v.innerHTML = loading("Loading…");
+
+  const [amcs, cats] = await Promise.all([
+    soft(rpc("amc_summary")),
+    soft(rpc("list_categories"))
+  ]);
+  v.innerHTML = "";
+
+  let action = "bought", amc = "", cat = "";
+
+  /* ---- controls ---- */
+  const c1 = el("div", "card");
+  c1.appendChild(el("h2", "", "Flows"));
+  c1.appendChild(el("div", "hint",
+    "Change in <b>disclosed value</b> between each fund's own last two portfolio dates, " +
+    "pooled across every fund that has two. Funds disclose on different dates, so read this " +
+    "as direction of travel, not a single-period flow. A fund appears only once a second " +
+    "disclosure has been loaded for it."));
+
+  const chips = el("div", "chips");
+  CHG_ACTIONS.forEach(([a, label, why], i) => {
+    const b = el("button", "chip" + (i === 0 ? " on" : ""), label);
+    b.title = why;
+    b.onclick = () => {
+      action = a;
+      [...chips.children].forEach(n => n.classList.remove("on"));
+      b.classList.add("on");
+      draw();
+    };
+    chips.appendChild(b);
+  });
+  c1.appendChild(chips);
+
+  const filt = el("div", "filters"); filt.style.marginTop = "14px";
+
+  const amcWrap = el("div");
+  amcWrap.appendChild(el("label", "", "Fund house"));
+  const amcSel = el("select");
+  amcSel.innerHTML = `<option value="">All houses</option>` +
+    (amcs || []).slice().sort((a, b) => a.amc.localeCompare(b.amc))
+      .map(a => `<option value="${esc(a.amc)}">${esc(a.amc)}</option>`).join("");
+  amcSel.onchange = () => { amc = amcSel.value; draw(); };
+  amcWrap.appendChild(amcSel); filt.appendChild(amcWrap);
+
+  const catWrap = el("div");
+  catWrap.appendChild(el("label", "", "Category"));
+  const catSel = el("select");
+  catSel.innerHTML = `<option value="">All categories</option>` +
+    (cats || []).map(c => `<option value="${esc(c.category)}">${esc(c.category)}</option>`).join("");
+  catSel.onchange = () => { cat = catSel.value; draw(); };
+  catWrap.appendChild(catSel); filt.appendChild(catWrap);
+
+  c1.appendChild(filt);
+  const host = el("div"); c1.appendChild(host);
+  v.appendChild(c1);
+
+  async function draw() {
+    host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+    const rows = await soft(rpc("market_changes", {
+      p_action: action, lim: 60,
+      p_amc: amc || null, p_category: cat || null
+    }));
+
+    if (!rows) {
+      host.innerHTML = `<div class="note err">Change tracking is not installed on this
+        project yet — <span class="mono">sql/changes.sql</span> has not been run.</div>`;
+      return;
+    }
+    if (!rows.length) {
+      // Empty is the normal state for most of the market, not a failure. Say
+      // which condition is missing rather than showing a blank table.
+      host.innerHTML = "";
+      host.appendChild(el("div", "empty",
+        `<b>No movement to show${amc ? " for " + esc(amc) : ""}</b>
+         A fund shows up here only once two portfolio dates are loaded for it.
+         Loading an earlier month for a house lights up every one of its schemes —
+         the current disclosure is not disturbed.`));
+      return;
+    }
+
+    host.innerHTML = "";
+    const sold = action === "sold" || action === "exit";
+    host.appendChild(table(rows, [
+      { h: "#", n: 1, fn: (r, i) => `<span class="sub2">${i + 1}</span>` },
+      { h: "Stock", fn: r => `<span class="lnk">${esc(r.instrument || r.isin)}</span>
+          <div class="sub2 mono">${esc(r.isin)}</div>` },
+      { h: "Sector", fn: r => esc(short(r.sector, 24)) },
+      { h: "Funds", n: 1, fn: r => `<b>${fmt(r.funds_moved, 0)}</b>` },
+      { h: sold ? "Value out" : "Value in", n: 1, fn: r =>
+          `<b class="${signOf(r.value_change_cr)}">${r.value_change_cr > 0 ? "+" : ""}${cr(r.value_change_cr)}</b>` },
+      { h: "Held now", n: 1, fn: r => cr(r.value_now_cr) },
+      { h: "Avg wt Δ", n: 1, fn: r => signed(r.avg_pct_change, 3) }
+    ], r => go("#/stock/" + r.isin)));
+
+    host.appendChild(el("div", "hint",
+      "<b>Funds</b> counts how many schemes moved that way — a name five funds bought is a " +
+      "different signal from one fund buying five times as much. <b>Avg wt Δ</b> is the " +
+      "average change in portfolio weight, which strips out the effect of the whole book " +
+      "growing."));
+  }
+
+  draw();
+}
+
 
 /* ==========================================================================
    VIEW · AMCs
