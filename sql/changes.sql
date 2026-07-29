@@ -85,8 +85,13 @@ as $$
         select distinct amc, scheme_name from mv_current
         where scheme_code = p_scheme_code limit 1
     ),
-    n as (select c.* from mv_current c
-           join me on me.amc = c.amc and me.scheme_name = c.scheme_name
+    -- mv_current does not carry quantity, so it comes from the source row.
+    -- Joined on id, not (scheme, isin) -- a scheme can list the same ISIN twice
+    -- (two series of one bond), and joining on the key would fan those out.
+    n as (select c.*, h.quantity
+            from mv_current c
+            join me on me.amc = c.amc and me.scheme_name = c.scheme_name
+            left join mf_holdings h on h.id = c.id
            where c.is_security and c.isin is not null),
     p as (select v.* from mv_previous v
            join me on me.amc = v.amc and me.scheme_name = v.scheme_name
