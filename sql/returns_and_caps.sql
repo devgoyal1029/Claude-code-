@@ -314,6 +314,84 @@ as $$
 $$;
 
 
+-- ============================================================================
+-- mv_fund_returns -- one row per fund, returns precomputed
+-- ----------------------------------------------------------------------------
+-- fund_returns_stored() computes on demand, which is right for a fund page but
+-- far too slow when a leaderboard or a comparison wants a hundred funds at
+-- once. This materialises the same arithmetic for every fund that has NAV
+-- history: latest month-end NAV, 1/3/5-year returns, 3-year volatility and
+-- Sharpe.
+--
+-- The lookback matches on YEAR-MONTH, not an exact date. A fund's month-end NAV
+-- lands on whatever day it last quoted that month, so subtracting 12 months
+-- from 2026-07-27 and looking for 2025-07-27 finds nothing -- the row is
+-- 2025-07-31.
+--
+-- REBUILD after every nav_monthly_ingest.py run:
+--   refresh materialized view mv_fund_returns;  analyze mv_fund_returns;
+-- ============================================================================
+drop materialized view if exists mv_fund_returns;
+
+create materialized view mv_fund_returns as
+with funds as (
+    select distinct a.amc, a.source_name as scheme_name, b.scheme_code::text as code
+    from scheme_alias a join scheme_base b on b.k = a.k
+),
+srs as (
+    -- a fund has many plan codes; they track the same portfolio at different
+    -- expense ratios, so max() picks the best-performing plan (Direct) rather
+    -- than mixing plans month to month
+    select f.amc, f.scheme_name, n.month_end, max(n.nav) as nav
+    from funds f join scheme_nav_monthly n on n.scheme_code = f.code
+    group by 1, 2, 3
+),
+last as (
+    select distinct on (amc, scheme_name) amc, scheme_name, month_end, nav
+    from srs order by amc, scheme_name, month_end desc
+),
+base as (
+    select s.amc, s.scheme_name, l.month_end as to_date, l.nav as to_nav,
+           max(s.nav) filter (where to_char(s.month_end,'YYYYMM')
+                 = to_char(l.month_end - interval '12 months','YYYYMM')) as n1,
+           max(s.nav) filter (where to_char(s.month_end,'YYYYMM')
+                 = to_char(l.month_end - interval '36 months','YYYYMM')) as n3,
+           max(s.nav) filter (where to_char(s.month_end,'YYYYMM')
+                 = to_char(l.month_end - interval '60 months','YYYYMM')) as n5,
+           min(s.month_end) as first_date, count(*)::int as months
+    from srs s join last l on l.amc = s.amc and l.scheme_name = s.scheme_name
+    group by s.amc, s.scheme_name, l.month_end, l.nav
+),
+rets as (
+    select s.amc, s.scheme_name, s.month_end,
+           s.nav / lag(s.nav) over (partition by s.amc, s.scheme_name
+                                    order by s.month_end) - 1 as r
+    from srs s
+),
+vol as (
+    -- monthly deviation annualised by sqrt(12)
+    select v.amc, v.scheme_name,
+           stddev_samp(v.r) * sqrt(12) * 100 as vol_3y, count(*)::int as obs_3y
+    from rets v join last l on l.amc = v.amc and l.scheme_name = v.scheme_name
+    where v.r is not null and v.month_end > l.month_end - interval '36 months'
+    group by 1, 2
+)
+select b.amc, b.scheme_name, b.to_date, b.first_date, b.months,
+       round(b.to_nav::numeric, 4)                                              as nav,
+       -- 1Y is the plain change; 3Y and 5Y are annualised
+       round(((b.to_nav / nullif(b.n1,0) - 1) * 100)::numeric, 2)               as ret_1y,
+       round(((power(b.to_nav / nullif(b.n3,0), 1/3.0) - 1) * 100)::numeric, 2) as ret_3y,
+       round(((power(b.to_nav / nullif(b.n5,0), 1/5.0) - 1) * 100)::numeric, 2) as ret_5y,
+       round(v.vol_3y::numeric, 2)                                              as vol_3y,
+       round((((power(b.to_nav / nullif(b.n3,0), 1/3.0) - 1) * 100 - 6.5)
+              / nullif(v.vol_3y, 0))::numeric, 2)                               as sharpe_3y
+from base b
+left join vol v on v.amc = b.amc and v.scheme_name = b.scheme_name;
+
+create unique index on mv_fund_returns (amc, scheme_name);
+analyze mv_fund_returns;
+
+
 grant execute on function fund_returns_stored(text)                to anon, authenticated;
 grant execute on function return_leaderboard(int, text, text, int) to anon, authenticated;
 grant execute on function fund_marketcap(text)                     to anon, authenticated;
@@ -327,6 +405,14 @@ grant execute on function marketcap_overview()                     to anon, auth
 select (select count(*) from scheme_nav_monthly)                as nav_rows,
        (select count(distinct scheme_code) from scheme_nav_monthly) as nav_funds,
        (select count(*) from security_meta)                     as tagged_securities;
+
+-- The 1Y/3Y/5Y counts fall away with each window -- that is fund age, not a
+-- gap. A scheme launched in 2024 has no five-year NAV to compute from.
+select count(*)                                    as funds,
+       count(ret_1y)                               as have_1y,
+       count(ret_3y)                               as have_3y,
+       count(ret_5y)                               as have_5y
+from mv_fund_returns;
 
 -- select * from marketcap_overview();
 -- select * from return_leaderboard(36, 'Large Cap Fund');

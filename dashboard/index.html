@@ -144,6 +144,14 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .note{background:var(--amber-bg);border:1px solid #FDE68A;border-radius:var(--r-md);
       padding:11px 14px;font-size:12.5px;color:#92400E;margin-bottom:16px}
 .note.err{background:var(--red-bg);border-color:#FECACA;color:#991B1B}
+/* toast — sits above everything, ignores clicks, slides up from the bottom */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:900;
+  max-width:min(460px,calc(100vw - 32px));padding:12px 17px;border-radius:var(--r-md);
+  background:var(--text);color:#fff;font-size:13px;line-height:1.45;text-align:center;
+  box-shadow:0 8px 28px rgba(0,0,0,.22);opacity:0;pointer-events:none;
+  transition:opacity .18s ease,transform .18s ease}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:#991B1B}
 .spin{width:17px;height:17px;border:2px solid var(--border);border-top-color:var(--gold);
       border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-3px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -264,6 +272,19 @@ const soft = p => p.then(r => r).catch(() => null);
 
 const loading = m => `<div class="card"><div class="empty"><span class="spin"></span>&nbsp; ${esc(m)}</div></div>`;
 const errCard = e => `<div class="card"><div class="note err">${esc(e.message || e)}</div></div>`;
+
+/* toast — for refusals that need a full sentence, where a button label has no
+   room for one ("+ Compare" on a fund page rejecting an AMC mix). */
+let TOAST_T = null;
+function toast(msg, kind) {
+  let t = document.getElementById("toast");
+  if (!t) { t = el("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.className = "toast" + (kind === "err" ? " err" : "");
+  t.textContent = msg;
+  requestAnimationFrame(() => t.classList.add("on"));
+  clearTimeout(TOAST_T);
+  TOAST_T = setTimeout(() => t.classList.remove("on"), 4200);
+}
 
 /* ==========================================================================
    Charts — inline SVG, no libraries
@@ -2201,14 +2222,24 @@ async function viewAmc(v, amc) {
 const CMP_MAX_FUNDS = 10, CMP_MAX_AMCS = 5;
 let CMP = { funds: [], amcs: [] };   // funds: [{code,name,amc}], amcs: [name]
 
+/* A comparison is like-for-like: funds against funds, houses against houses.
+   The two are not the same kind of thing -- a house is hundreds of schemes
+   pooled, so its returns are a median and its overlap against one of its own
+   funds reads high by construction. Mixing them produces a table that looks
+   authoritative and answers nothing, so the mix is refused at selection. */
+const CMP_MIX_FUND = "You can't compare a fund with an AMC. Clear the fund houses first, or compare houses only.";
+const CMP_MIX_AMC  = "You can't compare an AMC with a fund. Clear the funds first, or compare funds only.";
+
 function cmpAddFund(code, name, amc) {
   code = String(code);
+  if (CMP.amcs.length) return CMP_MIX_FUND;
   if (CMP.funds.some(f => f.code === code)) return "already added";
   if (CMP.funds.length >= CMP_MAX_FUNDS) return `max ${CMP_MAX_FUNDS} funds`;
   CMP.funds.push({ code, name, amc });
   return null;
 }
 function cmpAddAmc(name) {
+  if (CMP.funds.length) return CMP_MIX_AMC;
   if (CMP.amcs.includes(name)) return "already added";
   if (CMP.amcs.length >= CMP_MAX_AMCS) return `max ${CMP_MAX_AMCS} AMCs`;
   CMP.amcs.push(name);
@@ -2223,7 +2254,11 @@ function cmpButton(label, addFn) {
   b.onclick = ev => {
     ev.stopPropagation();
     const err = addFn();
-    if (err) { b.textContent = err; setTimeout(() => b.textContent = label, 1400); return; }
+    if (err) {
+      // the mix refusal is a full sentence — a button label cannot hold it
+      if (err.length > 24) { toast(err, "err"); return; }
+      b.textContent = err; setTimeout(() => b.textContent = label, 1400); return;
+    }
     b.textContent = `Added (${cmpCount()})`;
     setTimeout(() => b.textContent = label, 1400);
   };
@@ -2231,7 +2266,7 @@ function cmpButton(label, addFn) {
 }
 
 async function viewCompare(v) {
-  hero("Compare", `Up to ${CMP_MAX_AMCS} fund houses and ${CMP_MAX_FUNDS} funds, side by side.`);
+  hero("Compare", `Up to ${CMP_MAX_FUNDS} funds, or up to ${CMP_MAX_AMCS} fund houses — one kind at a time.`);
   v.innerHTML = loading("Loading…");
   const amcs = await rpc("amc_summary");
   v.innerHTML = "";
@@ -2239,10 +2274,14 @@ async function viewCompare(v) {
   const c = el("div", "card");
   c.appendChild(el("h2", "", "What to compare"));
   c.appendChild(el("div", "hint",
-    "A fund house is pooled into one portfolio — every holding across its schemes, summed " +
-    "by ISIN and re-expressed as a share of the whole house. That is what lets a single " +
-    "fund be measured against an AMC on the same scale. Comparing an AMC with one of its " +
-    "own funds will read high on overlap by construction, since the fund is inside that pool."));
+    "Compare <b>funds with funds</b>, or <b>houses with houses</b> — not one against the " +
+    "other. A fund house is pooled into one portfolio (every holding across its schemes, " +
+    "summed by ISIN, re-expressed as a share of the whole house), so it is a different kind " +
+    "of thing from a single scheme: its return is a median, and its overlap against one of " +
+    "its own funds is high by construction. Picking one kind locks the other until you clear."));
+
+  const note = el("div");
+  c.appendChild(note);
 
   /* AMC chips */
   c.appendChild(el("h3", "", "Fund houses"));
@@ -2254,7 +2293,10 @@ async function viewCompare(v) {
       if (i >= 0) { CMP.amcs.splice(i, 1); b.classList.remove("on"); }
       else {
         const err = cmpAddAmc(a.amc);
-        if (err) { b.textContent = err; setTimeout(() => b.textContent = a.amc, 1400); return; }
+        if (err) {
+          if (err === CMP_MIX_AMC) { refuse(err); return; }
+          b.textContent = err; setTimeout(() => b.textContent = a.amc, 1400); return;
+        }
         b.classList.add("on");
       }
       paintSel();
@@ -2283,8 +2325,31 @@ async function viewCompare(v) {
 
   const out = el("div"); v.appendChild(out);
 
+  /* the refusal shows in two places at once: inline where the eye already is,
+     and as a toast, because the chip grid can be scrolled well past the note */
+  let noteT = null;
+  const refuse = m => {
+    note.innerHTML = `<div class="note err" style="margin:12px 0 0">${esc(m)}</div>`;
+    toast(m, "err");
+    clearTimeout(noteT);
+    noteT = setTimeout(() => { note.innerHTML = ""; }, 5000);
+  };
+
+  /* whichever kind is chosen first locks the other, so the mix is not merely
+     rejected on click — it visibly is not on offer */
+  const paintLock = () => {
+    const amcLock  = CMP.funds.length > 0;
+    const fundLock = CMP.amcs.length  > 0;
+    achips.style.opacity = amcLock ? ".42" : "";
+    bar.style.opacity    = fundLock ? ".42" : "";
+    inp.placeholder = fundLock
+      ? "Comparing fund houses — clear them to compare funds"
+      : "Search a fund to add…";
+  };
+
   const paintSel = () => {
     sel.innerHTML = "";
+    paintLock();
     if (!cmpCount()) { sel.appendChild(el("div", "empty", "Nothing selected yet.")); return; }
     const row = el("div", "chips"); row.style.marginTop = "12px";
     CMP.amcs.forEach((a, i) => {
@@ -2309,6 +2374,13 @@ async function viewCompare(v) {
   inp.addEventListener("input", e => {
     const q = e.target.value.trim();
     clearTimeout(tmr);
+    // houses are already in play — say so instead of searching, so the refusal
+    // arrives before the user has picked a fund and grown attached to it
+    if (CMP.amcs.length) {
+      e.target.value = ""; drop.classList.remove("on");
+      if (q) refuse(CMP_MIX_FUND);
+      return;
+    }
     if (q.length < 2) { drop.classList.remove("on"); return; }
     tmr = setTimeout(async () => {
       try {
@@ -2325,7 +2397,7 @@ async function viewCompare(v) {
             <div class="sub">${esc(r.amc_name || "")}</div></div>`);
           n.onclick = () => {
             const err = cmpAddFund(r.scheme_code, r.scheme_name, r.amc_name);
-            if (err) return;
+            if (err) { drop.classList.remove("on"); refuse(err); return; }
             inp.value = ""; drop.classList.remove("on"); paintSel();
           };
           drop.appendChild(n);
@@ -2343,6 +2415,12 @@ async function viewCompare(v) {
 }
 
 async function runCompare(out) {
+  // belt and braces: selection already refuses the mix, this catches any state
+  // that arrived some other way (an old link, a stale CMP from before a reload)
+  if (CMP.funds.length && CMP.amcs.length) {
+    out.innerHTML = `<div class="card"><div class="note err">${esc(CMP_MIX_AMC)}</div></div>`;
+    return;
+  }
   if (cmpCount() < 2) {
     out.innerHTML = `<div class="card"><div class="empty">
       Pick at least two things to compare.</div></div>`;
@@ -2352,11 +2430,15 @@ async function runCompare(out) {
   const args = { p_funds: CMP.funds.map(f => f.code), p_amcs: CMP.amcs };
 
   try {
-    const [sumR, ovR, secR, hldR] = await Promise.all([
+    const [sumR, ovR, secR, hldR, retR] = await Promise.all([
       rpc("compare_summary",  args),
       rpc("compare_overlap",  args),
       rpc("compare_sectors",  { ...args, lim: 18 }),
-      rpc("compare_holdings", { ...args, lim: 35 })
+      rpc("compare_holdings", { ...args, lim: 35 }),
+      // soft: returns need scheme_nav_monthly loaded. If that Colab run has not
+      // happened the RPC 404s or comes back empty -- the rest of the comparison
+      // is still perfectly good, so the section just does not appear.
+      soft(rpc("compare_returns", args))
     ]);
     out.innerHTML = "";
     const names = sumR.map(r => r.entity);
@@ -2385,6 +2467,38 @@ async function runCompare(out) {
       { h: "Cash", n: 1, fn: r => pct(r.cash_pct) }
     ]));
     out.appendChild(c1);
+
+    /* ---- returns ---- */
+    if (retR && retR.length) {
+      const cR = el("div", "card");
+      cR.appendChild(el("h2", "", "Returns"));
+      cR.appendChild(el("div", "hint",
+        "1Y is the plain change; 3Y and 5Y are <b>annualised</b>. A fund shows its own " +
+        "NAV. A fund house has no NAV of its own, and pooling a liquid fund with a small " +
+        "cap gives a number that means nothing — so an AMC shows the <b>median across its " +
+        "schemes</b>, with the scheme count beside it. Read an AMC row as \"the typical " +
+        "scheme here\", never as what you would have earned."));
+      cR.appendChild(table(retR, [
+        { h: "", fn: r => `<span class="pill ${r.kind === "AMC" ? "gold" : "blue"}">${r.kind}</span>` },
+        { h: "Name", fn: r => `<b>${esc(r.entity)}</b>${r.kind === "AMC"
+            ? `<div class="sub2">median of ${fmt(r.funds_covered, 0)} schemes</div>` : ""}` },
+        { h: "NAV", n: 1, fn: r => r.nav == null ? "—"
+            : `${fmt(r.nav, 2)}<div class="sub2">${esc(String(r.nav_date || ""))}</div>` },
+        { h: "1Y",  n: 1, fn: r => `<b class="${signOf(r.ret_1y)}">${signed(r.ret_1y)}</b>` },
+        { h: "3Y",  n: 1, fn: r => `<span class="${signOf(r.ret_3y)}">${signed(r.ret_3y)}</span>` },
+        { h: "5Y",  n: 1, fn: r => `<span class="${signOf(r.ret_5y)}">${signed(r.ret_5y)}</span>` },
+        { h: "Vol 3Y", n: 1, fn: r => pct(r.vol_3y) },
+        { h: "Sharpe", n: 1, fn: r => fmt(r.sharpe_3y) }
+      ]));
+      // A fund younger than the window has no 3Y/5Y at all, and one with no NAV
+      // history is missing from retR entirely. Say so rather than leaving a gap.
+      const got  = new Set(retR.map(r => r.entity));
+      const miss = names.filter(n => !got.has(n));
+      if (miss.length) cR.appendChild(el("div", "hint",
+        `No NAV history yet for ${miss.map(n => esc(n)).join(", ")} — ` +
+        `blank cells elsewhere mean the fund is younger than that window.`));
+      out.appendChild(cR);
+    }
 
     /* ---- overlap matrix ---- */
     if (ovR.length) {

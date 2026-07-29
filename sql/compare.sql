@@ -235,11 +235,95 @@ as $$
 $$;
 
 
+-- ----------------------------------------------------------------------------
+-- compare_returns -- returns for the same selection.
+--
+-- A fund shows its own NAV-derived numbers. An AMC has no NAV of its own, and
+-- pooling a liquid fund (~6%) with a small cap (~25%) gives a figure that means
+-- nothing, so an AMC shows the MEDIAN across its schemes with funds_covered
+-- beside it. basis says which of the two a row is.
+--
+-- The dashboard refuses a fund-vs-AMC mix outright -- the two are not the same
+-- kind of thing, and a table that puts them in one column reads authoritative
+-- while answering nothing. This function still accepts both, because the
+-- refusal is a product decision, not a data one.
+--
+-- Reads mv_fund_returns (sql/returns_and_caps.sql), which is empty until
+-- colab/nav_monthly_ingest.py has run.
+-- ----------------------------------------------------------------------------
+create or replace function compare_returns(p_funds text[] default null,
+                                           p_amcs  text[] default null)
+returns table (entity        text,
+               kind          text,
+               nav           numeric,
+               nav_date      date,
+               ret_1y        numeric,
+               ret_3y        numeric,
+               ret_5y        numeric,
+               vol_3y        numeric,
+               sharpe_3y     numeric,
+               funds_covered int,
+               basis         text)
+language sql stable security definer set search_path = public
+as $$
+    with f_in as (
+        select code from unnest(coalesce(p_funds, '{}'::text[])) as t(code) limit 10
+    ),
+    a_in as (
+        select amc from unnest(coalesce(p_amcs, '{}'::text[])) as t(amc) limit 5
+    ),
+    fund_ent as (
+        select distinct on (f.code) f.code, a.amc, a.source_name
+        from f_in f
+        join scheme_base  b on b.scheme_code::text = f.code
+        join scheme_alias a on a.k = b.k
+        order by f.code, a.amc, a.source_name
+    ),
+    fund_rows as (
+        select distinct on (r.scheme_name)
+               r.scheme_name   as entity,
+               'Fund'::text    as kind,
+               r.nav, r.to_date as nav_date,
+               r.ret_1y, r.ret_3y, r.ret_5y, r.vol_3y, r.sharpe_3y,
+               1               as funds_covered,
+               'own NAV'::text as basis
+        from fund_ent e
+        join mv_fund_returns r
+          on r.amc = e.amc and r.scheme_name = e.source_name
+        order by r.scheme_name
+    ),
+    amc_rows as (
+        -- NAV is deliberately null: a house has no single NAV, and the median of
+        -- scheme NAVs is a meaningless number (Rs 12 and Rs 840 are the same
+        -- performance at different unit sizes).
+        select r.amc            as entity,
+               'AMC'::text      as kind,
+               null::numeric    as nav,
+               max(r.to_date)   as nav_date,
+               round(percentile_cont(0.5) within group (order by r.ret_1y::float8)::numeric, 2),
+               round(percentile_cont(0.5) within group (order by r.ret_3y::float8)::numeric, 2),
+               round(percentile_cont(0.5) within group (order by r.ret_5y::float8)::numeric, 2),
+               round(percentile_cont(0.5) within group (order by r.vol_3y::float8)::numeric, 2),
+               round(percentile_cont(0.5) within group (order by r.sharpe_3y::float8)::numeric, 2),
+               count(*) filter (where r.ret_1y is not null)::int as funds_covered,
+               'median of schemes'::text as basis
+        from mv_fund_returns r
+        join a_in a on a.amc = r.amc
+        group by r.amc
+    )
+    select * from fund_rows
+    union all
+    select * from amc_rows
+    order by ret_1y desc nulls last
+$$;
+
+
 grant execute on function compare_book(text[], text[])          to anon, authenticated;
 grant execute on function compare_summary(text[], text[])       to anon, authenticated;
 grant execute on function compare_sectors(text[], text[], int)  to anon, authenticated;
 grant execute on function compare_overlap(text[], text[])       to anon, authenticated;
 grant execute on function compare_holdings(text[], text[], int) to anon, authenticated;
+grant execute on function compare_returns(text[], text[])       to anon, authenticated;
 
 
 -- ============================================================================
@@ -248,3 +332,4 @@ grant execute on function compare_holdings(text[], text[], int) to anon, authent
 -- select * from compare_summary(array['153684'], array['HDFC','SBI']);
 -- select * from compare_overlap(array['153684'], array['HDFC','SBI']);
 -- select * from compare_sectors(array['153684'], array['HDFC','SBI'], 10);
+-- select * from compare_returns(array['153684'], array['HDFC','SBI','ICICI']);

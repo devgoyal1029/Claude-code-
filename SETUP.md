@@ -18,9 +18,12 @@ Supabase → SQL Editor → paste file → Run. Each file is safe to re-run.
 | 6 | `sql/engine_api.sql` | 18 cross-fund RPCs | 5 |
 | 7 | `sql/xray.sql` | portfolio look-through RPCs | 5 |
 | 8 | `sql/changes.sql` | `mv_previous`, change-tracking RPCs | 5 |
-| 9 | `sql/returns_and_caps.sql` | `scheme_nav_monthly`, `security_meta`, leaderboard + style-drift RPCs | 5 |
+| 9 | `sql/returns_and_caps.sql` | `scheme_nav_monthly`, `security_meta`, `mv_fund_returns`, leaderboard + style-drift RPCs | 5 |
+| 10 | `sql/compare.sql` | `compare_book/summary/sectors/overlap/holdings/returns` | 5, 9 |
 
-Steps 7–9 are independent of each other; all three need step 5.
+Steps 7–9 are independent of each other; all three need step 5. Step 10 needs 9 as
+well — `compare_returns()` reads `mv_fund_returns`, and the dashboard hides the
+Returns block if that RPC is missing rather than failing the whole comparison.
 
 Two of them start empty and fill in later:
 - **Changes** needs a second `portfolio_date` per scheme. `push()` deletes per
@@ -100,6 +103,13 @@ analyze mv_security;
 analyze mv_current;
 analyze mv_previous;
 analyze mv_fund_stats;
+```
+
+After a `colab/nav_monthly_ingest.py` run, one more:
+
+```sql
+refresh materialized view mv_fund_returns;
+analyze mv_fund_returns;
 ```
 
 The dashboard HTML never changes. Everything else downstream is a view or a function
