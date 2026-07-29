@@ -69,6 +69,15 @@ def check_key(url, key):
 
 check_key(SUPABASE_URL, SUPABASE_KEY)
 
+# parse_workbook, verify and make_push come from parser.py, which has to be run
+# as its own cell first -- once per Colab session, again after any restart.
+# Without this the failure is a bare NameError halfway down the file.
+for _fn in ("parse_workbook", "verify", "make_push"):
+    if _fn not in globals():
+        raise SystemExit(
+            f"'{_fn}' is not defined -- colab/parser.py has not been run in this "
+            "session.\nPaste parser.py into its own cell, run it, then run this one.")
+
 sb   = create_client(SUPABASE_URL, SUPABASE_KEY)
 push = make_push(sb)                               # from parser.py
 
