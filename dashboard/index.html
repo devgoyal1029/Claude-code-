@@ -244,6 +244,37 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .fact .txt{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
 .fadein{animation:rise .6s cubic-bezier(.22,1,.36,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* second showcase row: donut, growth, riskometer, vault */
+.showrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;margin-bottom:16px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:18px 20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:186px}
+.scard .cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gold-deep);margin-bottom:2px}
+.scard .body{flex:1;display:flex;align-items:center;justify-content:center;gap:14px}
+.scard .foot{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:6px}
+/* growth arrow */
+.grow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%}
+.grow .pct{font-family:var(--mono);font-weight:800;font-size:34px;letter-spacing:-.02em;
+  color:var(--primary);display:flex;align-items:center;gap:6px}
+.grow .pct.dn{color:var(--red)}
+/* holdings vault */
+.vault{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;gap:6px}
+.vault .big{font-family:var(--mono);font-weight:800;font-size:38px;letter-spacing:-.02em;color:var(--navy)}
+.vault .door{width:78px;height:78px;border-radius:16px;position:relative;
+  background:linear-gradient(140deg,#F4EFE2,#E7DCC0);border:2px solid var(--gold);
+  box-shadow:inset 0 2px 8px rgba(139,111,47,.25);display:flex;align-items:center;justify-content:center}
+.vault .door::before{content:"";position:absolute;width:34px;height:34px;border-radius:50%;
+  border:3px solid var(--gold-deep);opacity:.55}
+.vault .door::after{content:"";position:absolute;width:6px;height:20px;border-radius:3px;
+  background:var(--gold-deep);transform:translateX(15px) rotate(0deg);opacity:.7;
+  transition:transform 1.2s cubic-bezier(.22,1,.36,1)}
+.vault.open .door::after{transform:translateX(15px) rotate(140deg)}
+/* trust shield */
+.shield{display:flex;align-items:center;gap:13px}
+.shield svg{flex:0 0 auto}
+.shield .st{font-weight:800;font-size:16px;color:var(--navy);letter-spacing:-.01em}
+.shield .ss{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
 </style>
 
 <div class="topbar"><div class="wrap">
@@ -613,6 +644,46 @@ function gauge(host, frac, opt = {}) {
   return svg;
 }
 
+/* SEBI-style riskometer -- a 180° dial with six coloured zones and a needle
+   that swings to `frac` (0 = Low on the left, 1 = Very High on the right). */
+function riskometer(host, frac, label) {
+  frac = Math.max(0, Math.min(1, Number(frac) || 0));
+  const W = 210, H = 128, cx = W / 2, cy = H - 12, R = 84, r = 52;
+  const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, style: `width:${W}px;height:${H}px` });
+  const zones = ["#2FA36B", "#7DBE4E", "#E3B93E", "#E8912F", "#E0692C", "#D6402C"];
+  const arc = (a0, a1, rad) => {
+    const p = (ang, rr) => [cx + rr * Math.cos(Math.PI - ang * Math.PI),
+                            cy - rr * Math.sin(Math.PI - ang * Math.PI)];
+    const [x0, y0] = p(a0, rad), [x1, y1] = p(a1, rad);
+    return `M ${x0} ${y0} A ${rad} ${rad} 0 0 1 ${x1} ${y1}`;
+  };
+  zones.forEach((c, i) => {
+    svg.appendChild(mk("path", { d: arc(i / 6, (i + 1) / 6, R), fill: "none",
+      stroke: c, "stroke-width": 15, "stroke-linecap": "butt" }));
+  });
+  // needle
+  const ang = Math.PI - frac * Math.PI;
+  const nx = cx + (R - 4) * Math.cos(ang), ny = cy - (R - 4) * Math.sin(ang);
+  const needle = mk("line", { x1: cx, y1: cy, x2: cx, y2: cy - (R - 4),
+    stroke: "#0F172A", "stroke-width": 3, "stroke-linecap": "round",
+    style: "transition:transform 1.3s cubic-bezier(.34,1.4,.5,1);transform-origin:" + cx + "px " + cy + "px" });
+  svg.appendChild(needle);
+  svg.appendChild(mk("circle", { cx, cy, r: 6, fill: "#0F172A" }));
+  const lbl = mk("text", { x: cx, y: cy - 20, "text-anchor": "middle", "font-size": 12,
+    "font-weight": 700, fill: "#0F172A", "font-family": "Plus Jakarta Sans, sans-serif" });
+  lbl.textContent = label || "";
+  svg.appendChild(lbl);
+  host.appendChild(svg);
+  // swing from left to the target
+  requestAnimationFrame(() =>
+    needle.setAttribute("transform", `rotate(${frac * 180 - 0} ${cx} ${cy})`));
+  // (needle drawn pointing up; rotate maps 0->left via -90 offset)
+  needle.setAttribute("transform", `rotate(-90 ${cx} ${cy})`);
+  requestAnimationFrame(() =>
+    setTimeout(() => needle.setAttribute("transform", `rotate(${frac * 180 - 90} ${cx} ${cy})`), 80));
+  return svg;
+}
+
 /* coin-stack: ranked horizontal bars that grow on render (top holders etc.) */
 function stackBars(host, rows, opt = {}) {
   const { valFn = r => r.pct, labFn = r => r.label, dispFn = r => pct(Number(r.pct)),
@@ -836,7 +907,7 @@ function crBig(cr) {                       // rupees-in-crore -> readable scale
   return "₹" + fmt(cr, 0) + " Cr";
 }
 
-function buildLanding(v, ov, sectors, conc, cov, topFunds) {
+function buildLanding(v, ov, sectors, conc, cov, topFunds, rets) {
   const equityShare = ov.total_aum_cr ? Number(ov.equity_aum_cr) / Number(ov.total_aum_cr) : 0;
   const debtShare   = ov.total_aum_cr ? Number(ov.debt_aum_cr)   / Number(ov.total_aum_cr) : 0;
 
@@ -930,6 +1001,89 @@ function buildLanding(v, ov, sectors, conc, cov, topFunds) {
   }
   v.appendChild(m);
 
+  /* ---- second row: donut · growth · riskometer · vault · shield ---- */
+  const r2 = el("div", "showrow fadein");
+  const othersCr = Math.max(0, Number(ov.total_aum_cr) - Number(ov.equity_aum_cr) - Number(ov.debt_aum_cr));
+
+  // asset allocation donut
+  const dCard = el("div", "scard");
+  dCard.appendChild(el("div", "cap", "Asset allocation"));
+  const dBody = el("div", "body"); dCard.appendChild(dBody);
+  donut(dBody, [
+    { label: "Equity", pct: equityShare * 100 },
+    { label: "Debt", pct: debtShare * 100 },
+    { label: "Cash / other", pct: ov.total_aum_cr ? othersCr / Number(ov.total_aum_cr) * 100 : 0 }
+  ], "asset mix");
+  r2.appendChild(dCard);
+
+  // compounding growth -- median 3Y return across funds with NAV history
+  if (rets && rets.length) {
+    const vals = rets.map(r => Number(r.return_pct)).filter(x => isFinite(x)).sort((a, b) => a - b);
+    const med = vals.length ? vals[Math.floor(vals.length / 2)] : null;
+    if (med != null) {
+      const g = el("div", "scard");
+      g.appendChild(el("div", "cap", "Compounding · 3-year"));
+      const b = el("div", "body");
+      b.innerHTML = `<div class="grow">
+        <svg viewBox="0 0 120 54" style="width:150px;height:66px">
+          <defs><linearGradient id="gGrow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(5,150,105,.28)"/>
+            <stop offset="100%" stop-color="rgba(5,150,105,0)"/></linearGradient></defs>
+          <path d="M4 50 L34 40 L60 30 L86 16 L116 5" fill="none" stroke="#059669"
+            stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 50 L34 40 L60 30 L86 16 L116 5 L116 54 L4 54 Z" fill="url(#gGrow)"/>
+          <path d="M108 5 L116 5 L116 13" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="pct${med < 0 ? " dn" : ""}">${signed(med)}</div></div>`;
+      g.appendChild(b);
+      g.appendChild(el("div", "foot",
+        `Median annualised 3-year return across the ${fmt(vals.length, 0)} funds with enough NAV history.`));
+      r2.appendChild(g);
+    }
+  }
+
+  // riskometer -- where the whole tracked book sits on risk (equity-heavy = higher)
+  const risk = el("div", "scard");
+  risk.appendChild(el("div", "cap", "Market riskometer"));
+  const rBody = el("div", "body"); risk.appendChild(rBody);
+  const zone = ["Low", "Low–Moderate", "Moderate", "Moderately High", "High", "Very High"][
+    Math.min(5, Math.floor(equityShare * 6))];
+  riskometer(rBody, equityShare, zone);
+  risk.appendChild(el("div", "foot",
+    `Read from the equity share of the tracked book — ${pct(equityShare * 100, 1)} in equity puts it at “${zone}”.`));
+  r2.appendChild(risk);
+
+  // holdings vault
+  const vault = el("div", "scard");
+  vault.appendChild(el("div", "cap", "Holdings vault"));
+  const vBody = el("div", "body");
+  vBody.innerHTML = `<div class="vault"><div class="door"></div>
+    <div class="big" id="ldVault">0</div></div>`;
+  vault.appendChild(vBody);
+  vault.appendChild(el("div", "foot",
+    `Distinct securities the engine sees through, across every disclosed portfolio.`));
+  r2.appendChild(vault);
+  countUp(vBody.querySelector("#ldVault"), ov.securities, x => fmt(x, 0));
+  setTimeout(() => vBody.querySelector(".vault").classList.add("open"), 500);
+
+  // SEBI trust shield
+  const shield = el("div", "scard");
+  shield.appendChild(el("div", "cap", "Data integrity"));
+  const sBody = el("div", "body");
+  sBody.innerHTML = `<div class="shield">
+    <svg width="52" height="60" viewBox="0 0 52 60">
+      <path d="M26 2 L48 11 V30 C48 44 38 54 26 58 C14 54 4 44 4 30 V11 Z"
+        fill="rgba(201,169,97,.14)" stroke="#C9A961" stroke-width="2"/>
+      <path d="M17 30 l6 6 l12 -13" fill="none" stroke="#059669" stroke-width="4"
+        stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><div class="st">SEBI-format disclosures</div>
+      <div class="ss">Every figure is parsed straight from the AMCs' own monthly
+        portfolio filings — ${fmt(ov.amcs, 0)} houses, ${fmt(ov.funds, 0)} funds.</div></div></div>`;
+  shield.appendChild(sBody);
+  r2.appendChild(shield);
+
+  v.appendChild(r2);
+
   /* ---- interesting facts strip ---- */
   const facts = [];
   if (topFunds && topFunds[0])
@@ -964,20 +1118,21 @@ async function viewMarket(v) {
        "What every disclosed portfolio in the database owns, aggregated across AMCs.");
   v.innerHTML = loading("Loading market…");
 
-  const [ovR, seR, capR, covR, concR, catR, topFunds] = await Promise.all([
+  const [ovR, seR, capR, covR, concR, catR, topFunds, retLead] = await Promise.all([
     rpc("market_overview"),
     rpc("top_sectors", { lim: 14 }),
     soft(rpc("marketcap_overview")),
     soft(rpc("mf_coverage")),
     soft(rpc("market_concentration")),
     rpc("list_categories"),
-    soft(rpc("top_stocks", { lim: 6, p_order: "funds" }))
+    soft(rpc("top_stocks", { lim: 6, p_order: "funds" })),
+    soft(rpc("return_leaderboard", { p_months: 36, lim: 500 }))
   ]);
   const ov = one(ovR);
   v.innerHTML = "";
 
   /* ---- landing showcase: the front page ---- */
-  buildLanding(v, ov, seR, concR, covR, topFunds);
+  buildLanding(v, ov, seR, concR, covR, topFunds, retLead);
 
   /* ---- coverage detail ---- */
   const c1 = el("div", "card");
