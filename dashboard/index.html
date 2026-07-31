@@ -173,6 +173,10 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .crumb span{cursor:pointer;color:var(--blue)}
 .crumb span:hover{text-decoration:underline}
 
+/* ---------- compare download bar ---------- */
+.cmp-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.cmp-actions .btn{font-size:13px}
+
 /* ---------- comparison vs peers ---------- */
 .cmp-tbl td.d{font-family:var(--mono);font-weight:700}
 .insight{background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(201,169,97,.07));
@@ -3303,6 +3307,15 @@ async function runCompare(out) {
     out.innerHTML = "";
     const names = sumR.map(r => r.entity);
 
+    /* ---- download bar ---- */
+    const bar = el("div", "cmp-actions");
+    const dl = el("button", "btn", "⤓ Download report");
+    dl.onclick = () => downloadCompareReport({ names, sumR, retR, ovR, secR, hldR });
+    const prn = el("button", "btn ghost", "Print / Save PDF");
+    prn.onclick = () => printCompareReport({ names, sumR, retR, ovR, secR, hldR });
+    bar.append(dl, prn);
+    out.appendChild(bar);
+
     /* ---- headline table ---- */
     const c1 = el("div", "card");
     c1.appendChild(el("h2", "", "Side by side"));
@@ -3464,6 +3477,171 @@ async function runCompare(out) {
     }
   } catch (e) { out.innerHTML = errCard(e); }
 }
+
+
+/* ==========================================================================
+   Compare report -- a self-contained HTML document the customer can save,
+   open offline and print to PDF. No libraries: everything is inlined.
+   ========================================================================== */
+function buildReportHTML(d) {
+  const { names, sumR, retR, ovR, secR, hldR } = d;
+  const today = new Date().toLocaleDateString("en-IN",
+    { day: "2-digit", month: "short", year: "numeric" });
+  const esc2 = s => String(s ?? "").replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const sign = n => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : "") + Number(n).toFixed(2) + "%";
+  const cls = n => n == null || !isFinite(n) ? "" : n > 0 ? "up" : n < 0 ? "dn" : "";
+
+  const th = a => `<th${a ? ' class="n"' : ""}>`;
+  const td = (v, a) => `<td${a ? ' class="n"' : ""}>${v == null ? "—" : v}</td>`;
+
+  // summary
+  const sumRows = sumR.map(r => `<tr>
+    <td><span class="tag ${r.kind === "AMC" ? "g" : "b"}">${r.kind}</span></td>
+    <td><b>${esc2(r.entity)}</b>${r.kind === "AMC" ? `<div class="s2">${fmt(r.schemes, 0)} schemes</div>` : ""}</td>
+    ${td(cr(r.aum_cr), 1)}${td(fmt(r.securities, 0), 1)}${td(pct(r.top_10_pct), 1)}
+    ${td(pct(r.largest_pct) + `<div class="s2">${esc2(short(r.largest_name || "", 20))}</div>`, 1)}
+    ${td("<b>" + fmt(r.effective_stocks, 1) + "</b>", 1)}${td(fmt(r.sectors, 0), 1)}
+    ${td(r.top_sector ? esc2(short(r.top_sector, 18)) + ` <span class="s2">${pct(r.top_sector_pct)}</span>` : "—")}
+    ${td(pct(r.equity_pct), 1)}${td(pct(r.debt_pct), 1)}${td(pct(r.cash_pct), 1)}</tr>`).join("");
+
+  // returns
+  const retBlock = (retR && retR.length) ? `
+    <h2>Returns</h2>
+    <table><thead><tr>${th()}Kind</th>${th()}Name</th>${th(1)}NAV</th>${th(1)}1Y</th>
+      ${th(1)}3Y</th>${th(1)}5Y</th>${th(1)}Vol 3Y</th>${th(1)}Sharpe</th></tr></thead><tbody>
+    ${retR.map(r => `<tr><td><span class="tag ${r.kind === "AMC" ? "g" : "b"}">${r.kind}</span></td>
+      <td><b>${esc2(r.entity)}</b>${r.kind === "AMC" ? `<div class="s2">median of ${fmt(r.funds_covered, 0)}</div>` : ""}</td>
+      ${td(r.nav == null ? "—" : fmt(r.nav, 2), 1)}
+      ${td(`<span class="${cls(r.ret_1y)}">${sign(r.ret_1y)}</span>`, 1)}
+      ${td(`<span class="${cls(r.ret_3y)}">${sign(r.ret_3y)}</span>`, 1)}
+      ${td(`<span class="${cls(r.ret_5y)}">${sign(r.ret_5y)}</span>`, 1)}
+      ${td(pct(r.vol_3y), 1)}${td(fmt(r.sharpe_3y), 1)}</tr>`).join("")}
+    </tbody></table>
+    <p class="note">1Y is the plain change; 3Y and 5Y are annualised. An AMC row is the median across its schemes.</p>` : "";
+
+  // overlap
+  let ovBlock = "";
+  if (ovR && ovR.length) {
+    const map = {};
+    ovR.forEach(o => { (map[o.entity_a] = map[o.entity_a] || {})[o.entity_b] = o;
+      (map[o.entity_b] = map[o.entity_b] || {})[o.entity_a] = o; });
+    ovBlock = `<h2>Overlap</h2><table><thead><tr><th></th>${names.map(n =>
+      `${th(1)}${esc2(short(n, 16))}</th>`).join("")}</tr></thead><tbody>${names.map(a =>
+      `<tr><td><b>${esc2(short(a, 24))}</b></td>${names.map(b => {
+        if (a === b) return `<td class="n dim">—</td>`;
+        const o = (map[a] || {})[b];
+        return `<td class="n">${o ? pct(o.overlap_pct) : "—"}</td>`; }).join("")}</tr>`).join("")}
+      </tbody></table><p class="note">Sum of the smaller weight across shared holdings — how much two books are the same position.</p>`;
+  }
+
+  // sectors pivot
+  let secBlock = "";
+  if (secR && secR.length) {
+    const piv = {}; secR.forEach(r => { (piv[r.sector] = piv[r.sector] || {})[r.entity] = Number(r.weight); });
+    const rows = Object.entries(piv).map(([s, by]) => ({ s, by, pk: Math.max(...Object.values(by)) }))
+      .sort((a, b) => b.pk - a.pk).slice(0, 18);
+    secBlock = `<h2>Sector exposure</h2><table><thead><tr><th>Sector</th>${names.map(n =>
+      `${th(1)}${esc2(short(n, 16))}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
+      `<tr><td>${esc2(r.s)}</td>${names.map(n => `<td class="n">${r.by[n] == null ? "—" : pct(r.by[n])}</td>`).join("")}</tr>`
+      ).join("")}</tbody></table>`;
+  }
+
+  // holdings pivot
+  let hldBlock = "";
+  if (hldR && hldR.length) {
+    const piv = {}; hldR.forEach(r => { const k = r.isin;
+      piv[k] = piv[k] || { instrument: r.instrument, sector: r.sector, by: {} };
+      piv[k].by[r.entity] = Number(r.weight); });
+    const rows = Object.values(piv).sort((a, b) =>
+      Math.max(...Object.values(b.by)) - Math.max(...Object.values(a.by))).slice(0, 30);
+    hldBlock = `<h2>Top holdings</h2><table><thead><tr><th>Instrument</th>${names.map(n =>
+      `${th(1)}${esc2(short(n, 14))}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
+      `<tr><td>${esc2(r.instrument)}<div class="s2">${esc2(short(r.sector || "", 26))}</div></td>${names.map(n =>
+        `<td class="n">${r.by[n] == null ? "—" : pct(r.by[n])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  }
+
+  return `<!doctype html><html><head><meta charset="utf-8">
+<title>Fund Comparison Report — InvestVerdict</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;color:#0F172A;margin:0;
+    padding:36px;background:#fff;font-size:13px;line-height:1.5}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:3px solid #C9A961;padding-bottom:16px;margin-bottom:22px}
+  .brand{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .brand span{color:#C9A961}
+  .meta{text-align:right;font-size:12px;color:#64748B}
+  h1{font-size:19px;margin:0 0 4px}
+  h2{font-size:15px;margin:26px 0 8px;color:#0B1F3A;border-left:3px solid #C9A961;padding-left:9px}
+  .ent{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+  .ent span{background:#F1F5F9;border:1px solid #E2E8F0;border-radius:99px;padding:5px 12px;font-weight:600;font-size:12px}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
+  th,td{padding:7px 9px;text-align:left;border-bottom:1px solid #EEF2F7;vertical-align:top}
+  th{background:#0B1F3A;color:#fff;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr:nth-child(even){background:#FafBfC}
+  .s2{font-size:10.5px;color:#94A3B8;font-weight:400}
+  .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff}
+  .tag.g{background:#C9A961}.tag.b{background:#2563EB}
+  .up{color:#059669;font-weight:700}.dn{color:#DC2626;font-weight:700}
+  .dim{color:#CBD5E1}
+  .note{font-size:11px;color:#64748B;margin:6px 0 0}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid #E2E8F0;font-size:10.5px;color:#94A3B8}
+  @media print{body{padding:0}h2{page-break-after:avoid}table{page-break-inside:auto}tr{page-break-inside:avoid}}
+</style></head><body>
+  <div class="head">
+    <div><div class="brand">Invest<span>Verdict</span></div>
+      <div style="font-size:12px;color:#64748B;margin-top:2px">Fund analytics engine</div></div>
+    <div class="meta">Comparison report<br>Generated ${esc2(today)}</div>
+  </div>
+  <h1>Comparing ${names.length} ${names.length === 1 ? "entity" : "entities"}</h1>
+  <div class="ent">${names.map(n => `<span>${esc2(n)}</span>`).join("")}</div>
+
+  <h2>Side by side</h2>
+  <table><thead><tr>${th()}Kind</th>${th()}Name</th>${th(1)}AUM</th>${th(1)}Securities</th>
+    ${th(1)}Top 10</th>${th(1)}Largest</th>${th(1)}Eff. stocks</th>${th(1)}Sectors</th>
+    ${th()}Top sector</th>${th(1)}Equity</th>${th(1)}Debt</th>${th(1)}Cash</th></tr></thead>
+    <tbody>${sumRows}</tbody></table>
+  <p class="note">Effective stocks = 10,000 / HHI — how many equal positions the book really behaves like.</p>
+
+  ${retBlock}${ovBlock}${secBlock}${hldBlock}
+
+  <div class="foot">
+    InvestVerdict — figures derived from AMCs' own monthly SEBI portfolio disclosures; each entity shown at its
+    latest disclosed date. AUM is the sum of disclosed holding values, not an official figure. An AMC is pooled
+    into one book (holdings summed by ISIN, re-expressed as a share of the whole house). For information only,
+    not investment advice.
+  </div>
+</body></html>`;
+}
+
+function reportFilename(names) {
+  const slug = names.map(n => String(n).replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, ""))
+    .join("_vs_").slice(0, 80) || "comparison";
+  const d = new Date().toISOString().slice(0, 10);
+  return `InvestVerdict_${slug}_${d}.html`;
+}
+
+function downloadCompareReport(d) {
+  const blob = new Blob([buildReportHTML(d)], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = reportFilename(d.names);
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function printCompareReport(d) {
+  const w = window.open("", "_blank");
+  if (!w) { downloadCompareReport(d); return; }   // popup blocked -> just download
+  w.document.write(buildReportHTML(d));
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 350);
+}
+
 
 /* ---------- boot ---------- */
 if (SUPABASE_ANON_KEY.startsWith("PASTE_")) {
