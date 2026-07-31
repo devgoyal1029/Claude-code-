@@ -294,9 +294,9 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .dc-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--primary-deep);
   border:1px solid var(--primary-light);background:var(--primary-soft);padding:4px 9px;border-radius:999px;white-space:nowrap}
 .dc-badge.gold{color:var(--gold-deep);border-color:rgba(201,169,97,.4);background:var(--gold-soft)}
-/* the 3D pedestal stays dark on purpose */
+/* light pedestal -- the 3D canvas is transparent, so this shows through */
 .dc-stage{position:relative;height:230px;border-radius:14px;overflow:hidden;cursor:grab;
-  background:radial-gradient(60% 60% at 50% 32%,#1A2029 0%,#0A0D12 100%);border:1px solid #191F28}
+  background:radial-gradient(70% 70% at 50% 30%,#FFFFFF 0%,#EEF2F7 100%);border:1px solid var(--border)}
 .dc-cap{margin:0;font-size:12.5px;line-height:1.5;color:var(--muted)}
 /* AUM counters strip -- light + colourful */
 .dc-counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;
