@@ -3646,82 +3646,105 @@ function printCompareReport(d) {
 
 
 /* ==========================================================================
-   Compare workbook -- a real multi-sheet Excel file, no library.
-   Excel opens an HTML table saved as .xls; the Office XML in <head> names one
-   worksheet per <table>, so the report comes out as five tabs, not one blob.
-   Numbers are written raw so Excel treats them as numbers and they stay
-   sortable -- units live in the header, not the cell.
+   Compare workbook -- one Excel sheet with EVERY section stacked.
+   No library: Excel opens an HTML table saved as .xls. A single table (not
+   several) is what actually survives across Excel versions -- multiple tables
+   silently collapsed to one sheet or came through empty. Numbers are plain cell
+   text so Excel auto-detects them as numbers; nothing forces a text format.
    ========================================================================== */
 function buildReportXLS(d) {
   const { names, sumR, retR, ovR, secR, hldR } = d;
   const esc2 = s => String(s ?? "").replace(/[&<>"']/g,
     c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const n2 = v => (v == null || !isFinite(v)) ? "" : Math.round(Number(v) * 100) / 100;
-  const cell = v => `<td>${v === "" || v == null ? "" : esc2(v)}</td>`;      // text
-  const ncell = v => { const x = n2(v); return `<td${x === "" ? "" : ' x:num'}>${x}</td>`; }; // number
 
-  const sheet = (name, headers, rows) => ({
-    name,
-    html: `<table><tr>${headers.map(h => `<th>${esc2(h)}</th>`).join("")}</tr>` +
-      rows.map(r => `<tr>${r.join("")}</tr>`).join("") + `</table>`
-  });
+  const rows = [];
+  const R = cells => rows.push("<tr>" + cells + "</tr>");
+  const tx = (v, span) => `<td${span ? ` colspan="${span}"` : ""}>${v == null ? "" : esc2(v)}</td>`;
+  const nm = v => { const x = n2(v); return `<td class="n">${x}</td>`; };   // number cell
+  const blank = () => R(`<td></td>`);
+  const section = t => R(`<td class="sec" colspan="16">${esc2(t)}</td>`);
+  const heads = arr => R(arr.map((h, i) => `<td class="h${i ? " n" : ""}">${esc2(h)}</td>`).join(""));
 
-  // 1. Summary
-  const s1 = sheet("Summary",
-    ["Kind", "Name", "Schemes", "AUM (Cr)", "Securities", "Top 10 %", "Largest %",
-     "Largest name", "Eff. stocks", "Sectors", "Top sector", "Top sector %",
-     "Equity %", "Debt %", "Cash %"],
-    sumR.map(r => [cell(r.kind), cell(r.entity), ncell(r.kind === "AMC" ? r.schemes : 1),
-      ncell(r.aum_cr), ncell(r.securities), ncell(r.top_10_pct), ncell(r.largest_pct),
-      cell(r.largest_name), ncell(r.effective_stocks), ncell(r.sectors), cell(r.top_sector),
-      ncell(r.top_sector_pct), ncell(r.equity_pct), ncell(r.debt_pct), ncell(r.cash_pct)]));
+  // title
+  const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  R(`<td class="title" colspan="16">InvestVerdict — Fund comparison — ${esc2(today)}</td>`);
+  R(`<td class="subt" colspan="16">${esc2(names.join("  ·  "))}</td>`);
+  blank();
 
-  // 2. Returns
-  const s2 = sheet("Returns",
-    ["Kind", "Name", "NAV", "1Y %", "3Y %", "5Y %", "Vol 3Y %", "Sharpe", "Funds covered", "Basis"],
-    (retR || []).map(r => [cell(r.kind), cell(r.entity), ncell(r.nav), ncell(r.ret_1y),
-      ncell(r.ret_3y), ncell(r.ret_5y), ncell(r.vol_3y), ncell(r.sharpe_3y),
-      ncell(r.funds_covered), cell(r.basis)]));
+  // 1. side by side
+  section("SIDE BY SIDE");
+  heads(["Kind", "Name", "Schemes", "AUM (Cr)", "Securities", "Top 10 %", "Largest %",
+    "Largest name", "Eff. stocks", "Sectors", "Top sector", "Top sector %", "Equity %", "Debt %", "Cash %"]);
+  sumR.forEach(r => R(tx(r.kind) + tx(r.entity) + nm(r.kind === "AMC" ? r.schemes : 1) +
+    nm(r.aum_cr) + nm(r.securities) + nm(r.top_10_pct) + nm(r.largest_pct) + tx(r.largest_name) +
+    nm(r.effective_stocks) + nm(r.sectors) + tx(r.top_sector) + nm(r.top_sector_pct) +
+    nm(r.equity_pct) + nm(r.debt_pct) + nm(r.cash_pct)));
+  blank();
 
-  // 3. Overlap (matrix)
-  const omap = {};
-  (ovR || []).forEach(o => { (omap[o.entity_a] = omap[o.entity_a] || {})[o.entity_b] = o.overlap_pct;
-    (omap[o.entity_b] = omap[o.entity_b] || {})[o.entity_a] = o.overlap_pct; });
-  const s3 = sheet("Overlap", ["Entity", ...names],
-    names.map(a => [cell(a), ...names.map(b => a === b ? cell("") : ncell((omap[a] || {})[b]))]));
+  // 2. returns
+  if (retR && retR.length) {
+    section("RETURNS  (1Y plain · 3Y/5Y annualised · AMC = median of its schemes)");
+    heads(["Kind", "Name", "NAV", "1Y %", "3Y %", "5Y %", "Vol 3Y %", "Sharpe", "Funds covered", "Basis"]);
+    retR.forEach(r => R(tx(r.kind) + tx(r.entity) + nm(r.nav) + nm(r.ret_1y) + nm(r.ret_3y) +
+      nm(r.ret_5y) + nm(r.vol_3y) + nm(r.sharpe_3y) + nm(r.funds_covered) + tx(r.basis)));
+    blank();
+  }
 
-  // 4. Sectors (pivot)
-  const spiv = {}; (secR || []).forEach(r => { (spiv[r.sector] = spiv[r.sector] || {})[r.entity] = r.weight; });
-  const s4 = sheet("Sectors", ["Sector", ...names],
-    Object.keys(spiv).map(s => [cell(s), ...names.map(nm => ncell(spiv[s][nm]))]));
+  // 3. overlap
+  if (ovR && ovR.length) {
+    const omap = {};
+    ovR.forEach(o => { (omap[o.entity_a] = omap[o.entity_a] || {})[o.entity_b] = o.overlap_pct;
+      (omap[o.entity_b] = omap[o.entity_b] || {})[o.entity_a] = o.overlap_pct; });
+    section("OVERLAP %  (shared weight between each pair)");
+    heads(["Entity", ...names]);
+    names.forEach(a => R(tx(a) + names.map(b => a === b ? `<td class="n">—</td>` : nm((omap[a] || {})[b])).join("")));
+    blank();
+  }
 
-  // 5. Holdings (pivot)
-  const hpiv = {}; (hldR || []).forEach(r => { const k = r.isin;
-    hpiv[k] = hpiv[k] || { instrument: r.instrument, sector: r.sector, by: {} };
-    hpiv[k].by[r.entity] = r.weight; });
-  const s5 = sheet("Holdings", ["Instrument", "ISIN", "Sector", ...names],
-    Object.entries(hpiv).map(([isin, h]) => [cell(h.instrument), cell(isin), cell(h.sector),
-      ...names.map(nm => ncell(h.by[nm]))]));
+  // 4. sectors
+  if (secR && secR.length) {
+    const piv = {}; secR.forEach(r => { (piv[r.sector] = piv[r.sector] || {})[r.entity] = r.weight; });
+    section("SECTOR EXPOSURE %");
+    heads(["Sector", ...names]);
+    Object.keys(piv).forEach(s => R(tx(s) + names.map(n => nm(piv[s][n])).join("")));
+    blank();
+  }
 
-  const sheets = [s1, s2, s3, s4, s5];
-  const xmlSheets = sheets.map(s =>
-    `<x:ExcelWorksheet><x:Name>${esc2(s.name)}</x:Name>` +
-    `<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>`).join("");
+  // 5. holdings
+  if (hldR && hldR.length) {
+    const piv = {}; hldR.forEach(r => { const k = r.isin;
+      piv[k] = piv[k] || { instrument: r.instrument, sector: r.sector, by: {} };
+      piv[k].by[r.entity] = r.weight; });
+    section("TOP HOLDINGS %");
+    heads(["Instrument", "ISIN", "Sector", ...names]);
+    Object.entries(piv).forEach(([isin, h]) =>
+      R(tx(h.instrument) + tx(isin) + tx(h.sector) + names.map(n => nm(h.by[n])).join("")));
+    blank();
+  }
+
+  R(`<td class="foot" colspan="16">Figures from AMCs' own monthly SEBI portfolio disclosures; each entity at its latest disclosed date. AUM = sum of disclosed holding values. An AMC is pooled into one book. For information only, not investment advice.</td>`);
 
   return `<html xmlns:o="urn:schemas-microsoft-com:office:office"
-    xmlns:x="urn:schemas-microsoft-com:office:excel"
-    xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">
-    <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>${xmlSheets}
-    </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+    xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8">
+    <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+      <x:Name>Comparison</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+      </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
     <style>
-      table{border-collapse:collapse}
-      th{background:#0B1F3A;color:#fff;font-weight:bold;border:1px solid #345;padding:4px 8px;text-align:left}
-      td{border:1px solid #ccc;padding:4px 8px;mso-number-format:"\\@"}
-      td[x\\:num]{mso-number-format:"General"}
-    </style></head><body>${sheets.map(s => s.html).join("<br style='mso-data-placement:same-cell'>")}</body></html>`;
+      table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt}
+      td{border:1px solid #D9D9D9;padding:4px 9px;vertical-align:top}
+      td.n{text-align:right}
+      .title{font-size:15pt;font-weight:bold;border:0;color:#0B1F3A}
+      .subt{border:0;color:#555}
+      .sec{background:#0B1F3A;color:#fff;font-weight:bold;letter-spacing:.5px}
+      .h{background:#E7ECF3;font-weight:bold;color:#0B1F3A}
+      .foot{border:0;color:#888;font-size:9pt}
+    </style></head><body><table>${rows.join("")}</table></body></html>`;
 }
 
 function downloadCompareExcel(d) {
+  // leading BOM keeps non-ASCII fund names intact when Excel reads the file
   const blob = new Blob(["﻿" + buildReportXLS(d)],
     { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
