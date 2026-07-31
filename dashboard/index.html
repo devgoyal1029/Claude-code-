@@ -3,7 +3,9 @@
 <title>Fund Analyzer — InvestVerdict</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- three.js for the real 3D showcase elements (loaded only on the home page). -->
+<script type="importmap">{"imports":{"three":"https://esm.sh/three@0.160.1","three/addons/":"https://esm.sh/three@0.160.1/examples/jsm/"}}</script>
 
 <style>
 :root{
@@ -244,6 +246,41 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .fact .txt{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
 .fadein{animation:rise .6s cubic-bezier(.22,1,.36,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---------- dark 3D showcase block (reference texture, real data) ---------- */
+.dc{background:#0A0D12;border-radius:var(--r-xl);padding:22px;margin-bottom:16px;
+  box-shadow:0 30px 60px -30px rgba(0,0,0,.6);
+  --dc-line:#1D242F;--dc-mut:#8A97A8;--dc-dim:#6E7B8C;--dc-txt:#E7ECF3;--dc-acc:#E9B949;--dc-grn:#34D39F}
+.dc-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin-bottom:16px;flex-wrap:wrap}
+.dc-head .t{font-family:'Sora',sans-serif;font-weight:600;font-size:19px;letter-spacing:-.01em;color:var(--dc-txt)}
+.dc-head .e{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dc-acc);display:flex;align-items:center;gap:8px}
+.dc-head .e .dot{width:7px;height:7px;border-radius:50%;background:var(--dc-grn);
+  box-shadow:0 0 0 0 rgba(52,211,159,.6);animation:pulse 2.4s infinite}
+.dc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.dc-grid{grid-template-columns:1fr}}
+.dc-card{background:linear-gradient(180deg,#12161E 0%,#0A0D12 100%);border:1px solid var(--dc-line);
+  border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 60px -30px rgba(0,0,0,.9)}
+.dc-card .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.dc-card .num{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--dc-dim)}
+.dc-card h4{margin:2px 0 0;font-family:'Sora',sans-serif;font-weight:500;font-size:17px;
+  letter-spacing:-.01em;color:var(--dc-txt)}
+.dc-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dc-grn);
+  border:1px solid rgba(52,211,159,.3);background:rgba(52,211,159,.08);padding:4px 9px;border-radius:999px;white-space:nowrap}
+.dc-badge.gold{color:var(--dc-acc);border-color:rgba(233,185,73,.32);background:rgba(233,185,73,.08)}
+.dc-stage{position:relative;height:230px;border-radius:14px;overflow:hidden;cursor:grab;
+  background:radial-gradient(60% 60% at 50% 32%,#1A2029 0%,#0A0D12 100%);border:1px solid #191F28}
+.dc-cap{margin:0;font-size:12.5px;line-height:1.5;color:var(--dc-mut)}
+/* dark AUM counters strip */
+.dc-counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;
+  margin-top:16px;padding-top:16px;border-top:1px solid var(--dc-line)}
+.dc-counters .c .n{font-family:'Sora',sans-serif;font-weight:600;font-size:30px;letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;color:var(--dc-txt)}
+.dc-counters .c.gold .n{background:linear-gradient(180deg,#FFF3D6,#DDA83A);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.dc-counters .c .l{font-size:12px;color:var(--dc-mut);margin-top:4px}
 
 /* second showcase row: donut, growth, riskometer, vault */
 .showrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px;margin-bottom:16px}
@@ -877,6 +914,8 @@ const hero = (t, s) => { $("#heroTitle").textContent = t; $("#heroSub").textCont
 async function route() {
   const p = (location.hash || "#/market").slice(2).split("/");
   const v = $("#view");
+  // tear down any live WebGL from the home page before rendering another view
+  if (p[0] !== "market" && p[0] !== "") disposeDarkThree();
   try {
     if (p[0] === "fund" && p[1])          { setNav(""); await viewFund(v, p[1]); }
     else if (p[0] === "stock" && p[1])    { setNav(""); await viewStock(v, decodeURIComponent(p[1])); }
@@ -898,6 +937,207 @@ async function route() {
 }
 
 /* ==========================================================================
+   Real 3D showcase elements -- three.js, ported verbatim from the reference
+   file's coin / arrow / shield scenes. Only the mounting and data wiring is
+   new; the geometry, materials and lighting are the reference's own.
+   ========================================================================== */
+let DC_STATE = null;                       // { dead, raf, cleanups } for the live block
+
+function disposeDarkThree() {
+  if (!DC_STATE) return;
+  DC_STATE.dead = true;
+  if (DC_STATE.raf) cancelAnimationFrame(DC_STATE.raf);
+  DC_STATE.cleanups.forEach(fn => { try { fn(); } catch (_e) {} });
+  DC_STATE = null;
+}
+
+async function initDarkThree(hosts) {      // hosts = {coin, arrow, shield}
+  let THREE, RoomEnvironment;
+  try {
+    THREE = await import("three");
+    RoomEnvironment = (await import("three/addons/environments/RoomEnvironment.js")).RoomEnvironment;
+  } catch (err) { console.warn("three.js unavailable", err); return; }
+
+  const state = { dead: false, raf: 0, cleanups: [], scenes: [] };
+  DC_STATE = state;
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motion = reduce ? 0 : 1;
+  const accent = 0xE9B949;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+  const mk = (host, build) => {
+    if (!host) return;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(dpr);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.cssText = "width:100%;height:100%;display:block";
+    host.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;
+    const key = new THREE.DirectionalLight(0xffffff, 2.1);
+    key.position.set(3.2, 5, 4); key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.near = 1; key.shadow.camera.far = 20;
+    key.shadow.camera.left = -5; key.shadow.camera.right = 5;
+    key.shadow.camera.top = 5; key.shadow.camera.bottom = -5;
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xE9B949, 1.4); rim.position.set(-4, 1.4, -3); scene.add(rim);
+    scene.add(new THREE.AmbientLight(0x8FA4C0, 0.35));
+    const group = new THREE.Group(); scene.add(group);
+    const api = build({ THREE, scene, group, camera });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.42 }));
+    floor.rotation.x = -Math.PI / 2; floor.position.y = api.floorY ?? -0.02; floor.receiveShadow = true;
+    scene.add(floor);
+    const resize = () => {
+      const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    };
+    resize();
+    const ro = new ResizeObserver(resize); ro.observe(host);
+    let tx = 0, ty = 0, cxr = 0, cyr = 0;
+    const move = e => { const r = host.getBoundingClientRect();
+      tx = ((e.clientX - r.left) / r.width - 0.5) * 0.85 * motion;
+      ty = ((e.clientY - r.top) / r.height - 0.5) * 0.45 * motion; };
+    const out = () => { tx = 0; ty = 0; };
+    host.addEventListener("pointermove", move);
+    host.addEventListener("pointerleave", out);
+    const entry = { visible: true, tick: t => {
+      cxr += (tx - cxr) * 0.075; cyr += (ty - cyr) * 0.075;
+      api.tick && api.tick(t, cxr, cyr);
+      group.rotation.y = (api.baseY ?? 0) + cxr;
+      group.rotation.x = (api.baseX ?? 0) + cyr;
+      renderer.render(scene, camera);
+    } };
+    const io = new IntersectionObserver(([e]) => { entry.visible = e.isIntersecting; }, { threshold: 0.05 });
+    io.observe(host);
+    state.cleanups.push(() => { ro.disconnect(); io.disconnect(); pmrem.dispose(); renderer.dispose();
+      host.removeEventListener("pointermove", move); host.removeEventListener("pointerleave", out);
+      if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); });
+    state.scenes.push(entry);
+  };
+
+  const gold = c => new THREE.MeshStandardMaterial({ color: c || accent, metalness: 1, roughness: 0.19 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9FB0C4, metalness: 0.95, roughness: 0.31 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2A323D, metalness: 0.7, roughness: 0.45 });
+
+  /* 01 coin stack */
+  mk(hosts.coin, ({ group, camera }) => {
+    camera.position.set(0, 2.35, 6.6); camera.lookAt(0, 0.75, 0);
+    const coinG = new THREE.CylinderGeometry(1.05, 1.05, 0.17, 96);
+    const rimG = new THREE.TorusGeometry(1.045, 0.028, 12, 96);
+    const inner = new THREE.CylinderGeometry(0.78, 0.78, 0.185, 72);
+    for (let i = 0; i < 7; i++) {
+      const c = new THREE.Mesh(coinG, gold()); c.castShadow = true; c.receiveShadow = true;
+      c.position.set((i % 2 ? 0.028 : -0.02) * i, 0.175 * i + 0.09, (i % 3 ? -0.02 : 0.03) * i);
+      c.rotation.y = i * 0.42;
+      const r = new THREE.Mesh(rimG, gold(0xC08A21)); r.rotation.x = Math.PI / 2; c.add(r);
+      c.add(new THREE.Mesh(inner, gold(0xF2CE7C))); group.add(c);
+    }
+    return { baseX: 0.02, floorY: 0, tick: (t, cx) => {
+      group.rotation.y = 0.28 + t * 0.00016 * motion + cx; group.position.y = Math.sin(t * 0.0011) * 0.045; } };
+  });
+
+  /* 02 compounding arrow */
+  mk(hosts.arrow, ({ group, camera }) => {
+    camera.position.set(0, 2.7, 9.3); camera.lookAt(0, 1.45, 0);
+    const hs = [0.5, 0.9, 1.35, 1.9, 2.5];
+    hs.forEach((h, i) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, h, 0.6), i === hs.length - 1 ? gold() : steel);
+      b.castShadow = true; b.receiveShadow = true; b.position.set(-1.9 + i * 0.95, h / 2, 0); group.add(b);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.62), gold()); cap.position.y = h / 2 + 0.02; b.add(cap);
+    });
+    const ang = 0.6109, dx = Math.cos(ang), dy = Math.sin(ang), rz = -(Math.PI / 2 - ang);
+    const Sp = [-2.05, 0.55], L = 3.8, arrowG = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, L, 32), gold()); shaft.castShadow = true;
+    shaft.position.set(Sp[0] + dx * L / 2, Sp[1] + dy * L / 2, 0); shaft.rotation.z = rz; arrowG.add(shaft);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.72, 40), gold()); head.castShadow = true;
+    head.position.set(Sp[0] + dx * (L + 0.34), Sp[1] + dy * (L + 0.34), 0); head.rotation.z = rz; arrowG.add(head);
+    arrowG.position.z = 0.55; group.add(arrowG);
+    return { baseY: -0.3, floorY: 0, tick: t => {
+      arrowG.position.y = Math.sin(t * 0.0013) * 0.09; group.position.y = Math.sin(t * 0.0009) * 0.03; } };
+  });
+
+  /* 03 trust shield */
+  mk(hosts.shield, ({ group, camera }) => {
+    camera.position.set(0, 0.6, 6.2); camera.lookAt(0, 0.15, 0);
+    const sh = new THREE.Shape();
+    sh.moveTo(0, 1.75);
+    sh.bezierCurveTo(0.9, 1.6, 1.45, 1.3, 1.45, 1.3); sh.lineTo(1.45, -0.15);
+    sh.bezierCurveTo(1.45, 1.05, 0.55, -1.75, 0, -1.9);
+    sh.bezierCurveTo(-0.55, -1.75, -1.45, 1.05, -1.45, -0.15); sh.lineTo(-1.45, 1.3);
+    sh.bezierCurveTo(-1.45, 1.3, -0.9, 1.6, 0, 1.75);
+    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: true, bevelSize: 0.07, bevelThickness: 0.07, bevelSegments: 6, curveSegments: 24 }), steel);
+    body.castShadow = true; body.position.z = -0.15; group.add(body);
+    const innerS = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 5, curveSegments: 24 }), gold());
+    innerS.scale.set(0.8, 0.8, 1); innerS.position.z = 0.12; group.add(innerS);
+    const core = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 4, curveSegments: 24 }), dark);
+    core.scale.set(0.63, 0.63, 1); core.position.z = 0.22; group.add(core);
+    const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.72, 0.1), gold(0xF2CE7C)); bar1.position.set(0, 0.1, 0.4); group.add(bar1);
+    const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.1), gold(0xF2CE7C)); bar2.position.set(0, -0.16, 0.4); group.add(bar2);
+    return { floorY: -2.1, tick: t => {
+      group.rotation.y = reduce ? 0 : Math.sin(t * 0.00042) * 0.36; group.position.y = 0.1 + Math.sin(t * 0.0011) * 0.05; } };
+  });
+
+  const loop = t => {
+    if (state.dead) return;
+    state.scenes.forEach(s => { if (s.visible) s.tick(t); });
+    state.raf = requestAnimationFrame(loop);
+  };
+  state.raf = requestAnimationFrame(loop);
+}
+
+/* the dark reference-textured block: three WebGL element cards + AUM counters */
+function buildDarkHero(v, ov, medCagr) {
+  disposeDarkThree();
+  const dc = el("div", "dc");
+  dc.innerHTML = `
+    <div class="dc-head">
+      <div class="e"><span class="dot"></span> Live engine · updated ${esc(dstr(dt(ov.newest_snapshot)))}</div>
+      <div class="t">The market this engine sees through</div>
+    </div>
+    <div class="dc-grid">
+      <div class="dc-card"><div class="top"><div><div class="num">01 · WEBGL</div><h4>Corpus coin stack</h4></div>
+        <span class="dc-badge gold">${esc(crBig(ov.total_aum_cr))}</span></div>
+        <div class="dc-stage" data-el="coin"></div>
+        <p class="dc-cap">Physically-based gold, environment-mapped. Total disclosed assets across every loaded house — move the pointer to tilt.</p></div>
+      <div class="dc-card"><div class="top"><div><div class="num">02 · WEBGL</div><h4>Compounding arrow</h4></div>
+        <span class="dc-badge">${medCagr != null ? esc(signed(medCagr)) + " · 3Y median" : "returns"}</span></div>
+        <div class="dc-stage" data-el="arrow"></div>
+        <p class="dc-cap">Brushed steel bars with a gold accent — the shape of money that compounds across the tracked funds.</p></div>
+      <div class="dc-card"><div class="top"><div><div class="num">03 · WEBGL</div><h4>SEBI trust shield</h4></div>
+        <span class="dc-badge gold">Regulated</span></div>
+        <div class="dc-stage" data-el="shield"></div>
+        <p class="dc-cap">Every figure parsed straight from the AMCs' own monthly SEBI filings — ${fmt(ov.amcs, 0)} houses, ${fmt(ov.funds, 0)} funds.</p></div>
+    </div>
+    <div class="dc-counters">
+      <div class="c gold"><div class="n" data-c="aum">₹0</div><div class="l">Total disclosed AUM · ${esc(dstr(dt(ov.newest_snapshot)))}</div></div>
+      <div class="c"><div class="n" data-c="funds">0</div><div class="l">Funds tracked</div></div>
+      <div class="c"><div class="n" data-c="amcs">0</div><div class="l">Fund houses</div></div>
+      <div class="c"><div class="n" data-c="sec">0</div><div class="l">Unique securities</div></div>
+    </div>`;
+  v.appendChild(dc);
+
+  countUp(dc.querySelector('[data-c="aum"]'), ov.total_aum_cr, crBig);
+  countUp(dc.querySelector('[data-c="funds"]'), ov.funds, x => fmt(x, 0));
+  countUp(dc.querySelector('[data-c="amcs"]'), ov.amcs, x => fmt(x, 0));
+  countUp(dc.querySelector('[data-c="sec"]'), ov.securities, x => fmt(x, 0));
+
+  // mount the real 3D once layout has a size; degrades silently if WebGL fails
+  requestAnimationFrame(() => initDarkThree({
+    coin:   dc.querySelector('[data-el="coin"]'),
+    arrow:  dc.querySelector('[data-el="arrow"]'),
+    shield: dc.querySelector('[data-el="shield"]')
+  }));
+}
+
+
+/* ==========================================================================
    Landing showcase -- the animated front page, built from real RPC data
    ========================================================================== */
 function crBig(cr) {                       // rupees-in-crore -> readable scale
@@ -911,37 +1151,27 @@ function buildLanding(v, ov, sectors, conc, cov, topFunds, rets) {
   const equityShare = ov.total_aum_cr ? Number(ov.equity_aum_cr) / Number(ov.total_aum_cr) : 0;
   const debtShare   = ov.total_aum_cr ? Number(ov.debt_aum_cr)   / Number(ov.total_aum_cr) : 0;
 
-  /* ---- showcase: hero + gauge ---- */
-  const sc = el("div", "showcase fadein");
+  // median 3Y return for the arrow badge
+  let medCagr = null;
+  if (rets && rets.length) {
+    const vals = rets.map(r => Number(r.return_pct)).filter(x => isFinite(x)).sort((a, b) => a - b);
+    if (vals.length) medCagr = vals[Math.floor(vals.length / 2)];
+  }
 
-  const heroC = el("div", "hero-card");
-  heroC.innerHTML =
-    `<div class="hero-eyebrow"><span class="dot"></span> Live engine · updated ${esc(dstr(dt(ov.newest_snapshot)))}</div>
-     <div class="hero-big" id="ldAum">₹0 Cr</div>
-     <div class="hero-sub">Total disclosed assets tracked across every loaded fund house — the
-       combined book this engine can see through, holding by holding.</div>
-     <div class="hero-chips" id="ldChips"></div>`;
-  sc.appendChild(heroC);
-  countUp(heroC.querySelector("#ldAum"), ov.total_aum_cr, crBig);
-  const chips = heroC.querySelector("#ldChips");
-  [["Funds", ov.funds, v => fmt(v, 0)],
-   ["Fund houses", ov.amcs, v => fmt(v, 0)],
-   ["Unique stocks", ov.securities, v => fmt(v, 0)],
-   ["Sectors", ov.sectors, v => fmt(v, 0)]].forEach(([l, n, f]) => {
-    const c = el("div", "hero-chip", `<div class="n">0</div><div class="l">${esc(l)}</div>`);
-    chips.appendChild(c); countUp(c.querySelector(".n"), n, f);
-  });
+  /* ---- dark reference-textured showcase: real 3D + counters ---- */
+  buildDarkHero(v, ov, medCagr);
 
-  const gc = el("div", "gauge-card");
-  gc.appendChild(el("h3", "", "Equity vs debt"));
+  /* ---- equity/debt gauge (light) ---- */
+  const gc = el("div", "gauge-card fadein");
+  gc.style.marginBottom = "16px";
+  gc.appendChild(el("h3", "", "Equity vs debt across the whole book"));
   const gh = el("div"); gc.appendChild(gh);
   gauge(gh, equityShare, { color: "#059669", center: Math.round(equityShare * 100) + "%",
     sub: "in equity", gradient: { id: "gEq", from: "#34D39F", to: "#047857" } });
   gc.appendChild(el("div", "legend", `<span style="margin-top:12px">
     <i style="background:#059669"></i>Equity ${pct(equityShare * 100, 1)} &nbsp;
     <i style="background:#0B1F3A"></i>Debt ${pct(debtShare * 100, 1)}</span>`));
-  sc.appendChild(gc);
-  v.appendChild(sc);
+  v.appendChild(gc);
 
   /* ---- three showcase metric cards ---- */
   const m = el("div", "metrics fadein");
@@ -1065,22 +1295,6 @@ function buildLanding(v, ov, sectors, conc, cov, topFunds, rets) {
   r2.appendChild(vault);
   countUp(vBody.querySelector("#ldVault"), ov.securities, x => fmt(x, 0));
   setTimeout(() => vBody.querySelector(".vault").classList.add("open"), 500);
-
-  // SEBI trust shield
-  const shield = el("div", "scard");
-  shield.appendChild(el("div", "cap", "Data integrity"));
-  const sBody = el("div", "body");
-  sBody.innerHTML = `<div class="shield">
-    <svg width="52" height="60" viewBox="0 0 52 60">
-      <path d="M26 2 L48 11 V30 C48 44 38 54 26 58 C14 54 4 44 4 30 V11 Z"
-        fill="rgba(201,169,97,.14)" stroke="#C9A961" stroke-width="2"/>
-      <path d="M17 30 l6 6 l12 -13" fill="none" stroke="#059669" stroke-width="4"
-        stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div><div class="st">SEBI-format disclosures</div>
-      <div class="ss">Every figure is parsed straight from the AMCs' own monthly
-        portfolio filings — ${fmt(ov.amcs, 0)} houses, ${fmt(ov.funds, 0)} funds.</div></div></div>`;
-  shield.appendChild(sBody);
-  r2.appendChild(shield);
 
   v.appendChild(r2);
 
