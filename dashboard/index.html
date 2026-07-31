@@ -3311,9 +3311,11 @@ async function runCompare(out) {
     const bar = el("div", "cmp-actions");
     const dl = el("button", "btn", "⤓ Download report");
     dl.onclick = () => downloadCompareReport({ names, sumR, retR, ovR, secR, hldR });
+    const xl = el("button", "btn ghost", "⤓ Excel");
+    xl.onclick = () => downloadCompareExcel({ names, sumR, retR, ovR, secR, hldR });
     const prn = el("button", "btn ghost", "Print / Save PDF");
     prn.onclick = () => printCompareReport({ names, sumR, retR, ovR, secR, hldR });
-    bar.append(dl, prn);
+    bar.append(dl, xl, prn);
     out.appendChild(bar);
 
     /* ---- headline table ---- */
@@ -3640,6 +3642,93 @@ function printCompareReport(d) {
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 350);
+}
+
+
+/* ==========================================================================
+   Compare workbook -- a real multi-sheet Excel file, no library.
+   Excel opens an HTML table saved as .xls; the Office XML in <head> names one
+   worksheet per <table>, so the report comes out as five tabs, not one blob.
+   Numbers are written raw so Excel treats them as numbers and they stay
+   sortable -- units live in the header, not the cell.
+   ========================================================================== */
+function buildReportXLS(d) {
+  const { names, sumR, retR, ovR, secR, hldR } = d;
+  const esc2 = s => String(s ?? "").replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const n2 = v => (v == null || !isFinite(v)) ? "" : Math.round(Number(v) * 100) / 100;
+  const cell = v => `<td>${v === "" || v == null ? "" : esc2(v)}</td>`;      // text
+  const ncell = v => { const x = n2(v); return `<td${x === "" ? "" : ' x:num'}>${x}</td>`; }; // number
+
+  const sheet = (name, headers, rows) => ({
+    name,
+    html: `<table><tr>${headers.map(h => `<th>${esc2(h)}</th>`).join("")}</tr>` +
+      rows.map(r => `<tr>${r.join("")}</tr>`).join("") + `</table>`
+  });
+
+  // 1. Summary
+  const s1 = sheet("Summary",
+    ["Kind", "Name", "Schemes", "AUM (Cr)", "Securities", "Top 10 %", "Largest %",
+     "Largest name", "Eff. stocks", "Sectors", "Top sector", "Top sector %",
+     "Equity %", "Debt %", "Cash %"],
+    sumR.map(r => [cell(r.kind), cell(r.entity), ncell(r.kind === "AMC" ? r.schemes : 1),
+      ncell(r.aum_cr), ncell(r.securities), ncell(r.top_10_pct), ncell(r.largest_pct),
+      cell(r.largest_name), ncell(r.effective_stocks), ncell(r.sectors), cell(r.top_sector),
+      ncell(r.top_sector_pct), ncell(r.equity_pct), ncell(r.debt_pct), ncell(r.cash_pct)]));
+
+  // 2. Returns
+  const s2 = sheet("Returns",
+    ["Kind", "Name", "NAV", "1Y %", "3Y %", "5Y %", "Vol 3Y %", "Sharpe", "Funds covered", "Basis"],
+    (retR || []).map(r => [cell(r.kind), cell(r.entity), ncell(r.nav), ncell(r.ret_1y),
+      ncell(r.ret_3y), ncell(r.ret_5y), ncell(r.vol_3y), ncell(r.sharpe_3y),
+      ncell(r.funds_covered), cell(r.basis)]));
+
+  // 3. Overlap (matrix)
+  const omap = {};
+  (ovR || []).forEach(o => { (omap[o.entity_a] = omap[o.entity_a] || {})[o.entity_b] = o.overlap_pct;
+    (omap[o.entity_b] = omap[o.entity_b] || {})[o.entity_a] = o.overlap_pct; });
+  const s3 = sheet("Overlap", ["Entity", ...names],
+    names.map(a => [cell(a), ...names.map(b => a === b ? cell("") : ncell((omap[a] || {})[b]))]));
+
+  // 4. Sectors (pivot)
+  const spiv = {}; (secR || []).forEach(r => { (spiv[r.sector] = spiv[r.sector] || {})[r.entity] = r.weight; });
+  const s4 = sheet("Sectors", ["Sector", ...names],
+    Object.keys(spiv).map(s => [cell(s), ...names.map(nm => ncell(spiv[s][nm]))]));
+
+  // 5. Holdings (pivot)
+  const hpiv = {}; (hldR || []).forEach(r => { const k = r.isin;
+    hpiv[k] = hpiv[k] || { instrument: r.instrument, sector: r.sector, by: {} };
+    hpiv[k].by[r.entity] = r.weight; });
+  const s5 = sheet("Holdings", ["Instrument", "ISIN", "Sector", ...names],
+    Object.entries(hpiv).map(([isin, h]) => [cell(h.instrument), cell(isin), cell(h.sector),
+      ...names.map(nm => ncell(h.by[nm]))]));
+
+  const sheets = [s1, s2, s3, s4, s5];
+  const xmlSheets = sheets.map(s =>
+    `<x:ExcelWorksheet><x:Name>${esc2(s.name)}</x:Name>` +
+    `<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>`).join("");
+
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">
+    <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>${xmlSheets}
+    </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+    <style>
+      table{border-collapse:collapse}
+      th{background:#0B1F3A;color:#fff;font-weight:bold;border:1px solid #345;padding:4px 8px;text-align:left}
+      td{border:1px solid #ccc;padding:4px 8px;mso-number-format:"\\@"}
+      td[x\\:num]{mso-number-format:"General"}
+    </style></head><body>${sheets.map(s => s.html).join("<br style='mso-data-placement:same-cell'>")}</body></html>`;
+}
+
+function downloadCompareExcel(d) {
+  const blob = new Blob(["﻿" + buildReportXLS(d)],
+    { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = reportFilename(d.names).replace(/\.html$/, ".xls");
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 
