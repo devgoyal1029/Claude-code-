@@ -64,7 +64,7 @@
         <div class="grid-2">
           <div class="stat-grid" id="faGrid"></div>
           <div>
-            <div class="disclaimer" style="margin-bottom:6px">Revenue by fiscal year (USD)</div>
+            <div class="disclaimer" style="margin-bottom:6px" id="faRevLabel">Revenue by fiscal year</div>
             <div style="height:170px"><canvas id="faBars"></canvas></div>
           </div>
         </div>
@@ -232,8 +232,12 @@ IV.ready(function () {
 
       const years = (fa.years || []).filter(y => y.rev != null);
       if (years.length) {
+        $('#faRevLabel').textContent = `Revenue by fiscal year (${q.ccy} bn)`;
+        const accent = Charts.palette($('#faBars')).line === '#000000'
+          ? getComputedStyle(document.documentElement).getPropertyValue('--brand-blue').trim()
+          : null;
         const drawBars = () => Charts.bars($('#faBars'),
-          years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })),
+          years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9, color: accent || undefined })),
           { decimals: 0, suffix: 'B', signed: false });
         drawBars();
         window.addEventListener('resize', debounce(drawBars, 200));

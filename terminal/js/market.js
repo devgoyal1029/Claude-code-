@@ -312,9 +312,20 @@
     q.unavailable = true;
   }
 
-  /* Replace a symbol's chart series with real bars from the backend. */
+  /* Replace a symbol's chart series with real bars from the backend.
+     Vendor bars lag the live quote by up to a minute, which would leave an
+     intraday chart ending below the previous close while the header shows the
+     stock up. Pin the final bar of a 1D series to the live price so the chart
+     and the number above it can never disagree. */
   function setHistory(sym, range, bars) {
     if (!bars || !bars.length) return;
+    const q = quotes.get(sym);
+    if (range === '1D' && q && q.last != null) {
+      const last = bars[bars.length - 1];
+      last.c = q.last;
+      last.h = Math.max(last.h, q.last);
+      last.l = Math.min(last.l, q.last);
+    }
     histories.set(sym + '|' + range, bars);
   }
 

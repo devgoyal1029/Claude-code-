@@ -53,7 +53,6 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
       IV_COINGECKO_BASE: `http://127.0.0.1:${MOCK_PORT}/cg`,
       IV_FX_BASE: `http://127.0.0.1:${MOCK_PORT}/fx`,
       IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
-    IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
       IV_RSS_MOCK: `http://127.0.0.1:${MOCK_PORT}/rss`,
       IV_QUOTE_TTL: '400',
       IV_POLL_OPEN: '800',
@@ -74,9 +73,8 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const pg = await ctx.newPage();
   const errs = [];
-  const benignRef = (t) => /example\.test|ERR_TUNNEL|ERR_NAME_NOT_RESOLVED|Failed to fetch/.test(t);
-  pg.on('pageerror', e => errs.push(e.message));
   const benign = (t) => /example\.test|ERR_TUNNEL|ERR_NAME_NOT_RESOLVED|Failed to fetch/.test(t);
+  pg.on('pageerror', e => { if (!benign(e.message)) errs.push(e.message); });
   pg.on('console', m => { if (m.type() === 'error' && !benign(m.text())) errs.push(m.text()); });
 
   const BASE = `http://127.0.0.1:${API_PORT}`;

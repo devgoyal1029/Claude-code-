@@ -656,11 +656,23 @@ IV.ready(function () {
     } catch (_) { $('#clkIST').textContent = new Date().toLocaleTimeString(); }
   }, 1000);
   let ticks = 0;
+  /* Paint immediately, not only on the next tick — with the market closed the
+     next tick can be a minute away and the header would sit empty. */
+  function paintStatus() {
+    const s = Market.quote('NIFTY'), r = Market.quote('IN10Y');
+    if (s) {
+      $('#stSPX').innerHTML = Market.isUnavailable('NIFTY') ? '—'
+        : `${fmt(s.last, 2)} <span class="${tcls(s.pct)}">${pct(s.pct)}</span>`;
+    }
+    if (r) {
+      $('#st10').innerHTML = Market.isUnavailable('IN10Y') ? '<span class="t-flat">—</span>'
+        : `${fmt(r.last, 3)} <span class="${tcls(r.chg)}">${sgn(r.chg * 100, 1)}bp</span>`;
+    }
+  }
+  paintStatus();
   Market.subscribe(() => {
     $('#footTicks').textContent = 'TICKS ' + (++ticks);
-    const s = Market.quote('NIFTY'), r = Market.quote('IN10Y');
-    $('#stSPX').innerHTML = `${fmt(s.last, 2)} <span class="${tcls(s.pct)}">${pct(s.pct)}</span>`;
-    $('#st10').innerHTML = `${fmt(r.last, 3)} <span class="${tcls(r.chg)}">${sgn(r.chg * 100, 1)}bp</span>`;
+    paintStatus();
     UI.Alerts.check();
   });
   const paintFeed = () => {
