@@ -21,6 +21,12 @@ Run sql/returns_and_caps.sql first (it creates the table).
 # ============================================================================
 # CELL 1 -- pick one representative scheme_code per fund
 # ============================================================================
+# Self-installing: a fresh Colab session has no supabase client, and a
+# commented-out !pip line is a trap that fails on the import below.
+import subprocess, sys
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "requests", "pandas", "supabase"], check=False)
+
 import re, time, json, requests, pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from supabase import create_client
