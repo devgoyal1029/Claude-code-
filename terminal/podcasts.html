@@ -63,8 +63,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('podcasts');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   let cur = null, playing = false, pos = 0, speed = 1;
@@ -112,7 +113,7 @@
   };
   const want = D.PODCASTS.find(p => '#' + p.id === location.hash);
   if (want) play(want);
-})();
+});
 </script>
 </body>
 </html>

@@ -1,13 +1,15 @@
-# VERDICT — a Bloomberg-style financial news & terminal prototype
+# VERDICT — India-first financial news, markets data and terminal
 
-A complete, working clone of the Bloomberg product surface: the news site, the
-markets data hub, the security pages, and the keyboard-driven terminal
-workspace — built as static files with **no build step, no dependencies and no
-network calls**.
+A complete Bloomberg-style product for Indian markets — news site, markets data
+hub, security pages and a keyboard-driven terminal — running on **real, live
+data**: NSE/BSE quotes, real OHLC charts and real headlines from the Indian
+financial press.
 
-Every price, headline, byline and image is placeholder content generated
-locally. Every API key is a `PLACEHOLDER_*` string in one config file. Drop in
-real keys and flip one flag to point the whole thing at a live feed.
+**It goes live with zero API keys.** `node server/server.js` and the site is
+running on real market data. Keys are optional upgrades, not requirements.
+
+Still no build step and no npm dependencies — the backend is one zero-dependency
+Node file.
 
 > Branding note: this is built under the neutral name **VERDICT** rather than
 > reproducing Bloomberg's name and marks. The feature set, layout and
@@ -80,18 +82,41 @@ back to Arial on Windows. Licenses are in `fonts/`.
 Everything above collapses under `@media (prefers-reduced-motion: reduce)`, and
 `UI.reduced()` gates the JS-driven pieces.
 
-## Run it
+## Run it live
 
-Any static server works — there is no compile step.
+```bash
+cd terminal
+node server/server.js
+```
+
+Open <http://localhost:8080>. The masthead badge will read **LIVE** and the
+prices are real. No keys, no npm install, no build.
+
+Check what it is actually talking to:
+
+```bash
+curl -s localhost:8080/api/health | head -40
+```
+
+### Why a server is required for live data
+
+Two reasons, both hard constraints:
+
+1. **CORS.** A browser cannot fetch Yahoo Finance, NSE or an RSS feed directly —
+   the request is blocked. The server makes those calls and hands the browser
+   same-origin JSON.
+2. **Keys.** Any paid provider key stays server-side and is never shipped to the
+   client.
+
+### Static, no-server mode
+
+Serving the folder statically still works — every page renders, but on the
+deterministic simulation instead of real data, and the masthead badge says
+**SIMULATED** so it can never be mistaken for the real thing.
 
 ```bash
 python3 -m http.server 8899 --directory terminal
-# or
-npx http-server terminal -p 8899
 ```
-
-Then open <http://localhost:8899/index.html>. Opening the files directly over
-`file://` also works in most browsers.
 
 ## Pages
 
@@ -99,8 +124,8 @@ Then open <http://localhost:8899/index.html>. Opening the files directly over
 |---|---|
 | `index.html` | Home: market strip with live sparklines, lead story block, section modules, movers table with tabs, opinion, video, and a rail (live wire, most read, watchlist, yield curve, newsletter, podcasts) |
 | `markets.html` | Data hub: world indexes by region, sector heat map with drill-in, yield curve, sortable quote board per asset class with filter, gainers/losers/most-active, economic and earnings calendars |
-| `quote.html?s=NVDA` | Security page: live price header, chart (7 ranges × area/line/candle/OHLC, volume, crosshair), key statistics, 52-week range bar, fundamentals, analyst consensus, order book, tagged news, peers |
-| `article.html?id=a02` | Reader: metered paywall, reading-progress bar, live symbol chips, inline chart, save/copy/print/text-size, related stories |
+| `quote.html?s=RELIANCE` | Security page: live price header, chart (7 ranges × area/line/candle/OHLC, volume, crosshair), key statistics, 52-week range bar, fundamentals, analyst consensus, order book, tagged news, peers |
+| `article.html?id=…` | Reader: metered paywall, reading-progress bar, live symbol chips, inline chart, save/copy/print/text-size, related stories |
 | `section.html?s=markets` | Section front with tag filter, sorting, pagination, section-specific movers |
 | `terminal.html` | The workspace — see below |
 | `watchlist.html` | Portfolio monitor: live table, summary stats, equal-weight performance chart, tagged news, alerts, CSV export |
@@ -108,14 +133,14 @@ Then open <http://localhost:8899/index.html>. Opening the files directly over
 | `podcasts.html` | Episode list with a sticky player bar, speed control, scrubbing |
 | `newsletters.html` | Newsletter catalogue, signup form, live issue preview |
 | `subscribe.html` | Plans with monthly/annual toggle, checkout sheet, FAQ |
-| `search.html?q=oil` | Full-page search across securities and stories |
+| `search.html?q=nifty` | Full-page search across securities and stories |
 
 ## The terminal
 
 `terminal.html` is a full-screen, keyboard-first panel workspace.
 
-- **Command line** accepts Bloomberg-style input: `NVDA US EQUITY DES`,
-  `AAPL GP 1Y`, `TOP`, `WEI`, `HELP`. Noise tokens (`US`, `EQUITY`, `CURNCY`,
+- **Command line** accepts Bloomberg-style input: `RELIANCE IN EQUITY DES`,
+  `INFY GP 1Y`, `TOP`, `IND`, `HELP`. Noise tokens (`US`, `EQUITY`, `CURNCY`,
   `<GO>` …) are ignored, so real muscle memory works.
 - **Autocomplete** over functions and the security universe (`Tab` to accept),
   plus `↑`/`↓` command history persisted to `localStorage`.
@@ -123,33 +148,95 @@ Then open <http://localhost:8899/index.html>. Opening the files directly over
   focus advances, so consecutive commands fill the screen. `MAX` expands a panel,
   `CLR` empties it, number keys `1`–`6` focus a panel, `Esc` returns to the
   command line, `F1`–`F8` are bound to common functions.
-- **Functions**: `DES` `GP` `GIP` `TOP` `WEI` `MOST` `FX` `CMD` `RATE` `HM`
-  `DEPTH` `PORT` `ALRT` `ECO` `EARN` `FA` `MSG` `HELP`.
-- Status bar with NY/London/Tokyo clocks, live SPX and 10-year, feed mode and
+- **Functions**: `DES` `GP` `GIP` `TOP` `WEI` `IND` `MOST` `FX` `CMD` `RATE`
+  `HM` `DEPTH` `PORT` `ALRT` `ECO` `EARN` `FA` `MSG` `HELP`.
+- Status bar with IST/London/Tokyo clocks, live NIFTY and IN10Y, feed mode and
   tick count.
 
-## Wiring up real data
+## Where the data comes from
 
-Everything is behind two files.
+### Working now, no key needed
 
-**1. `js/config.js`** — replace the placeholders:
+| Data | Provider | Covers |
+|---|---|---|
+| Quotes + OHLC | **Yahoo Finance** chart API | NIFTY, SENSEX, BANKNIFTY, FINNIFTY, India VIX, all 50 NIFTY constituents, global indices, FX, commodities |
+| Crypto in INR | **CoinGecko** | BTC, ETH, SOL, XRP, DOGE |
+| FX | **Frankfurter** (ECB) | USDINR, EURINR, GBPINR, JPYINR |
+| News | **22 RSS feeds** | Economic Times, Mint, Moneycontrol, Business Standard, BusinessLine, Financial Express, Google News India |
 
-```js
-keys: { marketData: 'PLACEHOLDER_MARKET_DATA_KEY', news: '…', streaming: '…' },
-endpoints: { quotes: 'https://…', ohlc: 'https://…', stream: 'wss://…' },
-features: { liveData: true }        // ← the switch
+Headlines are de-duplicated across sources, auto-tagged to the securities they
+mention, and grouped into sections. Live stories link out to the publisher —
+we have their headline and summary, not their body text, and passing off
+someone else's reporting as ours would be wrong.
+
+### Optional upgrades (add a key, restart)
+
+Copy `server/config.example.json` to `server/config.json`:
+
+| Key | What it adds | Free tier |
+|---|---|---|
+| `twelvedata` | **India G-Sec yields** (IN10Y/5Y/2Y) — no free feed carries these | 800 calls/day |
+| `finnhub` | Backup quote provider, failover when Yahoo rate-limits | 60 calls/min |
+| `marketaux` | News with sentiment scoring and entity tagging | 100 req/day |
+| `newsapi` | Additional headline coverage | 100 req/day |
+| `kiteApiKey` + `kiteAccessToken` | **True tick-by-tick realtime** from Zerodha — Yahoo is delayed ~1–15 min | paid, ₹2000/mo |
+
+Keys can also come from the environment: `IV_TWELVEDATA`, `IV_FINNHUB`,
+`IV_MARKETAUX`, `IV_NEWSAPI`.
+
+### What the free tier cannot do
+
+- **Yahoo quotes are delayed**, typically 1–15 minutes for NSE. Genuinely
+  tick-by-tick requires a broker feed (Kite/Upstox/Angel One/Fyers).
+- **India G-Sec yields** resolve only with a keyed provider. Without one the API
+  reports them `missing` and the UI shows a dash — it does not invent a number.
+- **Fundamentals** (P/E, margins, consensus) are still simulated. Wire a
+  fundamentals vendor into `server/lib/providers.js` to replace them.
+
+### API surface
+
+| Route | Returns |
+|---|---|
+| `GET /api/health` | provider status, IST session, sample quote |
+| `GET /api/quotes?symbols=NIFTY,RELIANCE` | live quotes |
+| `GET /api/history?symbol=NIFTY&range=1D` | OHLCV bars |
+| `GET /api/news?section=&symbol=&q=&limit=` | headlines |
+| `GET /api/wire` | newest headlines, wire format |
+| `GET /api/search?q=` | securities + stories |
+| `GET /api/stream` | Server-Sent Events, live ticks |
+
+Polling adapts to the session: 5s while NSE is open (09:15–15:30 IST), 60s when
+closed. Responses are cached, and a failed upstream serves the last good value
+rather than blanking the page.
+
+## Deploy it
+
+Any host that runs Node. No build step, no dependencies.
+
+```bash
+# Render / Railway / Fly.io
+#   build command:  (none)
+#   start command:  node server/server.js
+#   the platform's PORT env var is picked up automatically
+
+# A VPS
+git clone <your repo> && cd terminal
+node server/server.js            # or: pm2 start server/server.js --name verdict
 ```
 
-**2. `js/api.js`** — adapt the three `normalise.*` functions to your vendor's
-payload shape. Nothing else in the codebase calls `fetch`; every page talks to
-`API.quotes / history / fundamentals / news / search / calendar /
-connectStream`, and each of those already has both a simulated and a live path.
+Behind nginx, disable buffering on `/api/stream` or SSE will stall:
 
-With `liveData: false` (the default), `js/market.js` runs a deterministic
-simulation: seeded open/high/low/prev-close per symbol, a correlated random walk
-on a timer, intraday series anchored to the session open, synthetic depth,
-fundamentals and consensus. Seeded means every reload shows the same session, so
-screenshots and demos are reproducible.
+```nginx
+location /api/stream {
+  proxy_pass http://127.0.0.1:8080;
+  proxy_buffering off;
+  proxy_read_timeout 3600s;
+}
+```
+
+Note that a static-only host (GitHub Pages, Netlify without functions) can serve
+the site but **not** the live data — there is no server to make the upstream
+calls.
 
 ## Files
 
@@ -159,26 +246,41 @@ terminal/
 ├── css/site.css                  tokens, type, animations, light/dark, responsive
 ├── css/terminal.css              the amber-on-black workspace
 ├── fonts/                        self-hosted OFL webfonts + licenses
-├── js/config.js                  brand, feature flags, API keys, endpoints, functions
-├── js/data.js                    universe (60 securities), 36 stories, wire, media, calendars
-├── js/market.js                  tick engine, history, depth, fundamentals, movers, search
-├── js/api.js                     simulated ⇄ live seam; vendor payload normalisation
+├── server/server.js              live backend: JSON API, SSE stream, static serving
+├── server/lib/providers.js       Yahoo, CoinGecko, Frankfurter, RSS, keyed vendors
+├── server/lib/symbols.js         India universe + per-vendor ticker mapping
+├── server/lib/fetcher.js         timeouts, retry, TTL cache, stale-on-error, health
+├── js/live.js                    boot probe, SSE client, polling, live/sim switching
+├── js/config.js                  brand, feature flags, API base, sections
+├── js/data.js                    India universe (84 symbols) + offline fallback corpus
+├── js/market.js                  quote store, live ingestion, simulator fallback
+├── js/api.js                     the seam every page calls
 ├── js/charts.js                  canvas engine: price charts, sparklines, bars, curves, treemap
 ├── js/components.js              header, tape, search, modals, paywall, watchlist, alerts, tables
-└── tests/ui-smoke.js             headless page + interaction suite
+├── tests/ui-smoke.js             headless page + interaction suite
+├── tests/live-pipeline.test.js   backend: vendor payloads → API responses
+├── tests/live-browser.test.js    browser consumes live data; degrades safely
+└── tests/mock-upstream.js        stands in for the vendors, offline
 ```
 
-## Tests
+## Tests — 144 checks
 
 ```bash
-python3 -m http.server 8899 --directory terminal &
-node terminal/tests/ui-smoke.js
+node tests/live-pipeline.test.js     # 34 — backend against a mock vendor
+node tests/live-browser.test.js      # 22 — browser against the live backend
+python3 -m http.server 8899 --directory . &
+node tests/ui-smoke.js               # 88 — every page, 3 widths, 2 themes
 ```
 
-Loads all 12 pages at desktop and mobile widths in both colour schemes,
-asserting no console/page errors, no horizontal overflow and non-empty render;
-then drives the terminal command line, watchlist persistence, the paywall meter,
-search, chart controls, theme persistence and the heat map drill-in.
+`live-pipeline` boots `tests/mock-upstream.js`, which speaks the real wire
+formats (Yahoo chart JSON, CoinGecko, Frankfurter, RSS 2.0), points the real
+server at it, and asserts that vendor payloads become correct quotes, bars and
+tagged headlines — including that a dead upstream degrades instead of breaking.
+
+`live-browser` drives Chromium against the running backend and asserts the page
+shows server-supplied prices (not simulated ones), that SSE moves the tape
+without a reload, that live stories link out — then kills the backend and
+asserts the page falls back and relabels itself SIMULATED.
 
 ## Notable implementation details
 
@@ -194,8 +296,17 @@ search, chart controls, theme persistence and the heat map drill-in.
   terminal, `Esc` close), tabular numerals everywhere, print stylesheet, and a
   hard rule that wide content scrolls inside its own container.
 
+## Honesty rules baked into the product
+
+- The masthead badge always states the truth: **LIVE** (with the session state
+  and, on hover, the provider list and last update) or **SIMULATED**.
+- The simulator is switched off entirely in live mode, so a made-up number can
+  never mix into a real table.
+- A symbol with no real provider reports as unavailable and renders a dash.
+- Live headlines carry their publication name and link to the original.
+
 ## Disclaimer
 
-Simulated data, fictional companies-in-name-only coverage, and stubbed
-payments/auth. Nothing here is real market data, and nothing here is investment
+Market data is delayed and provided by third parties; it is not suitable for
+trading decisions. Payments and auth are stubbed. Nothing here is investment
 advice.

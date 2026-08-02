@@ -1,0 +1,17 @@
+{
+  "name": "verdict-india-terminal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "India-first financial news, markets data and terminal workspace with a live data backend",
+  "main": "server/server.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "health": "curl -s http://localhost:8080/api/health",
+    "test": "node tests/live-pipeline.test.js && node tests/live-browser.test.js",
+    "test:ui": "node tests/ui-smoke.js",
+    "mock": "node tests/mock-upstream.js"
+  },
+  "dependencies": {}
+}

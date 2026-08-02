@@ -45,8 +45,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('subscribe');
   const $ = (s) => document.querySelector(s);
   let billing = 'month';
@@ -112,7 +113,7 @@
   $('#faq').innerHTML = faqs.map(([q, a]) => `<details style="border-bottom:1px solid var(--rule);padding:14px 0">
     <summary style="font-weight:700;cursor:pointer">${UI.esc(q)}</summary>
     <p class="dek" style="margin-top:8px">${UI.esc(a)}</p></details>`).join('');
-})();
+});
 </script>
 </body>
 </html>

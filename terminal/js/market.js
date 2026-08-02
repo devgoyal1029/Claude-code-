@@ -242,10 +242,89 @@
     return list.slice(0, n || 10);
   }
 
+  /* ---------------------------------------------------------------------------
+   * Live mode. live.js pushes real vendor quotes in through applyQuotes(); the
+   * simulator is stopped so nothing invented ever mixes with real prices.
+   * ------------------------------------------------------------------------ */
+  let mode = 'sim';
+  const unavailable = new Set();
+
+  function setMode(m) {
+    mode = m;
+    if (m === 'live' && timer) { clearInterval(timer); timer = null; }
+    histories.clear();                 // simulated history must not survive
+  }
+
+  function applyQuotes(rows) {
+    const touched = [];
+    (rows || []).forEach(r => {
+      const q = quotes.get(r.sym);
+      if (!q || r.last == null) return;
+      unavailable.delete(r.sym);
+      const prev = q.last;
+      q.last = r.last;
+      if (r.prevClose != null) q.prevClose = r.prevClose;
+      if (r.open != null) q.open = r.open;
+      if (r.high != null) q.high = r.high;
+      if (r.low != null) q.low = r.low;
+      if (r.volume != null) q.volume = r.volume;
+      if (r.high52 != null) q.dayHigh52 = r.high52;
+      if (r.low52 != null) q.dayLow52 = r.low52;
+      if (r.ccy) q.ccy = r.ccy;
+      if (r.exch) q.exch = r.exch;
+      q.source = r.source || 'live';
+      q.marketState = r.marketState || null;
+      q.ts = r.ts || Date.now();
+      q.dir = r.last > prev ? 1 : r.last < prev ? -1 : 0;
+      // decimals come from the live price itself, not a guess
+      q.liveDecimals = decimalsFor(r.last, q.meta);
+      derive(q);
+      q.decimals = q.liveDecimals;
+      touched.push(q);
+      const h = histories.get(q.sym + '|1D');
+      if (h && h.length) {
+        const bar = h[h.length - 1];
+        bar.c = q.last; bar.h = Math.max(bar.h, q.last); bar.l = Math.min(bar.l, q.last);
+      }
+    });
+    if (touched.length) {
+      tickSeq++;
+      subs.forEach(fn => { try { fn(touched, tickSeq); } catch (e) { console.error(e); } });
+    }
+    return touched.length;
+  }
+
+  function decimalsFor(v, u) {
+    if (u.cls === 'fx') return Math.abs(v) > 50 ? 3 : 4;
+    if (u.cls === 'rate') return 3;
+    if (Math.abs(v) >= 1000) return 2;
+    if (Math.abs(v) >= 10) return 2;
+    if (Math.abs(v) >= 1) return 3;
+    return 4;
+  }
+
+  /* Real feeds do not cover everything (Indian G-Sec yields, for one). Those
+     are flagged so the UI can show a dash instead of a fabricated number. */
+  function markUnavailable(sym) {
+    const q = quotes.get(sym);
+    if (!q) return;
+    unavailable.add(sym);
+    q.unavailable = true;
+  }
+
+  /* Replace a symbol's chart series with real bars from the backend. */
+  function setHistory(sym, range, bars) {
+    if (!bars || !bars.length) return;
+    histories.set(sym + '|' + range, bars);
+  }
+
   const Market = {
     RANGES,
     start,
     tickNow: tick,
+    setMode, applyQuotes, markUnavailable, setHistory,
+    get mode() { return mode; },
+    isUnavailable: (s) => unavailable.has(s),
     quote: (sym) => quotes.get(String(sym).toUpperCase()) || null,
     quotes(sel) {
       if (!sel) return [...quotes.values()];

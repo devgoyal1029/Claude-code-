@@ -46,15 +46,16 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('search');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   const params = new URLSearchParams(location.search);
   const input = $('#q');
   input.value = params.get('q') || '';
 
-  const quick = ['NVDA', 'inflation', 'oil', 'BTC', 'private credit', 'yen'];
+  const quick = ['NIFTY', 'Reliance', 'RBI', 'rupee', 'IT services', 'BTC'];
   $('#quick').innerHTML = quick.map(t => `<button class="pill" data-q="${UI.esc(t)}">${UI.esc(t)}</button>`).join('');
   $('#quick').onclick = e => { const b = e.target.closest('[data-q]'); if (b) { input.value = b.dataset.q; go(); } };
 
@@ -77,12 +78,12 @@
   let t; input.oninput = () => { clearTimeout(t); t = setTimeout(go, 200); };
   go();
 
-  $('#pop').innerHTML = ['AI capex', 'Federal Reserve', 'copper', 'ETFs', 'buybacks']
+  $('#pop').innerHTML = ['RBI policy', 'FPI flows', 'GST', 'IPO', 'midcaps']
     .map(t => `<a class="mini-quote" href="?q=${encodeURIComponent(t)}"><span class="l">${t}</span></a>`).join('');
   $('#secs2').innerHTML = IV_CONFIG.sections.map(s =>
     `<a class="mini-quote" href="section.html?s=${s.id}"><span class="l" style="color:${s.accent}">${s.label}</span>
      <span class="r disclaimer">${D.articlesBySection(s.id).length}</span></a>`).join('');
-})();
+});
 </script>
 </body>
 </html>

@@ -82,8 +82,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('video');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   let current = D.VIDEOS[0], playing = true, pos = 0;
@@ -151,10 +152,10 @@
       <span class="disclaimer">${UI.esc(v.t)}</span></span></li>`;
   }).join('');
 
-  UI.quoteTable('#mini', ['SPX', 'CCMP', 'US10Y', 'CL1', 'BTC'], { spark: false, watch: false, cols: ['sym', 'last', 'pct'] });
+  UI.quoteTable('#mini', ['NIFTY', 'SENSEX', 'BANKNIFTY', 'USDINR', 'GOLD'], { spark: false, watch: false, cols: ['sym', 'last', 'pct'] });
 
   load(D.VIDEOS.find(v => '#' + v.id === location.hash) || D.VIDEOS[0]);
-})();
+});
 </script>
 </body>
 </html>

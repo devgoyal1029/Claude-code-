@@ -49,8 +49,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   const id = new URLSearchParams(location.search).get('id') || D.latest(1)[0].id;
   const a = D.article(id);
@@ -180,7 +181,7 @@
     const h = document.documentElement;
     prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100).toFixed(1) + '%';
   }, { passive: true });
-})();
+});
 </script>
 </body>
 </html>

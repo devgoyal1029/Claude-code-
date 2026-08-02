@@ -47,7 +47,15 @@
     return new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
   const qhref = (sym) => 'quote.html?s=' + encodeURIComponent(sym);
-  const ahref = (id) => 'article.html?id=' + encodeURIComponent(id);
+  /* Accepts an id or a whole article. Real wire stories link out to the
+     publisher — we have their headline and summary, not their body text. */
+  const ahref = (a) => {
+    if (a && typeof a === 'object') {
+      return a.url ? a.url : 'article.html?id=' + encodeURIComponent(a.id);
+    }
+    return 'article.html?id=' + encodeURIComponent(a);
+  };
+  const aattr = (a) => (a && a.url) ? ' target="_blank" rel="noopener noreferrer"' : '';
 
   /* ---------------------------------------------------------------- theme -- */
   function initTheme() {
@@ -71,7 +79,7 @@
 
   /* ------------------------------------------------------------ watchlist -- */
   const Watchlist = {
-    all() { return LS.get('watchlist', ['SPX', 'AAPL', 'NVDA', 'BTC', 'US10Y', 'CL1']); },
+    all() { return LS.get('watchlist', ['NIFTY', 'BANKNIFTY', 'RELIANCE', 'TCS', 'USDINR', 'GOLD']); },
     has(s) { return this.all().includes(s); },
     toggle(s) {
       const list = this.all();
@@ -182,6 +190,8 @@
       <a href="#" class="only-mobile" id="navSign">Sign In</a>
     </nav>
     <div class="topbar-actions">
+      <span class="src-badge booting" id="srcBadge" title="Data source">
+        <span class="live-dot"></span><span id="srcLabel">CONNECTING</span></span>
       <button class="icon-btn" id="searchBtn" title="Search  (/)">${icon('search')}</button>
       <button class="icon-btn" id="tvBtn" title="Live TV">${icon('tv')}</button>
       <button class="icon-btn" id="themeBtn" title="Theme">${icon('moon')}</button>
@@ -211,7 +221,7 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
     if (LS.get('breakingDismissed', 0) > Date.now() - 6 * 3600e3) return '';
     return `<div class="breaking" id="breaking">
       <span class="lbl">Breaking</span>
-      <a href="${ahref(a.id)}">${esc(a.t)}</a>
+      <a href="${ahref(a)}"${aattr(a)}>${esc(a.t)}</a>
       <button id="breakingX" aria-label="Dismiss">×</button></div>`;
   }
 
@@ -256,7 +266,9 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
   function mountTape() {
     const track = document.getElementById('tapeTrack');
     if (!track) return;
-    const syms = ['SPX', 'INDU', 'CCMP', 'RTY', 'VIX', 'UKX', 'DAX', 'NKY', 'HSI', 'US10Y', 'EURUSD', 'USDJPY', 'GBPUSD', 'DXY', 'CL1', 'CO1', 'GC1', 'HG1', 'BTC', 'ETH'];
+    const syms = ['NIFTY', 'SENSEX', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'INDIAVIX',
+      'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'IN10Y', 'USDINR', 'EURINR',
+      'GOLD', 'SILVER', 'CRUDE', 'BTC', 'ETH', 'SPX', 'NASDAQ', 'NIKKEI', 'HANGSENG'];
     const render = () => {
       const items = syms.map(s => {
         const q = Market.quote(s); if (!q) return '';
@@ -310,7 +322,7 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
       const term = input.value.trim();
       if (!term) {
         out.innerHTML = `<div class="search-group"><h5>Trending</h5>` +
-          ['NVDA', 'SPX', 'BTC', 'US10Y', 'AAPL', 'CL1'].map(s => {
+          ['NIFTY', 'RELIANCE', 'TCS', 'BANKNIFTY', 'USDINR', 'BTC'].map(s => {
             const q = Market.quote(s);
             return `<a class="search-item" href="${qhref(s)}"><span class="s">${s}</span><span class="n">${esc(q.name)}</span><span class="p ${cls(q.pct)}">${pctStr(q.pct)}</span></a>`;
           }).join('') + '</div>';
@@ -321,7 +333,7 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
         (r.securities.length ? `<div class="search-group"><h5>Securities</h5>` + r.securities.map(q =>
           `<a class="search-item" href="${qhref(q.sym)}"><span class="s">${esc(q.sym)}</span><span class="n">${esc(q.name)}</span><span class="p ${cls(q.pct)}">${pctStr(q.pct)}</span></a>`).join('') + '</div>' : '') +
         (r.articles.length ? `<div class="search-group"><h5>Stories</h5>` + r.articles.map(a =>
-          `<a class="search-item" href="${ahref(a.id)}"><span class="s">${esc(DATA.section(a.s).label)}</span><span class="n">${esc(a.t)}</span></a>`).join('') + '</div>' : '') ||
+          `<a class="search-item" href="${ahref(a)}"${aattr(a)}><span class="s">${esc(a.src || DATA.section(a.s).label)}</span><span class="n">${esc(a.t)}</span></a>`).join('') + '</div>' : '') ||
         `<div class="search-group"><h5>No matches</h5></div>`;
       idx = -1;
     };
@@ -448,16 +460,17 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
   function card(a, variant) {
     const sec = DATA.section(a.s);
     const au = DATA.author(a.a);
+    const byline = a.live ? esc(a.src || 'Wire') : esc(au.name);
     const hl = { xl: 'hl-xl', l: 'hl-l', m: 'hl-m', s: 'hl-s' }[variant || 'm'] || 'hl-m';
     const showImg = variant !== 's';
     const showDek = variant === 'xl' || variant === 'l';
-    return `<a class="card ${variant === 'row' ? 'row' : ''}" href="${ahref(a.id)}">
+    return `<a class="card ${variant === 'row' ? 'row' : ''}" href="${ahref(a)}"${aattr(a)}>
       ${showImg ? `<img class="thumb" loading="lazy" src="${DATA.image(a.id, 600, 400)}" alt="">` : ''}
       <div>
         <div class="eyebrow sec" style="--sec:${sec.accent}">${esc(sec.label)}</div>
         <h3 class="${hl} ${a.p ? 'premium' : ''}">${esc(a.t)}</h3>
         ${showDek ? `<p class="dek">${esc(a.d)}</p>` : ''}
-        <div class="byline">${esc(au.name)}<span class="dot"></span>${timeAgo(a.ts)}${a.mins ? `<span class="dot"></span>${a.mins} min read` : ''}</div>
+        <div class="byline">${byline}<span class="dot"></span>${timeAgo(a.ts)}${a.live ? '<span class="dot"></span>opens publisher ↗' : (a.mins ? `<span class="dot"></span>${a.mins} min read` : '')}</div>
       </div></a>`;
   }
 
@@ -583,11 +596,43 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
 
     pinHeader();
     revealOnLoad();
+    mountSourceBadge();
+  }
+
+  /* Says plainly whether the numbers on screen are real. Never let a
+     simulation masquerade as a live feed. */
+  function mountSourceBadge() {
+    const badge = document.getElementById('srcBadge');
+    const label = document.getElementById('srcLabel');
+    if (!badge) return;
+    const paint = () => {
+      const st = (window.IV && IV.status) ? IV.status() : { mode: 'sim' };
+      badge.classList.remove('booting', 'live', 'sim');
+      if (st.mode === 'live') {
+        badge.classList.add('live');
+        const sess = st.session && st.session.state ? st.session.state : '';
+        label.textContent = 'LIVE' + (sess ? ' · ' + sess : '');
+        badge.title = `Real data · ${st.sources.join(', ')}` +
+          (st.lastUpdate ? ` · updated ${clockStr(st.lastUpdate)}` : '') +
+          (st.newsCount ? ` · ${st.newsCount} headlines` : '');
+      } else if (st.mode === 'sim') {
+        badge.classList.add('sim');
+        label.textContent = 'SIMULATED';
+        badge.title = 'No data server reachable — prices and headlines are a local simulation. ' +
+          'Run: node server/server.js';
+      } else {
+        badge.classList.add('booting');
+        label.textContent = 'CONNECTING';
+      }
+    };
+    paint();
+    window.addEventListener('iv:datasource', paint);
+    setInterval(paint, 5000);
   }
 
   window.UI = {
     esc, fmt, signed, pctStr, cls, abbr, timeAgo, clockStr, qhref, ahref,
-    mount, card, quoteTable, toast, theme, Watchlist, Alerts, Paywall,
+    mount, card, quoteTable, toast, theme, Watchlist, Alerts, Paywall, aattr,
     searchOverlay, signInOverlay, newsletterOverlay, alertOverlay, tvDock, icon, LS,
     flash, reduced
   };

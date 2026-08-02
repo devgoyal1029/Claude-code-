@@ -12,13 +12,13 @@
 
 <div class="t-top">
   <span class="t-logo">VERDICT&lt;TERMINAL&gt;</span>
-  <span class="t-note" id="tSec">SECURITY: <b style="color:var(--t-amber)">AAPL</b></span>
+  <span class="t-note" id="tSec">SECURITY: <b style="color:var(--t-amber)">RELIANCE</b></span>
   <div class="t-status">
-    <span>NY <b id="clkNY"></b></span>
+    <span>IST <b id="clkIST"></b></span>
     <span>LDN <b id="clkLDN"></b></span>
     <span>TKY <b id="clkTKY"></b></span>
-    <span>SPX <b id="stSPX"></b></span>
-    <span>US10Y <b id="st10"></b></span>
+    <span>NIFTY <b id="stSPX"></b></span>
+    <span>IN10Y <b id="st10"></b></span>
     <span>FEED <b id="stFeed">SIM</b></span>
   </div>
   <a class="t-exit" href="index.html">EXIT TO SITE</a>
@@ -27,7 +27,7 @@
 <div class="t-cmdwrap">
   <div class="t-cmd">
     <span class="prompt">CMD&gt;</span>
-    <input id="cmd" autocomplete="off" spellcheck="false" placeholder="AAPL US EQUITY DES   ·   TOP   ·   WEI   ·   HELP">
+    <input id="cmd" autocomplete="off" spellcheck="false" placeholder="RELIANCE IN EQUITY DES   ·   TOP   ·   IND   ·   HELP">
     <button class="t-go" id="go">&lt;GO&gt;</button>
     <select id="layout" style="background:#111;color:var(--t-amber);border:1px solid var(--t-rule);font:inherit;padding:5px">
       <option value="g4">4 PANEL</option>
@@ -55,8 +55,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   'use strict';
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   const esc = UI.esc, fmt = UI.fmt, abbr = UI.abbr;
@@ -64,7 +65,7 @@
   const sgn = (v, d) => (v > 0 ? '+' : '') + fmt(v, d);
   const pct = (v) => (v > 0 ? '+' : '') + fmt(v, 2) + '%';
 
-  let security = (new URLSearchParams(location.search).get('s') || 'AAPL').toUpperCase();
+  let security = (new URLSearchParams(location.search).get('s') || 'RELIANCE').toUpperCase();
   let focused = 0;
   const PANELS = [];
   const HIST = UI.LS.get('cmdHistory', []);
@@ -301,6 +302,13 @@
     WEI: {
       title: 'WORLD EQUITY INDEXES',
       render: () => ({ html: '', after: liveTable(() => Market.quotes('index'), quoteCols) })
+    },
+    IND: {
+      title: 'INDIA INDICES',
+      render: () => ({
+        html: '',
+        after: liveTable(() => Market.quotes('index').filter(q => q.region === 'India'), quoteCols)
+      })
     },
     FX: {
       title: 'CURRENCY MONITOR',
@@ -624,25 +632,32 @@
   const tz = (t) => new Date().toLocaleTimeString('en-GB', { timeZone: t, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   setInterval(() => {
     try {
-      $('#clkNY').textContent = tz('America/New_York');
+      $('#clkIST').textContent = tz('Asia/Kolkata');
       $('#clkLDN').textContent = tz('Europe/London');
       $('#clkTKY').textContent = tz('Asia/Tokyo');
-    } catch (_) { $('#clkNY').textContent = new Date().toLocaleTimeString(); }
+    } catch (_) { $('#clkIST').textContent = new Date().toLocaleTimeString(); }
   }, 1000);
   let ticks = 0;
   Market.subscribe(() => {
     $('#footTicks').textContent = 'TICKS ' + (++ticks);
-    const s = Market.quote('SPX'), r = Market.quote('US10Y');
+    const s = Market.quote('NIFTY'), r = Market.quote('IN10Y');
     $('#stSPX').innerHTML = `${fmt(s.last, 2)} <span class="${tcls(s.pct)}">${pct(s.pct)}</span>`;
     $('#st10').innerHTML = `${fmt(r.last, 3)} <span class="${tcls(r.chg)}">${sgn(r.chg * 100, 1)}bp</span>`;
     UI.Alerts.check();
   });
-  $('#stFeed').textContent = IV_CONFIG.features.liveData ? 'LIVE' : 'SIM';
+  const paintFeed = () => {
+    const st = (window.IV && IV.status) ? IV.status() : { mode: 'sim' };
+    const el = $('#stFeed');
+    el.textContent = st.mode === 'live' ? ('LIVE' + (st.session && st.session.state ? ' ' + st.session.state : '')) : 'SIM';
+    el.style.color = st.mode === 'live' ? 'var(--t-green)' : 'var(--t-amber)';
+  };
+  paintFeed();
+  window.addEventListener('iv:datasource', paintFeed);
 
   /* ------------------------------------------------------------------ boot */
   function boot() {
     const n = PANELS.length;
-    const start = ['DES', 'GP', 'TOP', 'WEI', 'HM', 'PORT'].slice(0, n);
+    const start = ['DES', 'GP', 'TOP', 'IND', 'HM', 'PORT'].slice(0, n);
     start.forEach((f, i) => render(i, f, security));
     focus(0);
   }
@@ -651,7 +666,7 @@
   const initial = new URLSearchParams(location.search).get('cmd');
   if (initial) { focused = 0; run(initial); }
   cmd.focus();
-})();
+});
 </script>
 </body>
 </html>

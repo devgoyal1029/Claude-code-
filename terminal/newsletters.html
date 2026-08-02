@@ -44,8 +44,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('newsletters');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
 
@@ -71,7 +72,7 @@
      <span class="disclaimer">${UI.esc(a.d)}</span></li>`).join('');
 
   function paintMkt() {
-    $('#mkt').innerHTML = ['SPX', 'US10Y', 'EURUSD', 'CL1', 'BTC'].map(s => {
+    $('#mkt').innerHTML = ['NIFTY', 'SENSEX', 'IN10Y', 'USDINR', 'GOLD'].map(s => {
       const q = Market.quote(s);
       return `<div class="mini-quote"><span class="l">${UI.esc(q.name)}</span>
         <span class="r">${UI.fmt(q.last, q.decimals)} <span class="${UI.cls(q.pct)}">${UI.pctStr(q.pct)}</span></span></div>`;
@@ -79,7 +80,7 @@
   }
   paintMkt();
   Market.subscribe(paintMkt);
-})();
+});
 </script>
 </body>
 </html>

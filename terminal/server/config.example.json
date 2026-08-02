@@ -1,0 +1,24 @@
+{
+  "_comment": "Copy to server/config.json and fill in what you have. Everything is optional — the site runs live on the free providers with no keys at all. Environment variables (IV_TWELVEDATA, IV_FINNHUB, IV_MARKETAUX, IV_NEWSAPI, IV_KITEAPIKEY, IV_KITEACCESSTOKEN) override this file.",
+
+  "keys": {
+    "twelvedata": "",
+    "finnhub": "",
+    "alphavantage": "",
+    "marketaux": "",
+    "newsapi": "",
+    "kiteApiKey": "",
+    "kiteAccessToken": ""
+  },
+
+  "pollOpenMs": 5000,
+  "pollClosedMs": 60000,
+  "quoteTtlMs": 5000,
+  "newsTtlMs": 120000,
+
+  "streamSymbols": [
+    "NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "INDIAVIX",
+    "USDINR", "GOLD", "CRUDE", "BTC",
+    "RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY"
+  ]
+}

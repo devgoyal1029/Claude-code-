@@ -21,6 +21,7 @@
     <div class="strip-head"><h2>World Indexes</h2><span class="disclaimer" style="margin-left:auto">Click a region to filter</span></div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="regionPills">
       <button class="pill on" data-r="all">All</button>
+      <button class="pill" data-r="India">India</button>
       <button class="pill" data-r="Americas">Americas</button>
       <button class="pill" data-r="EMEA">EMEA</button>
       <button class="pill" data-r="APAC">Asia-Pacific</button>
@@ -98,8 +99,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('markets');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
 
@@ -237,7 +239,7 @@
   });
 
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-})();
+});
 </script>
 </body>
 </html>

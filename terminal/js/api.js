@@ -48,18 +48,27 @@
   const API = {
     normalise,
 
+    /* Quotes are kept current by live.js (SSE + polling); reading them from
+       Market is always correct in both live and simulated mode. */
     async quotes(symbols) {
-      if (!live()) return Market.quotes(symbols);
-      const j = await get(CFG.endpoints.quotes, { symbols: symbols.join(',') });
-      const out = (j.data || []).map(normalise.quote);
-      out.forEach(q => Market.ingest(q.sym, q.last, q));
+      if (window.IV) IV.watch(symbols);
       return Market.quotes(symbols);
     },
 
+    /* Real OHLC when the backend is up, simulated bars when it is not. */
     async history(sym, range) {
-      if (!live()) return Market.history(sym, range);
-      const j = await get(CFG.endpoints.ohlc, { symbol: sym, range });
-      return (j.bars || []).map(normalise.bar);
+      if (window.IV && IV.mode === 'live') {
+        try {
+          const j = await IV.history(sym, range);
+          if (j && j.bars && j.bars.length) {
+            Market.setHistory(sym, range, j.bars);
+            return j.bars;
+          }
+        } catch (err) {
+          console.warn('live history unavailable for', sym, range, err.message);
+        }
+      }
+      return Market.history(sym, range);
     },
 
     async fundamentals(sym) {
@@ -69,7 +78,15 @@
 
     async news(opts) {
       const o = opts || {};
-      if (!live()) {
+      if (window.IV && IV.mode === 'live') {
+        try {
+          const j = await IV.news({
+            section: o.section || '', symbol: o.symbol || '', q: o.q || '', limit: o.limit || 50
+          });
+          if (j && j.items) return j.items;
+        } catch (err) { console.warn('live news unavailable:', err.message); }
+      }
+      {
         let list = DATA.ARTICLES.slice();
         if (o.section) list = list.filter(a => a.s === o.section);
         if (o.symbol) list = list.filter(a => (a.sym || []).includes(o.symbol));
@@ -80,16 +97,21 @@
         list.sort((x, y) => y.ts - x.ts);
         return list.slice(0, o.limit || 50);
       }
-      const j = await get(CFG.endpoints.news, {
-        section: o.section, symbol: o.symbol, q: o.q, limit: o.limit || 50
-      }, 'news');
-      return (j.items || []).map(normalise.article);
     },
 
+    /* Local search always works; the backend widens it across the live wire. */
     async search(term) {
-      if (!live()) return Market.search(term);
-      const j = await get(CFG.endpoints.search, { q: term });
-      return { securities: (j.securities || []).map(normalise.quote), articles: (j.articles || []).map(normalise.article) };
+      const localResult = Market.search(term);
+      if (window.IV && IV.mode === 'live') {
+        try {
+          const j = await IV.search(term);
+          return {
+            securities: localResult.securities,
+            articles: (j.articles && j.articles.length) ? j.articles : localResult.articles
+          };
+        } catch (err) { /* fall through to local */ }
+      }
+      return localResult;
     },
 
     async calendar(kind) {

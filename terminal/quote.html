@@ -114,11 +114,12 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('markets');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
-  const sym = (new URLSearchParams(location.search).get('s') || 'AAPL').toUpperCase();
+  const sym = (new URLSearchParams(location.search).get('s') || 'RELIANCE').toUpperCase();
   const q = Market.quote(sym);
   if (!q) { document.querySelector('main').innerHTML = '<p style="padding:60px 0">Unknown symbol: ' + UI.esc(sym) + '</p>'; return; }
   document.title = `${sym} · ${q.name} — VERDICT`;
@@ -263,7 +264,7 @@
   $('#peers').innerHTML = peers.map(p => `<a class="mini-quote" href="${UI.qhref(p.sym)}">
     <span class="l">${UI.esc(p.sym)}</span><span class="r">${UI.fmt(p.last, p.decimals)}
     <span class="${UI.cls(p.pct)}">${UI.pctStr(p.pct)}</span></span></a>`).join('');
-  $('#rel').innerHTML = ['SPX', 'CCMP', 'VIX', 'US10Y', 'DXY'].map(s => {
+  $('#rel').innerHTML = ['NIFTY', 'SENSEX', 'BANKNIFTY', 'INDIAVIX', 'USDINR'].map(s => {
     const p = Market.quote(s);
     return `<a class="mini-quote" href="${UI.qhref(s)}"><span class="l">${s}</span>
       <span class="r">${UI.fmt(p.last, p.decimals)} <span class="${UI.cls(p.pct)}">${UI.pctStr(p.pct)}</span></span></a>`;
@@ -285,7 +286,7 @@
   });
 
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-})();
+});
 </script>
 </body>
 </html>

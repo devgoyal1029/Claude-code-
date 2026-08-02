@@ -13,7 +13,7 @@
     <h1 style="font-family:var(--serif);font-size:34px">Watchlist</h1>
     <span class="disclaimer">Stored locally in this browser</span>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-      <input id="add" placeholder="Add symbol (e.g. NVDA)" style="padding:8px 10px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);font-size:13px">
+      <input id="add" placeholder="Add symbol (e.g. INFY)" style="padding:8px 10px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);font-size:13px">
       <button class="btn btn-sm" id="addBtn">Add</button>
       <button class="btn btn-sm btn-ghost" id="alertBtn">Alerts</button>
       <button class="btn btn-sm btn-ghost" id="exportBtn">Export CSV</button>
@@ -56,8 +56,9 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('watchlist');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
   let table = null;
@@ -135,7 +136,7 @@
     $('#add').value = '';
   };
   $('#add').onkeydown = (e) => { if (e.key === 'Enter') $('#addBtn').click(); };
-  $('#alertBtn').onclick = () => UI.alertOverlay(UI.Watchlist.all()[0] || 'AAPL');
+  $('#alertBtn').onclick = () => UI.alertOverlay(UI.Watchlist.all()[0] || 'RELIANCE');
   $('#exportBtn').onclick = () => {
     const rows = [['Symbol', 'Name', 'Last', 'Change', 'PctChange', 'Volume']];
     Market.quotes(UI.Watchlist.all()).forEach(q => rows.push([q.sym, q.name, q.last, q.chg, q.pct.toFixed(2), q.volume]));
@@ -148,7 +149,7 @@
   window.addEventListener('iv:watchlist', draw);
   Market.subscribe(() => { paintSummary(); paintAlerts(); });
   draw(); paintAlerts();
-})();
+});
 </script>
 </body>
 </html>

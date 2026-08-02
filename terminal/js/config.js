@@ -9,9 +9,15 @@ window.IV_CONFIG = {
   brand: {
     name: 'VERDICT',
     mark: 'V',
-    tagline: 'Markets, Money and Power',
-    legal: 'Verdict Media LP',
+    tagline: 'India, Markets, Money and Power',
+    legal: 'Verdict Media India',
     year: new Date().getFullYear()
+  },
+
+  /* The live backend. Same origin when served by server/server.js. */
+  api: {
+    base: '/api',
+    healthTimeoutMs: 3500
   },
 
   /* ---- API keys: replace the PLACEHOLDER_* strings ---- */
@@ -39,7 +45,9 @@ window.IV_CONFIG = {
   },
 
   features: {
-    liveData: false,        // false => deterministic simulated feed (see market.js)
+    /* 'auto' asks the backend at boot: real data when it answers, deterministic
+       simulation (clearly labelled) when it does not. */
+    liveData: 'auto',
     tickMs: 1200,           // simulated tick cadence
     paywall: true,
     freeArticles: 3,        // metered articles before the wall
@@ -54,15 +62,14 @@ window.IV_CONFIG = {
      rather than a per-section rainbow. */
   sections: [
     { id: 'markets',    label: 'Markets',    accent: '#ff7a00' },
+    { id: 'economics',  label: 'Economy',    accent: '#000000' },
+    { id: 'companies',  label: 'Companies',  accent: '#0068ff' },
     { id: 'technology', label: 'Technology', accent: '#0068ff' },
     { id: 'politics',   label: 'Politics',   accent: '#ee1b22' },
     { id: 'wealth',     label: 'Wealth',     accent: '#000000' },
-    { id: 'pursuits',   label: 'Pursuits',   accent: '#8e5cd9' },
-    { id: 'opinion',    label: 'Opinion',    accent: '#000000' },
     { id: 'green',      label: 'Green',      accent: '#00a15a' },
     { id: 'crypto',     label: 'Crypto',     accent: '#ff7a00' },
-    { id: 'cities',     label: 'Cities',     accent: '#0068ff' },
-    { id: 'economics',  label: 'Economics',  accent: '#000000' }
+    { id: 'opinion',    label: 'Opinion',    accent: '#000000' }
   ],
 
   /* Terminal function codes surfaced in HELP and the command autocomplete. */
@@ -72,6 +79,7 @@ window.IV_CONFIG = {
     ['GIP', 'Intraday price graph'],
     ['TOP', 'Top news wire'],
     ['WEI', 'World equity indexes'],
+    ['IND', 'India indices monitor'],
     ['MOST', 'Most active'],
     ['FX',  'Currency monitor'],
     ['CMD', 'Commodity monitor'],

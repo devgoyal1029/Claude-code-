@@ -101,16 +101,18 @@
 <script src="js/api.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/components.js"></script>
+<script src="js/live.js"></script>
 <script>
-(function () {
+IV.ready(function () {
   UI.mount('home');
   const D = IV_DATA, $ = (s) => document.querySelector(s);
 
   /* ---- market strip ---- */
-  const stripSyms = ['SPX', 'CCMP', 'INDU', 'UKX', 'NKY', 'US10Y', 'CL1', 'GC1', 'EURUSD', 'BTC'];
+  const stripSyms = ['NIFTY', 'SENSEX', 'BANKNIFTY', 'FINNIFTY', 'RELIANCE', 'TCS', 'IN10Y', 'USDINR', 'GOLD', 'BTC'];
   function drawStrip() {
     $('#mktHero').innerHTML = stripSyms.map(s => {
       const q = Market.quote(s);
+      if (!q) return '';                     // symbol not in the universe
       return `<a class="mkt-cell" href="${UI.qhref(s)}" data-c="${s}">
         <span class="nm">${UI.esc(q.name)}</span>
         <span class="px" data-f="px">${UI.fmt(q.last, q.decimals)}</span>
@@ -155,7 +157,7 @@
   $('#latest').innerHTML = rest.slice(0, 6).map(a => UI.card(a, 'm')).join('');
   $('#opinion').innerHTML = D.articlesBySection('opinion').slice(0, 3).map(a => {
     const c = D.author(a.col || a.a);
-    return `<a class="card" href="${UI.ahref(a.id)}">
+    return `<a class="card" href="${UI.ahref(a)}"${UI.aattr(a)}>
       <div style="display:flex;gap:12px;align-items:center">
         <img src="${D.image(c.id, 120, 120)}" width="52" height="52" style="border-radius:50%" alt="">
         <div><div class="eyebrow">${UI.esc(c.name)}</div><div class="disclaimer">${UI.esc(c.beat || c.role)}</div></div>
@@ -178,7 +180,7 @@
   }
   drawWire();
   $('#mostRead').innerHTML = D.mostRead(6).map(a =>
-    `<li><a href="${UI.ahref(a.id)}" class="${a.p ? 'premium' : ''}">${UI.esc(a.t)}</a></li>`).join('');
+    `<li><a href="${UI.ahref(a)}"${UI.aattr(a)} class="${a.p ? 'premium' : ''}">${UI.esc(a.t)}</a></li>`).join('');
 
   function drawWatch() {
     const list = UI.Watchlist.all().slice(0, 8);
@@ -229,7 +231,7 @@
   setInterval(drawMovers, 30000);
 
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-})();
+});
 </script>
 </body>
 </html>
