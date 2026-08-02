@@ -465,13 +465,24 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
     const showImg = variant !== 's';
     const showDek = variant === 'xl' || variant === 'l';
     return `<a class="card ${variant === 'row' ? 'row' : ''}" href="${ahref(a)}"${aattr(a)}>
-      ${showImg ? `<img class="thumb" loading="lazy" src="${DATA.image(a.id, 600, 400)}" alt="">` : ''}
+      ${showImg ? `<img class="thumb" loading="lazy" src="${esc(a.image || DATA.image(a.id, 600, 400))}" alt=""
+           onerror="this.onerror=null;this.src='${DATA.image(a.id, 600, 400)}'">` : ''}
       <div>
         <div class="eyebrow sec" style="--sec:${sec.accent}">${esc(sec.label)}</div>
         <h3 class="${hl} ${a.p ? 'premium' : ''}">${esc(a.t)}</h3>
         ${showDek ? `<p class="dek">${esc(a.d)}</p>` : ''}
-        <div class="byline">${byline}<span class="dot"></span>${timeAgo(a.ts)}${a.live ? '<span class="dot"></span>opens publisher ↗' : (a.mins ? `<span class="dot"></span>${a.mins} min read` : '')}</div>
+        <div class="byline">${byline}<span class="dot"></span>${timeAgo(a.ts)}${sentimentChip(a)}${a.live ? '<span class="dot"></span>opens publisher ↗' : (a.mins ? `<span class="dot"></span>${a.mins} min read` : '')}</div>
       </div></a>`;
+  }
+
+  /* Sentiment arrives as -1..1 per story from the news provider. Only show it
+     when it is decisive — a score hovering around zero says nothing. */
+  function sentimentChip(a) {
+    if (typeof a.sentiment !== 'number' || Math.abs(a.sentiment) < 0.15) return '';
+    const pos = a.sentiment > 0;
+    return `<span class="dot"></span><span class="sent ${pos ? 'pos' : 'neg'}" ` +
+      `title="Story sentiment ${a.sentiment.toFixed(2)} (source: news provider)">` +
+      `${pos ? '▲' : '▼'} ${Math.abs(a.sentiment).toFixed(2)}</span>`;
   }
 
   /* -------------------------------------------------- live quote table --- */
@@ -632,7 +643,7 @@ ${CFG.features.breakingBanner ? breakingHtml() : ''}`;
 
   window.UI = {
     esc, fmt, signed, pctStr, cls, abbr, timeAgo, clockStr, qhref, ahref,
-    mount, card, quoteTable, toast, theme, Watchlist, Alerts, Paywall, aattr,
+    mount, card, quoteTable, toast, theme, Watchlist, Alerts, Paywall, aattr, sentimentChip,
     searchOverlay, signInOverlay, newsletterOverlay, alertOverlay, tvDock, icon, LS,
     flash, reduced
   };

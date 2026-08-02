@@ -11,6 +11,12 @@
     "kiteAccessToken": ""
   },
 
+  "_marketaux": "Free plan is metered per REQUEST. The server refreshes hourly and spends marketauxPagesPerRefresh requests each time — keep pages x 24 under your daily allowance.",
+  "marketauxTtlMs": 3600000,
+  "marketauxDailyBudget": 90,
+  "marketauxPagesPerRefresh": 3,
+  "marketauxPageSize": 50,
+
   "pollOpenMs": 5000,
   "pollClosedMs": 60000,
   "quoteTtlMs": 5000,

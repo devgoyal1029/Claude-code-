@@ -313,24 +313,22 @@ function keyed(cfg) {
       return out.filter(r => r && !r.__error);
     },
 
-    /* Company/market news with sentiment, if a key is present. */
+    /* ---------------------------------------------------------------------
+     * Marketaux. The free plan is metered per request, not per article, so
+     * the budget below is spent deliberately: a handful of pages once an hour
+     * rather than a call per page view. Marketaux is an ENRICHMENT layer — RSS
+     * remains the backbone because it is unlimited — and it contributes the
+     * two things RSS cannot: a real photo per story and per-entity sentiment.
+     * ------------------------------------------------------------------- */
     async news(query) {
-      if (cfg.keys.marketaux) {
-        const j = await F.json(`${BASE.marketaux}/news/all?countries=in&language=en` +
-          `&filter_entities=true&limit=50&api_token=${cfg.keys.marketaux}` +
-          (query ? `&search=${encodeURIComponent(query)}` : ''));
-        return (j.data || []).map(a => ({
-          id: 'mx-' + a.uuid, t: a.title, d: a.description || a.snippet || '',
-          url: a.url, src: (a.source || 'Marketaux'), ts: Date.parse(a.published_at) || Date.now(),
-          sym: (a.entities || []).map(e => e.symbol).filter(Boolean), source: 'marketaux'
-        }));
-      }
+      if (cfg.keys.marketaux) return marketaux.fetch(cfg, query);
       if (cfg.keys.newsapi) {
         const j = await F.json(`${BASE.newsapi}/top-headlines?country=in&category=business&pageSize=50` +
           `&apiKey=${cfg.keys.newsapi}` + (query ? `&q=${encodeURIComponent(query)}` : ''));
         return (j.articles || []).map((a, i) => ({
           id: 'na-' + i + '-' + (Date.parse(a.publishedAt) || 0), t: a.title,
           d: a.description || '', url: a.url, src: a.source?.name || 'NewsAPI',
+          image: a.urlToImage || null,
           ts: Date.parse(a.publishedAt) || Date.now(), sym: [], source: 'newsapi'
         }));
       }
@@ -338,6 +336,107 @@ function keyed(cfg) {
     }
   };
 }
+
+/* ============================================================ MARKETAUX === */
+/* A day's requests are a fixed, small budget. The counter resets at IST
+   midnight and every call is drawn against it, so a runaway loop or a busy day
+   can never blow through the quota and leave the site without news. */
+const marketaux = {
+  budget: { day: null, used: 0 },
+
+  _istDay() {
+    const now = new Date();
+    return new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 60000)
+      .toISOString().slice(0, 10);
+  },
+  spend(n) {
+    const day = marketaux._istDay();
+    if (marketaux.budget.day !== day) marketaux.budget = { day, used: 0 };
+    marketaux.budget.used += n;
+    return marketaux.budget.used;
+  },
+  remaining(cfg) {
+    const day = marketaux._istDay();
+    if (marketaux.budget.day !== day) return cfg.marketauxDailyBudget;
+    return Math.max(0, cfg.marketauxDailyBudget - marketaux.budget.used);
+  },
+
+  normalise(a) {
+    const entities = (a.entities || []).filter(e => e.symbol);
+    /* Marketaux scores sentiment per entity; the story-level figure is the
+       mean of the entities it actually mentions. */
+    const scored = entities.filter(e => typeof e.sentiment_score === 'number');
+    const sentiment = scored.length
+      ? +(scored.reduce((s, e) => s + e.sentiment_score, 0) / scored.length).toFixed(3)
+      : null;
+    return {
+      id: 'mx-' + a.uuid,
+      t: a.title,
+      d: a.description || a.snippet || '',
+      url: a.url,
+      image: a.image_url || null,
+      src: a.source || 'Marketaux',
+      ts: Date.parse(a.published_at) || Date.now(),
+      sym: entities.map(e => String(e.symbol).replace(/\.(NS|BO)$/i, '')).slice(0, 6),
+      sentiment,
+      entities: entities.slice(0, 6).map(e => ({
+        symbol: String(e.symbol).replace(/\.(NS|BO)$/i, ''),
+        name: e.name,
+        score: typeof e.sentiment_score === 'number' ? e.sentiment_score : null
+      })),
+      source: 'marketaux'
+    };
+  },
+
+  async page(cfg, params) {
+    const q = new URLSearchParams({
+      api_token: cfg.keys.marketaux,
+      language: 'en',
+      countries: 'in',
+      limit: String(cfg.marketauxPageSize),
+      ...params
+    });
+    const j = await F.json(`${BASE.marketaux}/news/all?${q}`);
+    if (j && j.error) throw new Error('marketaux: ' + (j.error.message || j.error.code));
+    return {
+      items: (j.data || []).map(marketaux.normalise),
+      meta: j.meta || {}
+    };
+  },
+
+  async fetch(cfg, query) {
+    const budgetLeft = marketaux.remaining(cfg);
+    if (budgetLeft <= 0) {
+      console.warn('[marketaux] daily budget spent; serving RSS only until IST midnight');
+      return [];
+    }
+    const pages = Math.max(1, Math.min(cfg.marketauxPagesPerRefresh, budgetLeft));
+    const out = [];
+    let meta = {};
+    for (let p = 1; p <= pages; p++) {
+      try {
+        const res = await marketaux.page(cfg, Object.assign(
+          { page: String(p) },
+          query ? { search: query } : { filter_entities: 'true' }
+        ));
+        marketaux.spend(1);
+        meta = res.meta;
+        out.push(...res.items);
+        /* Stop early rather than burning budget on empty pages. */
+        if (!res.items.length) break;
+        if (meta.found && p * cfg.marketauxPageSize >= meta.found) break;
+      } catch (err) {
+        marketaux.spend(1);
+        console.warn('[marketaux] page', p, 'failed:', err.message);
+        break;
+      }
+    }
+    console.log(`[marketaux] ${out.length} articles from ${pages} request(s); ` +
+                `${marketaux.remaining(cfg)}/${cfg.marketauxDailyBudget} left today` +
+                (meta.returned ? ` (api returns ${meta.returned}/request)` : ''));
+    return out;
+  }
+};
 
 /* ================================================================ RSS ===== */
 /* Indian financial press. Each feed is tagged with the section it maps to. */
@@ -386,13 +485,15 @@ function parseFeed(xml, meta) {
     }
     const date = clean(tag(body, 'pubDate')) || clean(tag(body, 'published')) ||
                  clean(tag(body, 'updated')) || clean(tag(body, 'dc:date'));
-    const desc = stripTags(clean(tag(body, 'description') || tag(body, 'summary') || tag(body, 'content')));
+    const rawDesc = clean(tag(body, 'description') || tag(body, 'summary') || tag(body, 'content'));
+    const desc = stripTags(rawDesc);
     const ts = date ? (Date.parse(date) || Date.now()) : Date.now();
     items.push({
       id: 'rss-' + hash(link || title),
       t: decode(title),
       d: decode(desc).slice(0, 320),
       url: link,
+      image: feedImage(body, rawDesc),
       src: meta.src,
       s: meta.section,
       ts,
@@ -400,6 +501,26 @@ function parseFeed(xml, meta) {
     });
   }
   return items;
+}
+
+/* Indian publishers ship the article photo in the feed itself, in one of four
+   places depending on the CMS. Try them in order of reliability. */
+function feedImage(body, rawDesc) {
+  const attr = (re) => { const m = body.match(re); return m ? decode(m[1]) : null; };
+  const candidate =
+    attr(/<media:content[^>]+url=["']([^"']+)["']/i) ||
+    attr(/<media:thumbnail[^>]+url=["']([^"']+)["']/i) ||
+    attr(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i) ||
+    attr(/<enclosure[^>]+type=["']image[^>]*url=["']([^"']+)["']/i) ||
+    (rawDesc && (rawDesc.match(/<img[^>]+src=["']([^"']+)["']/i) || [])[1]) ||
+    attr(/<image[^>]*>\s*<url>([^<]+)<\/url>/i);
+  if (!candidate) return null;
+  const url = String(candidate).trim();
+  /* Only https — a mixed-content image would be blocked on a secure page. */
+  if (!/^https:\/\//i.test(url)) return null;
+  /* Skip tracking pixels and spacer gifs that some feeds embed. */
+  if (/\b1x1\b|spacer|pixel\.gif|blank\.(gif|png)/i.test(url)) return null;
+  return url;
 }
 
 function tag(s, name) {
@@ -518,4 +639,4 @@ function indiaSession(now = new Date()) {
   return { state: 'CLOSED', label: 'Market closed', ist };
 }
 
-module.exports = { yahoo, coingecko, frankfurter, keyed, rss, indiaSession, BASE, pool };
+module.exports = { yahoo, coingecko, frankfurter, keyed, marketaux, rss, indiaSession, BASE, pool };

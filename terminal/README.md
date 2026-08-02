@@ -164,6 +164,7 @@ python3 -m http.server 8899 --directory terminal
 | Crypto in INR | **CoinGecko** | BTC, ETH, SOL, XRP, DOGE |
 | FX | **Frankfurter** (ECB) | USDINR, EURINR, GBPINR, JPYINR |
 | News | **22 RSS feeds** | Economic Times, Mint, Moneycontrol, Business Standard, BusinessLine, Financial Express, Google News India |
+| Photos | the same RSS feeds | Publishers ship the article image in `media:content`, `media:thumbnail`, `enclosure` or the description HTML. Insecure and tracking-pixel URLs are dropped; anything unreachable falls back to generated art. |
 
 Headlines are de-duplicated across sources, auto-tagged to the securities they
 mention, and grouped into sections. Live stories link out to the publisher —
@@ -178,7 +179,7 @@ Copy `server/config.example.json` to `server/config.json`:
 |---|---|---|
 | `twelvedata` | **India G-Sec yields** (IN10Y/5Y/2Y) — no free feed carries these | 800 calls/day |
 | `finnhub` | Backup quote provider, failover when Yahoo rate-limits | 60 calls/min |
-| `marketaux` | News with sentiment scoring and entity tagging | 100 req/day |
+| `marketaux` | Per-story sentiment, entity tagging, and photos for its own stories | 100 req/day |
 | `newsapi` | Additional headline coverage | 100 req/day |
 | `kiteApiKey` + `kiteAccessToken` | **True tick-by-tick realtime** from Zerodha — Yahoo is delayed ~1–15 min | paid, ₹2000/mo |
 
@@ -267,11 +268,11 @@ terminal/
 └── tests/mock-upstream.js        stands in for the vendors, offline
 ```
 
-## Tests — 155 checks
+## Tests — 169 checks
 
 ```bash
-node tests/live-pipeline.test.js     # 42 — backend against a mock vendor
-node tests/live-browser.test.js      # 25 — browser against the live backend
+node tests/live-pipeline.test.js     # 51 — backend against a mock vendor
+node tests/live-browser.test.js      # 30 — browser against the live backend
 python3 -m http.server 8899 --directory . &
 node tests/ui-smoke.js               # 88 — every page, 3 widths, 2 themes
 ```

@@ -372,6 +372,10 @@ h1, h2, h3, h4, p, li, a, td, th { overflow-wrap: break-word; }
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center; letter-spacing: .01em;
 }
 .byline .dot::before { content: '·'; margin-right: 8px; }
+/* Story sentiment, shown only when the score is decisive. */
+.sent { font-weight: 700; font-size: 10.5px; letter-spacing: .04em; }
+.sent.pos { color: var(--up); }
+.sent.neg { color: var(--down); }
 
 /* ------------------------------------------------------------------ cards -- */
 .card { display: grid; gap: 12px; }

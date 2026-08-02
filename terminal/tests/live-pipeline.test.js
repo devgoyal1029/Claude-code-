@@ -55,6 +55,12 @@ async function waitForPort(port, tries = 40) {
     IV_COINGECKO_BASE: `http://127.0.0.1:${MOCK_PORT}/cg`,
     IV_FX_BASE: `http://127.0.0.1:${MOCK_PORT}/fx`,
     IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
+    IV_MARKETAUX_BASE: `http://127.0.0.1:${MOCK_PORT}/marketaux`,
+    IV_MARKETAUX: 'mock-token',
+    IV_MARKETAUX_PAGES: '3',
+    IV_MARKETAUX_PAGE_SIZE: '3',
+    IV_MARKETAUX_BUDGET: '10',
+    IV_RSS_MOCK: `http://127.0.0.1:${MOCK_PORT}/rss`,
     IV_QUOTE_TTL: '300',
     IV_POLL_OPEN: '600',
     IV_POLL_CLOSED: '600'
@@ -105,6 +111,8 @@ async function waitForPort(port, tries = 40) {
     'HTML entities decode in the summary');
   ok(items[0].d.includes('’'), 'numeric entities decode');
   ok(items[0].url.startsWith('https://'), 'item links survive');
+  ok(items[0].image && items[0].image.startsWith('https://'),
+    'the article photo is pulled out of the feed (' + items[0].image + ')');
   ok(items[0].ts > Date.now() - 86400000, 'pubDate parses to a recent timestamp');
   const tagged = P.rss.tagSymbols(items[0].t + ' ' + items[0].d);
   ok(tagged.includes('RELIANCE') && tagged.includes('TCS'),
@@ -128,6 +136,31 @@ async function waitForPort(port, tries = 40) {
 
   const faIdx = await get('/api/fundamentals?symbol=NIFTY');
   ok(faIdx.body.available === false, 'fundamentals refused for non-equities rather than faked');
+
+  // ---- 5c. Marketaux: photos, sentiment and a respected budget -------------
+  const nx = await get('/api/news?limit=100');
+  const mxItems = (nx.body.items || []).filter(a => a.source === 'marketaux' || a.enrichedBy === 'marketaux');
+  ok(mxItems.length > 0, `Marketaux articles reach /api/news (${mxItems.length})`);
+  const withImage = (nx.body.items || []).filter(a => a.image && /^https?:/.test(a.image));
+  ok(withImage.length > 0, `stories carry a real photo URL (${withImage.length})`);
+  const withSent = (nx.body.items || []).filter(a => typeof a.sentiment === 'number');
+  ok(withSent.length > 0, `stories carry a sentiment score (${withSent.length})`);
+  const negative = withSent.find(a => a.sentiment < 0);
+  ok(!!negative, 'negative sentiment survives the averaging (not clamped to positive)');
+  const mxSym = mxItems.find(a => (a.sym || []).includes('INFY'));
+  ok(!!mxSym, 'entity symbols are stripped of the .NS suffix and matched to the universe');
+
+  const spent = await (await fetch(`http://127.0.0.1:${MOCK_PORT}/__mxcount`)).json();
+  ok(spent.requests > 0 && spent.requests <= 3,
+    `budget respected: ${spent.requests} request(s) spent, cap is 3 per refresh`);
+  await get('/api/news?limit=100');
+  const spent2 = await (await fetch(`http://127.0.0.1:${MOCK_PORT}/__mxcount`)).json();
+  ok(spent2.requests === spent.requests,
+    'a second news request is served from cache without spending more budget');
+
+  const healthMx = await get('/api/health');
+  ok(healthMx.body.marketaux && healthMx.body.marketaux.remaining < healthMx.body.marketaux.budgetPerDay,
+    `health reports the remaining daily budget (${healthMx.body.marketaux && healthMx.body.marketaux.remaining}/${healthMx.body.marketaux && healthMx.body.marketaux.budgetPerDay})`);
 
   // ---- 6. health -----------------------------------------------------------
   const health = await get('/api/health');

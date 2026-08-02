@@ -58,6 +58,12 @@ function loadConfig() {
     pollOpenMs: +(file.pollOpenMs || process.env.IV_POLL_OPEN || 5000),
     pollClosedMs: +(file.pollClosedMs || process.env.IV_POLL_CLOSED || 60000),
     newsTtlMs: +(file.newsTtlMs || process.env.IV_NEWS_TTL || 120000),
+    /* Marketaux is metered per request. Refresh it hourly and spend a few
+       pages per refresh, well inside the free plan's daily allowance. */
+    marketauxTtlMs: +(file.marketauxTtlMs || process.env.IV_MARKETAUX_TTL || 3600000),
+    marketauxDailyBudget: +(file.marketauxDailyBudget || process.env.IV_MARKETAUX_BUDGET || 90),
+    marketauxPagesPerRefresh: +(file.marketauxPagesPerRefresh || process.env.IV_MARKETAUX_PAGES || 3),
+    marketauxPageSize: +(file.marketauxPageSize || process.env.IV_MARKETAUX_PAGE_SIZE || 50),
     quoteTtlMs: +(file.quoteTtlMs || process.env.IV_QUOTE_TTL || 5000),
     historyTtlMs: +(file.historyTtlMs || 300000),
     streamSymbols: file.streamSymbols || [
@@ -147,12 +153,41 @@ const fundamentals = (sym) => F.cached(`fa:${sym}`, 6 * 3600e3, async () => {
   }
 });
 
+/* Marketaux gets its own, much longer cache than RSS: RSS is free to poll every
+   two minutes, Marketaux is not. */
+const enrichedNews = () => F.cached('news:marketaux', CFG.marketauxTtlMs,
+  () => KEYED.news().catch(err => {
+    console.warn('[news] marketaux unavailable:', err.message);
+    return [];
+  }));
+
 const news = () => F.cached('news:all', CFG.newsTtlMs, async () => {
   const [feedItems, keyedItems] = await Promise.all([
     P.rss.fetchAll().catch(() => []),
-    KEYED.news().catch(() => [])
+    enrichedNews()
   ]);
-  const all = [...feedItems, ...keyedItems];
+
+  /* Merge on the headline. When the same story arrives from both, keep the RSS
+     copy (better section tagging) but graft on what only Marketaux has: the
+     photo and the sentiment score. */
+  const key = (t) => String(t).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 60);
+  const byKey = new Map();
+  feedItems.forEach(a => byKey.set(key(a.t), a));
+
+  keyedItems.forEach(m => {
+    const k = key(m.t);
+    const existing = byKey.get(k);
+    if (existing) {
+      if (!existing.image && m.image) existing.image = m.image;
+      if (existing.sentiment == null && m.sentiment != null) existing.sentiment = m.sentiment;
+      if ((!existing.sym || !existing.sym.length) && m.sym.length) existing.sym = m.sym;
+      existing.enrichedBy = 'marketaux';
+    } else {
+      byKey.set(k, m);
+    }
+  });
+
+  const all = [...byKey.values()];
   all.forEach(a => { if (!a.sym || !a.sym.length) a.sym = P.rss.tagSymbols(a.t + ' ' + a.d); });
   all.sort((a, b) => b.ts - a.ts);
   return all;
@@ -185,6 +220,12 @@ const routes = {
       },
       upstreamHealth: F.health(),
       newsItems: newsCount,
+      marketaux: CFG.keys.marketaux ? {
+        budgetPerDay: CFG.marketauxDailyBudget,
+        usedToday: P.marketaux.budget.used,
+        remaining: P.marketaux.remaining(CFG),
+        refreshMinutes: Math.round(CFG.marketauxTtlMs / 60000)
+      } : null,
       sample,
       universe: SYM.all().length,
       pollMs: session.state === 'OPEN' ? CFG.pollOpenMs : CFG.pollClosedMs,

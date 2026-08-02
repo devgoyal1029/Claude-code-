@@ -30,6 +30,7 @@ const SEED = {
   'GC=F': 2381.40, 'CL=F': 78.14, '^TNX': 4.286
 };
 let drift = 0;
+let mxRequests = 0;   // how many Marketaux calls the server actually spent
 
 function priceFor(ticker) {
   const base = SEED[ticker] || 1000 + (hash(ticker) % 4000);
@@ -87,13 +88,14 @@ function yahooChart(ticker, range, interval) {
 }
 
 const RSS_SAMPLE = (title, n) => `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0"><channel><title>${title}</title>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${title}</title>
 ${Array.from({ length: n }, (_, i) => `
   <item>
     <title><![CDATA[${title} headline ${i + 1}: Reliance and TCS lead Nifty higher as RBI holds rates]]></title>
     <link>https://example.test/${encodeURIComponent(title)}/${i + 1}</link>
     <pubDate>${new Date(Date.now() - i * 600000).toUTCString()}</pubDate>
     <description><![CDATA[Summary body for item ${i + 1} mentioning Infosys &amp; HDFC Bank with an &#8217;entity&#8217; to decode.]]></description>
+    <media:content url="https://images.example.test/${encodeURIComponent(title)}-${i + 1}.jpg" medium="image" />
   </item>`).join('')}
 </channel></rss>`;
 
@@ -204,6 +206,43 @@ const server = http.createServer((req, res) => {
     }
     return json({ base: 'USD', rates });
   }
+
+  // --- Marketaux /news/all (documented response shape) ---
+  if (p === '/marketaux/news/all') {
+    if (!u.searchParams.get('api_token')) {
+      res.writeHead(401);
+      return res.end(JSON.stringify({ error: { code: 'auth_error', message: 'no token' } }));
+    }
+    const page = +(u.searchParams.get('page') || 1);
+    const limit = +(u.searchParams.get('limit') || 3);
+    mxRequests++;
+    const data = Array.from({ length: limit }, (_, i) => {
+      const n = (page - 1) * limit + i + 1;
+      return {
+        uuid: `mock-uuid-${page}-${i}`,
+        title: `Marketaux story ${n}: Infosys posts margin beat as deal pipeline holds`,
+        description: `Marketaux summary ${n} covering Infosys and the wider IT pack.`,
+        snippet: 'Snippet text.',
+        url: `https://example.test/marketaux/${n}`,
+        image_url: `https://images.example.test/story-${n}.jpg`,
+        language: 'en',
+        published_at: new Date(Date.now() - n * 900000).toISOString(),
+        source: 'moneycontrol.com',
+        relevance_score: null,
+        entities: [
+          { symbol: 'INFY.NS', name: 'Infosys Limited', exchange: 'NSE', country: 'in',
+            type: 'equity', industry: 'Technology', match_score: 22.6,
+            sentiment_score: n % 3 === 0 ? -0.4021 : 0.6218, highlights: [] },
+          { symbol: 'TCS.NS', name: 'Tata Consultancy Services', exchange: 'NSE', country: 'in',
+            type: 'equity', industry: 'Technology', match_score: 14.2,
+            sentiment_score: n % 3 === 0 ? -0.2517 : 0.3106, highlights: [] }
+        ],
+        similar: []
+      };
+    });
+    return json({ meta: { found: 4212, returned: limit, limit, page }, data });
+  }
+  if (p === '/__mxcount') return json({ requests: mxRequests });
 
   // --- RSS feeds (any path under /rss) ---
   if (p.startsWith('/rss')) {

@@ -54,6 +54,10 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
       IV_FX_BASE: `http://127.0.0.1:${MOCK_PORT}/fx`,
       IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
       IV_RSS_MOCK: `http://127.0.0.1:${MOCK_PORT}/rss`,
+      IV_MARKETAUX_BASE: `http://127.0.0.1:${MOCK_PORT}/marketaux`,
+      IV_MARKETAUX: 'mock-token',
+      IV_MARKETAUX_PAGES: '2',
+      IV_MARKETAUX_PAGE_SIZE: '4',
       IV_QUOTE_TTL: '400',
       IV_POLL_OPEN: '800',
       IV_POLL_CLOSED: '800'
@@ -115,6 +119,37 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   ok(leadHref && leadHref.startsWith('http'), 'live stories link out to the publisher');
   const target = await pg.getAttribute('.lead .card', 'target');
   ok(target === '_blank', 'external stories open in a new tab');
+
+  /* Real photos, not the generated placeholder art. RSS supplies most of them
+     via media:content; Marketaux supplies the rest plus sentiment. */
+  const dataImgs = await pg.evaluate(() =>
+    IV_DATA.ARTICLES.filter(a => a.image && a.image.startsWith('http')).length);
+  ok(dataImgs > 5, `client holds real photo URLs (${dataImgs} stories)`);
+  /* Inspect the markup the renderer produces rather than the live DOM: in this
+     harness the mock image host does not resolve, so the onerror fallback has
+     already swapped the attribute by the time the DOM is read. */
+  const cardMarkup = await pg.evaluate(() => {
+    const withPhoto = IV_DATA.ARTICLES.find(a => a.image && a.image.startsWith('http'));
+    return withPhoto ? UI.card(withPhoto, 'm') : '';
+  });
+  ok(cardMarkup.includes('src="https://'), 'a card renders the real photo URL, not the placeholder');
+  ok(cardMarkup.includes('onerror='), 'and carries a fallback for when the publisher image 404s');
+
+  /* The fallback must actually fire and land on the generated art. */
+  const fellBack = await pg.evaluate(async () => {
+    const a = IV_DATA.ARTICLES.find(x => x.image);
+    document.body.insertAdjacentHTML('beforeend', '<div id="probe">' + UI.card(a, 'm') + '</div>');
+    const img = document.querySelector('#probe img.thumb');
+    img.scrollIntoView();          // loading="lazy" defers until visible
+    await new Promise(r => setTimeout(r, 3000));
+    const src = img.getAttribute('src');
+    document.getElementById('probe').remove();
+    return src.startsWith('data:image/svg');
+  });
+  ok(fellBack, 'unreachable publisher images fall back to generated art instead of a broken icon');
+  const sentInData = await pg.evaluate(() =>
+    IV_DATA.ARTICLES.filter(a => typeof a.sentiment === 'number').length);
+  ok(sentInData > 0, `sentiment scores reach the client (${sentInData} stories)`);
 
   const wireCount = await pg.$$eval('#wire li', els => els.length);
   ok(wireCount > 3, `wire rail populated from the feed (${wireCount} lines)`);

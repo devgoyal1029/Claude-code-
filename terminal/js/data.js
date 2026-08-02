@@ -263,6 +263,9 @@
         a: null,
         src: a.src || 'Wire',
         url: a.url || null,
+        image: a.image || null,        // real photo when the source supplied one
+        sentiment: (typeof a.sentiment === 'number') ? a.sentiment : null,
+        src2: a.enrichedBy || null,
         ts: a.ts || Date.now(),
         mins: Math.max(2, Math.round((a.d || '').split(/\s+/).length / 90) + 2),
         sym: a.sym || [],
