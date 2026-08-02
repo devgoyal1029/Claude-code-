@@ -52,6 +52,8 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
       IV_YAHOO_BASE: `http://127.0.0.1:${MOCK_PORT}/yahoo`,
       IV_COINGECKO_BASE: `http://127.0.0.1:${MOCK_PORT}/cg`,
       IV_FX_BASE: `http://127.0.0.1:${MOCK_PORT}/fx`,
+      IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
+    IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
       IV_RSS_MOCK: `http://127.0.0.1:${MOCK_PORT}/rss`,
       IV_QUOTE_TTL: '400',
       IV_POLL_OPEN: '800',
@@ -133,6 +135,16 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   ok(px && px !== '—' && px.length > 3, `quote page shows a live price (${px})`);
   const barCount = await pg.evaluate(async () => (await API.history('RELIANCE', '1D')).length);
   ok(barCount > 20, `chart series came from the backend (${barCount} bars)`);
+
+  // fundamentals must be the real ones, not the simulator's
+  const faOnPage = await pg.evaluate(async () => await API.fundamentals('RELIANCE'));
+  ok(faOnPage.available && faOnPage.source === 'yahoo',
+    `fundamentals came from the backend (source=${faOnPage.source})`);
+  await pg.waitForTimeout(1200);
+  const faGrid = await pg.textContent('#faGrid');
+  ok(faGrid.includes('28.40'), 'quote page renders the real P/E');
+  const faNote = await pg.textContent('#faWrap .disclaimer');
+  ok(faNote.includes('yahoo'), `fundamentals block states its source ("${faNote.trim()}")`);
 
   // ---- terminal shows the live feed state ---------------------------------
   await pg.goto(BASE + '/terminal.html', { waitUntil: 'domcontentloaded' });

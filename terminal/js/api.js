@@ -71,9 +71,20 @@
       return Market.history(sym, range);
     },
 
+    /* Real ratios when the backend can get them. When it cannot, the result is
+       flagged unavailable and the page shows dashes — it never silently swaps
+       in simulated numbers. */
     async fundamentals(sym) {
-      if (!live()) return Market.fundamentals(sym);
-      return get(CFG.endpoints.fundamentals, { symbol: sym });
+      if (window.IV && IV.mode === 'live') {
+        try {
+          const fa = await IV.fundamentals(sym);
+          if (fa && fa.available) return fa;
+          return { available: false, reason: (fa && fa.reason) || 'not available upstream' };
+        } catch (err) {
+          return { available: false, reason: err.message };
+        }
+      }
+      return Object.assign({ available: true, source: 'simulated' }, Market.fundamentals(sym));
     },
 
     async news(opts) {

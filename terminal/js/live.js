@@ -182,6 +182,7 @@
     status: snapshot,
     get mode() { return state.mode; },
     history: async (sym, range) => getJSON(`/history?symbol=${encodeURIComponent(sym)}&range=${range}`, 12000),
+    fundamentals: async (sym) => getJSON('/fundamentals?symbol=' + encodeURIComponent(sym), 12000),
     news: async (params) => getJSON('/news?' + new URLSearchParams(params || {}), 10000),
     search: async (q) => getJSON('/search?q=' + encodeURIComponent(q), 8000)
   };

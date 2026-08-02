@@ -136,6 +136,17 @@ const history = (sym, range) => F.cached(
   }
 );
 
+/* Fundamentals change daily at most, so cache hard. If the upstream refuses
+   (Yahoo gates quoteSummary behind a crumb that can fail), say so plainly —
+   the client renders dashes rather than substituting simulated ratios. */
+const fundamentals = (sym) => F.cached(`fa:${sym}`, 6 * 3600e3, async () => {
+  try {
+    return await P.yahoo.fundamentals(sym);
+  } catch (err) {
+    return { available: false, source: null, reason: String(err.message || err) };
+  }
+});
+
 const news = () => F.cached('news:all', CFG.newsTtlMs, async () => {
   const [feedItems, keyedItems] = await Promise.all([
     P.rss.fetchAll().catch(() => []),
@@ -194,6 +205,17 @@ const routes = {
     const range = (u.searchParams.get('range') || '1D').toUpperCase();
     if (!sym) throw httpError(400, 'symbol parameter required');
     return await history(sym, range);
+  },
+
+  '/api/fundamentals': async (u) => {
+    const sym = (u.searchParams.get('symbol') || '').toUpperCase();
+    if (!sym) throw httpError(400, 'symbol parameter required');
+    const def = SYM.get(sym);
+    if (!def) throw httpError(404, 'unknown symbol ' + sym);
+    if (def.cls !== 'equity') {
+      return { available: false, reason: 'fundamentals apply to equities only', sym };
+    }
+    return { sym, ...(await fundamentals(sym)) };
   },
 
   '/api/news': async (u) => {

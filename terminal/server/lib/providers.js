@@ -29,6 +29,18 @@ const BASE = {
 /* --------------------------------------------------------------- helpers -- */
 const num = (v) => (v == null || Number.isNaN(+v) ? null : +v);
 
+/* Yahoo wraps numbers as { raw, fmt, longFmt } — or sometimes ships them bare. */
+const raw = (v) => {
+  if (v == null) return null;
+  if (typeof v === 'object') return num(v.raw);
+  return num(v);
+};
+/* Ratios arrive as fractions; the UI wants percent. */
+const pctOf = (v) => {
+  const n = raw(v);
+  return n == null ? null : +(n * 100).toFixed(2);
+};
+
 async function pool(items, size, worker) {
   const out = [];
   for (let i = 0; i < items.length; i += size) {
@@ -96,6 +108,99 @@ const yahoo = {
       return yahoo.quoteFromChart(sym, r);
     });
     return results.filter(r => r && !r.__error && r.last != null);
+  },
+
+  /* quoteSummary (fundamentals) is gated behind a cookie + crumb pair. Do the
+     handshake once an hour and reuse it; if it fails we report fundamentals as
+     unavailable rather than substituting invented ratios. */
+  _crumb: { value: null, cookie: null, at: 0 },
+  async crumb() {
+    const c = yahoo._crumb;
+    if (c.value && Date.now() - c.at < 3600e3) return c;
+    const consent = await fetch(process.env.IV_YAHOO_COOKIE_URL || 'https://fc.yahoo.com/', {
+      headers: { 'User-Agent': F.UA }, redirect: 'manual'
+    }).catch(() => null);
+    const setCookie = consent && (consent.headers.getSetCookie
+      ? consent.headers.getSetCookie().join('; ')
+      : consent.headers.get('set-cookie'));
+    const cookie = (setCookie || '').split(',').map(s => s.split(';')[0].trim())
+      .filter(Boolean).join('; ');
+    const res = await fetch(`${BASE.yahoo2}/v1/test/getcrumb`, {
+      headers: { 'User-Agent': F.UA, 'Cookie': cookie, 'Accept': 'text/plain' }
+    });
+    if (!res.ok) throw new Error('crumb handshake failed: HTTP ' + res.status);
+    const value = (await res.text()).trim();
+    if (!value || value.length > 32) throw new Error('crumb handshake returned junk');
+    yahoo._crumb = { value, cookie, at: Date.now() };
+    return yahoo._crumb;
+  },
+
+  async fundamentals(sym) {
+    const y = SYM.yahooTicker(sym);
+    if (!y) throw new Error('no yahoo ticker for ' + sym);
+    const { value, cookie } = await yahoo.crumb();
+    const modules = ['defaultKeyStatistics', 'financialData', 'summaryDetail',
+                     'recommendationTrend', 'incomeStatementHistory', 'assetProfile'].join(',');
+    const url = `${BASE.yahoo2}/v10/finance/quoteSummary/${encodeURIComponent(y)}` +
+                `?modules=${modules}&crumb=${encodeURIComponent(value)}`;
+    const j = await F.json(url, { headers: { Cookie: cookie } });
+    const r = j && j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0];
+    if (!r) throw new Error('yahoo: no fundamentals for ' + sym);
+
+    const ks = r.defaultKeyStatistics || {};
+    const fd = r.financialData || {};
+    const sd = r.summaryDetail || {};
+    const ap = r.assetProfile || {};
+    const rt = (r.recommendationTrend && r.recommendationTrend.trend || [])[0] || {};
+    const inc = ((r.incomeStatementHistory || {}).incomeStatementHistory) || [];
+
+    return {
+      available: true,
+      source: 'yahoo',
+      pe: raw(sd.trailingPE) ?? raw(ks.trailingPE),
+      forwardPe: raw(sd.forwardPE) ?? raw(ks.forwardPE),
+      eps: raw(ks.trailingEps),
+      pb: raw(ks.priceToBook),
+      ps: raw(ks.priceToSalesTrailing12Months) ?? raw(sd.priceToSalesTrailing12Months),
+      evEbitda: raw(ks.enterpriseToEbitda),
+      divYield: pctOf(sd.dividendYield),
+      payout: pctOf(sd.payoutRatio),
+      beta: raw(ks.beta) ?? raw(sd.beta),
+      roe: pctOf(fd.returnOnEquity),
+      roa: pctOf(fd.returnOnAssets),
+      grossMargin: pctOf(fd.grossMargins),
+      operMargin: pctOf(fd.operatingMargins),
+      profitMargin: pctOf(fd.profitMargins),
+      revenue: raw(fd.totalRevenue),
+      revenueGrowth: pctOf(fd.revenueGrowth),
+      debtToEquity: raw(fd.debtToEquity),
+      currentRatio: raw(fd.currentRatio),
+      freeCashflow: raw(fd.freeCashflow),
+      shares: raw(ks.sharesOutstanding),
+      float: raw(ks.floatShares),
+      shortInterest: pctOf(ks.shortPercentOfFloat),
+      target: raw(fd.targetMeanPrice),
+      targetHigh: raw(fd.targetHighPrice),
+      targetLow: raw(fd.targetLowPrice),
+      analysts: raw(fd.numberOfAnalystOpinions),
+      recommendation: fd.recommendationKey || null,
+      ratings: {
+        buy: (rt.strongBuy || 0) + (rt.buy || 0),
+        hold: rt.hold || 0,
+        sell: (rt.sell || 0) + (rt.strongSell || 0)
+      },
+      employees: raw(ap.fullTimeEmployees),
+      sector: ap.sector || null,
+      industry: ap.industry || null,
+      website: ap.website || null,
+      summary: ap.longBusinessSummary || null,
+      years: inc.slice(0, 4).map(y2 => ({
+        y: y2.endDate && y2.endDate.fmt ? +String(y2.endDate.fmt).slice(0, 4) : null,
+        rev: raw(y2.totalRevenue),
+        ni: raw(y2.netIncome),
+        op: raw(y2.operatingIncome)
+      })).filter(x => x.y && x.rev != null)
+    };
   },
 
   async history(sym, range) {

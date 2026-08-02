@@ -54,6 +54,7 @@ async function waitForPort(port, tries = 40) {
     IV_YAHOO_BASE: `http://127.0.0.1:${MOCK_PORT}/yahoo`,
     IV_COINGECKO_BASE: `http://127.0.0.1:${MOCK_PORT}/cg`,
     IV_FX_BASE: `http://127.0.0.1:${MOCK_PORT}/fx`,
+    IV_YAHOO_COOKIE_URL: `http://127.0.0.1:${MOCK_PORT}/cookie`,
     IV_QUOTE_TTL: '300',
     IV_POLL_OPEN: '600',
     IV_POLL_CLOSED: '600'
@@ -110,6 +111,23 @@ async function waitForPort(port, tries = 40) {
     'headlines auto-tag to universe symbols: ' + tagged.join(','));
   ok(tagged.includes('INFY') || tagged.includes('HDFCBANK'),
     'company names in the body also tag');
+
+  // ---- 5b. fundamentals (crumb handshake + quoteSummary) -------------------
+  const fa = await get('/api/fundamentals?symbol=RELIANCE');
+  ok(fa.status === 200 && fa.body.available === true,
+    'fundamentals resolve through the crumb handshake', JSON.stringify(fa.body).slice(0, 200));
+  ok(fa.body.pe === 28.4, `trailing P/E unwrapped from Yahoo's {raw} shape (${fa.body.pe})`);
+  ok(fa.body.roe === 9.14, `ratios converted from fraction to percent (roe=${fa.body.roe})`);
+  ok(fa.body.divYield === 0.37, `dividend yield in percent (${fa.body.divYield})`);
+  ok(fa.body.ratings && fa.body.ratings.buy === 26 && fa.body.ratings.sell === 2,
+    'analyst trend collapses strongBuy/buy and sell/strongSell');
+  ok((fa.body.years || []).length === 4 && fa.body.years[0].rev > 0,
+    `annual income statements parsed (${(fa.body.years || []).length} years)`);
+  ok(typeof fa.body.summary === 'string' && fa.body.summary.length > 10,
+    'company profile text carried through');
+
+  const faIdx = await get('/api/fundamentals?symbol=NIFTY');
+  ok(faIdx.body.available === false, 'fundamentals refused for non-equities rather than faked');
 
   // ---- 6. health -----------------------------------------------------------
   const health = await get('/api/health');

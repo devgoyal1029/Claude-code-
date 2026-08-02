@@ -160,6 +160,7 @@ python3 -m http.server 8899 --directory terminal
 | Data | Provider | Covers |
 |---|---|---|
 | Quotes + OHLC | **Yahoo Finance** chart API | NIFTY, SENSEX, BANKNIFTY, FINNIFTY, India VIX, all 50 NIFTY constituents, global indices, FX, commodities |
+| Fundamentals | **Yahoo** quoteSummary | P/E, forward P/E, EPS, P/B, P/S, EV/EBITDA, yield, payout, beta, ROE, ROA, margins, debt/equity, revenue history, analyst consensus and targets, company profile |
 | Crypto in INR | **CoinGecko** | BTC, ETH, SOL, XRP, DOGE |
 | FX | **Frankfurter** (ECB) | USDINR, EURINR, GBPINR, JPYINR |
 | News | **22 RSS feeds** | Economic Times, Mint, Moneycontrol, Business Standard, BusinessLine, Financial Express, Google News India |
@@ -190,8 +191,10 @@ Keys can also come from the environment: `IV_TWELVEDATA`, `IV_FINNHUB`,
   tick-by-tick requires a broker feed (Kite/Upstox/Angel One/Fyers).
 - **India G-Sec yields** resolve only with a keyed provider. Without one the API
   reports them `missing` and the UI shows a dash — it does not invent a number.
-- **Fundamentals** (P/E, margins, consensus) are still simulated. Wire a
-  fundamentals vendor into `server/lib/providers.js` to replace them.
+- **Fundamentals** need Yahoo's cookie + crumb handshake, which the server does
+  automatically and re-uses for an hour. If Yahoo refuses it, the API returns
+  `available: false` and the page renders dashes with the reason — it does not
+  fall back to invented ratios.
 
 ### API surface
 
@@ -200,6 +203,7 @@ Keys can also come from the environment: `IV_TWELVEDATA`, `IV_FINNHUB`,
 | `GET /api/health` | provider status, IST session, sample quote |
 | `GET /api/quotes?symbols=NIFTY,RELIANCE` | live quotes |
 | `GET /api/history?symbol=NIFTY&range=1D` | OHLCV bars |
+| `GET /api/fundamentals?symbol=RELIANCE` | ratios, margins, consensus, profile |
 | `GET /api/news?section=&symbol=&q=&limit=` | headlines |
 | `GET /api/wire` | newest headlines, wire format |
 | `GET /api/search?q=` | securities + stories |
@@ -263,19 +267,20 @@ terminal/
 └── tests/mock-upstream.js        stands in for the vendors, offline
 ```
 
-## Tests — 144 checks
+## Tests — 155 checks
 
 ```bash
-node tests/live-pipeline.test.js     # 34 — backend against a mock vendor
-node tests/live-browser.test.js      # 22 — browser against the live backend
+node tests/live-pipeline.test.js     # 42 — backend against a mock vendor
+node tests/live-browser.test.js      # 25 — browser against the live backend
 python3 -m http.server 8899 --directory . &
 node tests/ui-smoke.js               # 88 — every page, 3 widths, 2 themes
 ```
 
 `live-pipeline` boots `tests/mock-upstream.js`, which speaks the real wire
-formats (Yahoo chart JSON, CoinGecko, Frankfurter, RSS 2.0), points the real
-server at it, and asserts that vendor payloads become correct quotes, bars and
-tagged headlines — including that a dead upstream degrades instead of breaking.
+formats (Yahoo chart JSON and quoteSummary behind a crumb handshake, CoinGecko,
+Frankfurter, RSS 2.0), points the real server at it, and asserts that vendor
+payloads become correct quotes, bars, fundamentals and tagged headlines —
+including that a dead upstream degrades instead of breaking.
 
 `live-browser` drives Chromium against the running backend and asserts the page
 shows server-supplied prices (not simulated ones), that SSE moves the tape
@@ -302,7 +307,8 @@ asserts the page falls back and relabels itself SIMULATED.
   and, on hover, the provider list and last update) or **SIMULATED**.
 - The simulator is switched off entirely in live mode, so a made-up number can
   never mix into a real table.
-- A symbol with no real provider reports as unavailable and renders a dash.
+- A symbol with no real provider reports as unavailable and renders a dash, and
+  fundamentals the upstream will not serve show the reason instead of a number.
 - Live headlines carry their publication name and link to the original.
 
 ## Disclaimer

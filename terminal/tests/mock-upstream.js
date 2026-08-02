@@ -114,6 +114,70 @@ const server = http.createServer((req, res) => {
     return json(yahooChart(ticker, u.searchParams.get('range'), u.searchParams.get('interval')));
   }
 
+  // --- Yahoo crumb handshake ---
+  if (p === '/yahoo/v1/test/getcrumb') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    return res.end('mockCrumb123');
+  }
+  if (p === '/cookie') {
+    res.writeHead(200, { 'Set-Cookie': 'A1=mock-cookie; Path=/', 'Content-Type': 'text/plain' });
+    return res.end('ok');
+  }
+
+  // --- Yahoo quoteSummary (fundamentals) ---
+  m = p.match(/^\/yahoo\/v10\/finance\/quoteSummary\/(.+)$/);
+  if (m) {
+    const ticker = decodeURIComponent(m[1]);
+    if (u.searchParams.get('crumb') !== 'mockCrumb123') {
+      res.writeHead(401); return res.end('Invalid Crumb');
+    }
+    const px = priceFor(ticker);
+    const year = new Date().getFullYear();
+    return json({
+      quoteSummary: {
+        result: [{
+          defaultKeyStatistics: {
+            trailingEps: { raw: +(px / 28).toFixed(2) }, priceToBook: { raw: 4.31 },
+            enterpriseToEbitda: { raw: 14.2 }, beta: { raw: 1.06 },
+            sharesOutstanding: { raw: 6765000000 }, floatShares: { raw: 3100000000 },
+            shortPercentOfFloat: { raw: 0.0081 },
+            priceToSalesTrailing12Months: { raw: 2.14 }
+          },
+          financialData: {
+            returnOnEquity: { raw: 0.0914 }, returnOnAssets: { raw: 0.0432 },
+            grossMargins: { raw: 0.3421 }, operatingMargins: { raw: 0.1187 },
+            profitMargins: { raw: 0.0782 }, totalRevenue: { raw: 9740000000000 },
+            revenueGrowth: { raw: 0.117 }, debtToEquity: { raw: 43.7 },
+            currentRatio: { raw: 1.18 }, freeCashflow: { raw: 412000000000 },
+            targetMeanPrice: { raw: +(px * 1.11).toFixed(2) },
+            targetHighPrice: { raw: +(px * 1.28).toFixed(2) },
+            targetLowPrice: { raw: +(px * 0.87).toFixed(2) },
+            numberOfAnalystOpinions: { raw: 34 }, recommendationKey: 'buy'
+          },
+          summaryDetail: {
+            trailingPE: { raw: 28.4 }, forwardPE: { raw: 24.1 },
+            dividendYield: { raw: 0.0037 }, payoutRatio: { raw: 0.0912 }
+          },
+          recommendationTrend: { trend: [{ strongBuy: 12, buy: 14, hold: 6, sell: 1, strongSell: 1 }] },
+          incomeStatementHistory: {
+            incomeStatementHistory: [0, 1, 2, 3].map(i => ({
+              endDate: { fmt: `${year - i}-03-31` },
+              totalRevenue: { raw: 9740000000000 * Math.pow(0.9, i) },
+              operatingIncome: { raw: 1150000000000 * Math.pow(0.9, i) },
+              netIncome: { raw: 760000000000 * Math.pow(0.88, i) }
+            }))
+          },
+          assetProfile: {
+            sector: 'Energy', industry: 'Oil & Gas Refining',
+            fullTimeEmployees: 389000, website: 'https://example.test',
+            longBusinessSummary: 'Mock business summary used to verify the fundamentals pipeline.'
+          }
+        }],
+        error: null
+      }
+    });
+  }
+
   // --- CoinGecko ---
   if (p === '/cg/simple/price') {
     const ids = (u.searchParams.get('ids') || '').split(',');

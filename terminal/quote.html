@@ -202,31 +202,63 @@ IV.ready(function () {
 
   /* ---- fundamentals ---- */
   if (q.cls === 'equity') {
+    const faLabel = $('#faWrap').querySelector('.disclaimer');
+    const val = (v, suffix) => (v == null ? '—' : UI.fmt(v, 2) + (suffix || ''));
+
     API.fundamentals(sym).then(fa => {
+      if (!fa.available) {
+        faLabel.textContent = 'Unavailable — ' + (fa.reason || 'upstream did not return fundamentals');
+        $('#faGrid').innerHTML = '<div class="stat"><div class="k">Fundamentals</div>' +
+          '<div class="v">—</div></div>';
+        $('#ratings').innerHTML = '<p class="disclaimer">No analyst data available for this security.</p>';
+        return;
+      }
+      faLabel.textContent = fa.source === 'simulated'
+        ? 'Simulated — start the data server for real fundamentals'
+        : 'Source: ' + fa.source;
+
       $('#faGrid').innerHTML = [
-        ['P/E', fa.pe], ['EPS (TTM)', fa.eps], ['P/B', fa.pb], ['P/S', fa.ps],
-        ['EV/EBITDA', fa.evEbitda], ['Div Yield', fa.divYield + '%'], ['Payout', fa.payout + '%'],
-        ['Beta', fa.beta], ['ROE', fa.roe + '%'], ['ROA', fa.roa + '%'],
-        ['Gross Margin', fa.grossMargin + '%'], ['Oper Margin', fa.operMargin + '%'],
-        ['Net Debt/EBITDA', fa.netDebtEbitda], ['Current Ratio', fa.currentRatio],
-        ['Shares Out', UI.abbr(fa.shares)], ['Short Interest', fa.shortInterest + '%']
+        ['P/E', val(fa.pe)], ['Forward P/E', val(fa.forwardPe)],
+        ['EPS (TTM)', val(fa.eps)], ['P/B', val(fa.pb)], ['P/S', val(fa.ps)],
+        ['EV/EBITDA', val(fa.evEbitda)], ['Div Yield', val(fa.divYield, '%')],
+        ['Payout', val(fa.payout, '%')], ['Beta', val(fa.beta)],
+        ['ROE', val(fa.roe, '%')], ['ROA', val(fa.roa, '%')],
+        ['Gross Margin', val(fa.grossMargin, '%')], ['Oper Margin', val(fa.operMargin, '%')],
+        ['Debt/Equity', val(fa.debtToEquity)], ['Current Ratio', val(fa.currentRatio)],
+        ['Revenue (TTM)', fa.revenue == null ? '—' : '₹' + UI.abbr(fa.revenue)],
+        ['Shares Out', fa.shares == null ? '—' : UI.abbr(fa.shares)],
+        ['Short Interest', val(fa.shortInterest, '%')]
       ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
-      const drawBars = () => Charts.bars($('#faBars'),
-        fa.years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })),
-        { decimals: 1, suffix: 'B', signed: false });
-      drawBars();
-      window.addEventListener('resize', debounce(drawBars, 200));
+      const years = (fa.years || []).filter(y => y.rev != null);
+      if (years.length) {
+        const drawBars = () => Charts.bars($('#faBars'),
+          years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })),
+          { decimals: 0, suffix: 'B', signed: false });
+        drawBars();
+        window.addEventListener('resize', debounce(drawBars, 200));
+      } else {
+        $('#faBars').parentElement.parentElement.innerHTML =
+          '<p class="disclaimer">No annual revenue history available.</p>';
+      }
 
-      const tot = fa.ratings.buy + fa.ratings.hold + fa.ratings.sell;
+      const r = fa.ratings || { buy: 0, hold: 0, sell: 0 };
+      const tot = r.buy + r.hold + r.sell;
       const bar = (label, n, color) => `<div style="display:grid;grid-template-columns:44px 1fr 34px;gap:8px;align-items:center;font-size:12px;margin:5px 0">
         <span>${label}</span><span style="height:9px;background:var(--bg-sunken);display:block">
-        <i style="display:block;height:9px;width:${(n / tot * 100).toFixed(0)}%;background:${color}"></i></span>
+        <i style="display:block;height:9px;width:${tot ? (n / tot * 100).toFixed(0) : 0}%;background:${color}"></i></span>
         <span class="mono">${n}</span></div>`;
-      $('#ratings').innerHTML =
-        bar('Buy', fa.ratings.buy, 'var(--up)') + bar('Hold', fa.ratings.hold, 'var(--flat)') + bar('Sell', fa.ratings.sell, 'var(--down)') +
-        `<div class="mini-quote"><span class="l">12-month target</span><span class="r">${UI.fmt(fa.target, 2)}
-          <span class="${UI.cls(fa.target - q.last)}">${UI.pctStr((fa.target / q.last - 1) * 100)}</span></span></div>`;
+      $('#ratings').innerHTML = tot
+        ? bar('Buy', r.buy, 'var(--up)') + bar('Hold', r.hold, 'var(--flat)') + bar('Sell', r.sell, 'var(--down)') +
+          (fa.target != null
+            ? `<div class="mini-quote"><span class="l">12-month target${fa.analysts ? ' · ' + fa.analysts + ' analysts' : ''}</span>
+               <span class="r">${UI.fmt(fa.target, 2)}
+               <span class="${UI.cls(fa.target - q.last)}">${UI.pctStr((fa.target / q.last - 1) * 100)}</span></span></div>`
+            : '')
+        : '<p class="disclaimer">No analyst coverage reported.</p>';
+
+      if (fa.summary) $('#profile').textContent = fa.summary;
+      else if (fa.industry) $('#profile').textContent = `${q.name} · ${fa.sector || ''} · ${fa.industry}`;
     });
   } else {
     $('#faWrap').querySelector('.grid-2').style.display = 'none';

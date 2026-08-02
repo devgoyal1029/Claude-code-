@@ -503,34 +503,52 @@ IV.ready(function () {
       render: (sym) => {
         const q = Market.quote(sym);
         if (!q || q.cls !== 'equity') return { title: 'FINANCIAL ANALYSIS', html: '<p class="t-note">FA AVAILABLE FOR EQUITIES ONLY</p>' };
-        const fa = Market.fundamentals(sym);
         return {
           title: `${sym} — FINANCIAL ANALYSIS`,
-          html: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div class="kv">${[
-              ['P/E', fa.pe], ['EPS', fa.eps], ['P/B', fa.pb], ['P/S', fa.ps], ['EV/EBITDA', fa.evEbitda],
-              ['DIV YLD', fa.divYield + '%'], ['BETA', fa.beta], ['ROE', fa.roe + '%'],
-              ['GROSS MGN', fa.grossMargin + '%'], ['OPER MGN', fa.operMargin + '%'],
-              ['ND/EBITDA', fa.netDebtEbitda], ['SHORT INT', fa.shortInterest + '%'],
-              ['SHARES OUT', abbr(fa.shares)], ['TARGET', fmt(fa.target, 2)]
-            ].map(([k, v]) => `<span class="t-k">${k}</span><span class="t-v">${v}</span>`).join('')}</div>
-            <div><div class="t-note">REVENUE (USD BN)</div><div style="height:130px"><canvas id="faC"></canvas></div>
-              <div class="t-note" style="margin-top:6px">CONSENSUS ${fa.ratings.buy}B / ${fa.ratings.hold}H / ${fa.ratings.sell}S</div></div>
-          </div>
-          <table class="t-tbl" style="margin-top:10px"><thead><tr><th>FY</th><th>Revenue</th><th>Net Income</th><th>EPS</th><th>FCF</th></tr></thead><tbody>
-          ${fa.years.map(y => `<tr><td class="sym">${y.y}</td><td>${abbr(y.rev)}</td><td>${abbr(y.ni)}</td><td>${fmt(y.eps, 2)}</td><td>${abbr(y.fcf)}</td></tr>`).join('')}
-          </tbody></table>`,
+          html: '<p class="t-note" id="faLoad">LOADING FUNDAMENTALS…</p><div id="faBody"></div>',
           after: (body) => {
-            const draw = () => Charts.bars(body.querySelector('#faC'),
-              fa.years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })), { decimals: 0, signed: false });
-            setTimeout(draw, 20);
-            const ro = new ResizeObserver(draw); ro.observe(body);
-            return () => ro.disconnect();
+            let ro = null;
+            const v = (x, suf) => (x == null ? '—' : fmt(x, 2) + (suf || ''));
+            API.fundamentals(sym).then(fa => {
+              const load = body.querySelector('#faLoad');
+              if (!fa.available) {
+                load.textContent = 'FUNDAMENTALS UNAVAILABLE — ' + String(fa.reason || '').toUpperCase();
+                return;
+              }
+              load.textContent = 'SOURCE: ' + String(fa.source).toUpperCase();
+              const years = (fa.years || []).filter(y => y.rev != null);
+              body.querySelector('#faBody').innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                  <div class="kv">${[
+                    ['P/E', v(fa.pe)], ['FWD P/E', v(fa.forwardPe)], ['EPS', v(fa.eps)],
+                    ['P/B', v(fa.pb)], ['P/S', v(fa.ps)], ['EV/EBITDA', v(fa.evEbitda)],
+                    ['DIV YLD', v(fa.divYield, '%')], ['BETA', v(fa.beta)],
+                    ['ROE', v(fa.roe, '%')], ['GROSS MGN', v(fa.grossMargin, '%')],
+                    ['OPER MGN', v(fa.operMargin, '%')], ['DEBT/EQ', v(fa.debtToEquity)],
+                    ['SHORT INT', v(fa.shortInterest, '%')],
+                    ['SHARES OUT', fa.shares == null ? '—' : abbr(fa.shares)],
+                    ['TARGET', v(fa.target)]
+                  ].map(([k, val]) => `<span class="t-k">${k}</span><span class="t-v">${val}</span>`).join('')}</div>
+                  <div><div class="t-note">REVENUE (BN)</div>
+                    <div style="height:130px">${years.length ? '<canvas id="faC"></canvas>' : '<span class="t-note">NO HISTORY</span>'}</div>
+                    <div class="t-note" style="margin-top:6px">CONSENSUS ${fa.ratings.buy}B / ${fa.ratings.hold}H / ${fa.ratings.sell}S${fa.recommendation ? ' · ' + String(fa.recommendation).toUpperCase() : ''}</div></div>
+                </div>
+                ${years.length ? `<table class="t-tbl" style="margin-top:10px"><thead><tr><th>FY</th><th>Revenue</th><th>Operating</th><th>Net Income</th></tr></thead><tbody>
+                ${years.map(y => `<tr><td class="sym">${y.y}</td><td>${abbr(y.rev)}</td><td>${y.op == null ? '—' : abbr(y.op)}</td><td>${y.ni == null ? '—' : abbr(y.ni)}</td></tr>`).join('')}
+                </tbody></table>` : ''}`;
+              const c = body.querySelector('#faC');
+              if (c) {
+                const draw = () => Charts.bars(c,
+                  years.slice().reverse().map(y => ({ label: y.y, v: y.rev / 1e9 })), { decimals: 0, signed: false });
+                setTimeout(draw, 20);
+                ro = new ResizeObserver(draw); ro.observe(body);
+              }
+            });
+            return () => { if (ro) ro.disconnect(); };
           }
         };
       }
     },
-
     MSG: {
       title: 'MESSAGE PANE',
       render: () => ({
