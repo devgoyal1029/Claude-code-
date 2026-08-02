@@ -3278,6 +3278,37 @@ async function viewCompare(v) {
   if (cmpCount() >= 2) runCompare(out);
 }
 
+/* Live per-fund returns for Compare -- pulls daily NAV from api.mfapi.in for
+   each selected fund and computes 1Y (plain), 3Y/5Y (annualised), 3Y volatility
+   and Sharpe client-side, the same maths the fund page uses. At most 10 funds,
+   so 10 parallel calls -- fast, and it needs no stored NAV, so a freshly loaded
+   fund shows returns immediately. Shape matches compare_returns() so the table,
+   report and Excel render unchanged. */
+async function fundReturnsLive(funds) {
+  const rows = await Promise.all((funds || []).slice(0, 10).map(async f => {
+    try {
+      const { series } = await loadNav(f.code);
+      if (!series || series.length < 2) return null;
+      const rr = returns(series);
+      const g = (nm, k) => { const x = rr.find(p => p.name === nm); return x ? x[k] : null; };
+      const rk = risk(series, 3);
+      const last = series[series.length - 1];
+      return {
+        entity: f.name, kind: "Fund",
+        nav: last.v, nav_date: last.t.toISOString().slice(0, 10),
+        ret_1y: g("1Y", "abs"),          // 1Y plain change
+        ret_3y: g("3Y", "ann"),          // annualised
+        ret_5y: g("5Y", "ann"),
+        vol_3y: rk ? rk.vol : null,
+        sharpe_3y: rk ? rk.sharpe : null,
+        funds_covered: 1, basis: "own NAV (live)"
+      };
+    } catch (_e) { return null; }        // fund with no mfapi history is dropped
+  }));
+  return rows.filter(Boolean).sort((a, b) =>
+    (b.ret_1y ?? -1e9) - (a.ret_1y ?? -1e9));
+}
+
 async function runCompare(out) {
   // belt and braces: selection already refuses the mix, this catches any state
   // that arrived some other way (an old link, a stale CMP from before a reload)
@@ -3294,16 +3325,21 @@ async function runCompare(out) {
   const args = { p_funds: CMP.funds.map(f => f.code), p_amcs: CMP.amcs };
 
   try {
-    const [sumR, ovR, secR, hldR, retR] = await Promise.all([
+    const [sumR, ovR, secR, hldR] = await Promise.all([
       rpc("compare_summary",  args),
       rpc("compare_overlap",  args),
       rpc("compare_sectors",  { ...args, lim: 18 }),
-      rpc("compare_holdings", { ...args, lim: 35 }),
-      // soft: returns need scheme_nav_monthly loaded. If that Colab run has not
-      // happened the RPC 404s or comes back empty -- the rest of the comparison
-      // is still perfectly good, so the section just does not appear.
-      soft(rpc("compare_returns", args))
+      rpc("compare_holdings", { ...args, lim: 35 })
     ]);
+    // Returns: funds are fetched LIVE from api.mfapi.in per scheme, so any fund
+    // works whether or not its monthly NAV was ever ingested -- no "no history"
+    // gap. An AMC has no NAV of its own (its return is the median across ~100
+    // schemes), which cannot be fetched live, so a house still reads the stored
+    // mv_fund_returns. A comparison is funds-only or houses-only, so exactly one
+    // path runs.
+    const retR = CMP.amcs.length
+      ? (await soft(rpc("compare_returns", { p_amcs: CMP.amcs }))) || []
+      : await fundReturnsLive(CMP.funds);
     out.innerHTML = "";
     const names = sumR.map(r => r.entity);
 
