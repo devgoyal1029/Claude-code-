@@ -1,0 +1,35 @@
+# =============================================================================
+# render.yaml — the live backend, for when the web host cannot run Node.
+#
+# Shared hosting serves the pages; this serves the data. Point Render at this
+# repository ("New > Blueprint") and it reads everything below.
+#
+# The one thing it will not read is the API key: keys never belong in a file
+# that gets committed. Set IV_MARKETAUX in the Render dashboard under
+# Environment after the first deploy.
+# =============================================================================
+
+services:
+  - type: web
+    name: verdict-api
+    runtime: node
+    plan: free
+    region: singapore          # closest to India of Render's free regions
+    rootDir: terminal
+    # Zero dependencies by design, so there is nothing to install.
+    buildCommand: "node -e \"process.exit(process.versions.node.split('.')[0] >= 18 ? 0 : 1)\""
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Marketaux enriches the news with sentiment and entity tags. Leave it
+      # unset and the site still runs live on the free, keyless providers.
+      - key: IV_MARKETAUX
+        sync: false
+      # Free-plan sizing: hourly refresh x 3 requests = 72/day, under the 100 cap.
+      - key: IV_MARKETAUX_PAGES
+        value: "3"
+      - key: IV_MARKETAUX_BUDGET
+        value: "90"
