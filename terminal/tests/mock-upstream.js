@@ -31,6 +31,7 @@ const SEED = {
 };
 let drift = 0;
 let mxRequests = 0;   // how many Marketaux calls the server actually spent
+const FREE_TIER_LIMIT = 3;   // articles per request on Marketaux's free plan
 
 function priceFor(ticker) {
   const base = SEED[ticker] || 1000 + (hash(ticker) % 4000);
@@ -214,7 +215,8 @@ const server = http.createServer((req, res) => {
       return res.end(JSON.stringify({ error: { code: 'auth_error', message: 'no token' } }));
     }
     const page = +(u.searchParams.get('page') || 1);
-    const limit = +(u.searchParams.get('limit') || 3);
+    // Free tier hard-caps at 3 articles per request no matter what `limit` asks for.
+    const limit = Math.min(+(u.searchParams.get('limit') || 3) || 3, FREE_TIER_LIMIT);
     mxRequests++;
     const data = Array.from({ length: limit }, (_, i) => {
       const n = (page - 1) * limit + i + 1;
@@ -229,18 +231,23 @@ const server = http.createServer((req, res) => {
         published_at: new Date(Date.now() - n * 900000).toISOString(),
         source: 'moneycontrol.com',
         relevance_score: null,
+        // Shapes taken from a real free-tier response: indices come back as Yahoo
+        // carets, and plenty of tagged tickers are BSE series we don't carry.
         entities: [
+          { symbol: '^NSEI', name: 'NIFTY 50', exchange: 'NSE', country: 'in',
+            type: 'index', industry: 'N/A', match_score: 31.4,
+            sentiment_score: n % 3 === 0 ? -0.4021 : 0.6218, highlights: [] },
           { symbol: 'INFY.NS', name: 'Infosys Limited', exchange: 'NSE', country: 'in',
             type: 'equity', industry: 'Technology', match_score: 22.6,
-            sentiment_score: n % 3 === 0 ? -0.4021 : 0.6218, highlights: [] },
-          { symbol: 'TCS.NS', name: 'Tata Consultancy Services', exchange: 'NSE', country: 'in',
-            type: 'equity', industry: 'Technology', match_score: 14.2,
-            sentiment_score: n % 3 === 0 ? -0.2517 : 0.3106, highlights: [] }
+            sentiment_score: n % 3 === 0 ? -0.2517 : 0.3106, highlights: [] },
+          { symbol: 'AXISCBGPG.BO', name: 'Axis AAA Bond Plus SDL ETF', exchange: 'BSE',
+            country: 'in', type: 'etf', industry: 'N/A', match_score: 9.1,
+            sentiment_score: 0.3956, highlights: [] }
         ],
         similar: []
       };
     });
-    return json({ meta: { found: 4212, returned: limit, limit, page }, data });
+    return json({ meta: { found: 328417, returned: limit, limit, page }, data });
   }
   if (p === '/__mxcount') return json({ requests: mxRequests });
 

@@ -58,12 +58,13 @@ function loadConfig() {
     pollOpenMs: +(file.pollOpenMs || process.env.IV_POLL_OPEN || 5000),
     pollClosedMs: +(file.pollClosedMs || process.env.IV_POLL_CLOSED || 60000),
     newsTtlMs: +(file.newsTtlMs || process.env.IV_NEWS_TTL || 120000),
-    /* Marketaux is metered per request. Refresh it hourly and spend a few
-       pages per refresh, well inside the free plan's daily allowance. */
+    /* Marketaux is metered per request, and the free plan returns 3 articles
+       per request no matter what `limit` asks for. Hourly refresh x 3 pages =
+       72 requests/day, inside the 100/day allowance, for ~216 stories a day. */
     marketauxTtlMs: +(file.marketauxTtlMs || process.env.IV_MARKETAUX_TTL || 3600000),
     marketauxDailyBudget: +(file.marketauxDailyBudget || process.env.IV_MARKETAUX_BUDGET || 90),
     marketauxPagesPerRefresh: +(file.marketauxPagesPerRefresh || process.env.IV_MARKETAUX_PAGES || 3),
-    marketauxPageSize: +(file.marketauxPageSize || process.env.IV_MARKETAUX_PAGE_SIZE || 50),
+    marketauxPageSize: +(file.marketauxPageSize || process.env.IV_MARKETAUX_PAGE_SIZE || 3),
     quoteTtlMs: +(file.quoteTtlMs || process.env.IV_QUOTE_TTL || 5000),
     historyTtlMs: +(file.historyTtlMs || 300000),
     streamSymbols: file.streamSymbols || [

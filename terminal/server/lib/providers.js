@@ -361,14 +361,42 @@ const marketaux = {
     return Math.max(0, cfg.marketauxDailyBudget - marketaux.budget.used);
   },
 
+  /* Marketaux identifies entities with Yahoo-style tickers — '^NSEI' for the
+     Nifty, 'RELIANCE.NS' for a stock — which is exactly the mapping table in
+     symbols.js. Anything outside our universe (a bond series, a small-cap ETF)
+     is dropped rather than shown as a symbol the site cannot price. */
+  mapEntity(symbol) {
+    if (!symbol) return null;
+    const s = String(symbol).trim();
+    const direct = SYM.fromYahoo(s);                    // '^NSEI' -> NIFTY
+    if (direct) return direct;
+    const stripped = s.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    return SYM.get(stripped) ? stripped : null;         // 'RELIANCE.NS' -> RELIANCE
+  },
+
   normalise(a) {
     const entities = (a.entities || []).filter(e => e.symbol);
-    /* Marketaux scores sentiment per entity; the story-level figure is the
-       mean of the entities it actually mentions. */
+
+    /* Story sentiment is the mean across every scored entity — the broadest
+       read of the article's tone. Symbols, by contrast, are only the ones we
+       can actually link to a page. */
     const scored = entities.filter(e => typeof e.sentiment_score === 'number');
     const sentiment = scored.length
       ? +(scored.reduce((s, e) => s + e.sentiment_score, 0) / scored.length).toFixed(3)
       : null;
+
+    const mapped = [];
+    entities.forEach(e => {
+      const sym = marketaux.mapEntity(e.symbol);
+      if (sym && !mapped.some(m => m.symbol === sym)) {
+        mapped.push({
+          symbol: sym,
+          name: e.name || sym,
+          score: typeof e.sentiment_score === 'number' ? e.sentiment_score : null
+        });
+      }
+    });
+
     return {
       id: 'mx-' + a.uuid,
       t: a.title,
@@ -377,13 +405,9 @@ const marketaux = {
       image: a.image_url || null,
       src: a.source || 'Marketaux',
       ts: Date.parse(a.published_at) || Date.now(),
-      sym: entities.map(e => String(e.symbol).replace(/\.(NS|BO)$/i, '')).slice(0, 6),
+      sym: mapped.map(m => m.symbol).slice(0, 6),
       sentiment,
-      entities: entities.slice(0, 6).map(e => ({
-        symbol: String(e.symbol).replace(/\.(NS|BO)$/i, ''),
-        name: e.name,
-        score: typeof e.sentiment_score === 'number' ? e.sentiment_score : null
-      })),
+      entities: mapped.slice(0, 6),
       source: 'marketaux'
     };
   },
@@ -404,6 +428,16 @@ const marketaux = {
     };
   },
 
+  /* The free plan returns only 3 articles per request, so every request has to
+     earn its place: ask for news about the securities the site actually covers
+     rather than whatever is trending globally. */
+  focusSymbols(cfg) {
+    const list = (cfg.marketauxSymbols && cfg.marketauxSymbols.length)
+      ? cfg.marketauxSymbols
+      : ['NIFTY', 'SENSEX', 'RELIANCE', 'TCS', 'HDFCBANK', 'ICICIBANK', 'INFY'];
+    return list.map(s => (SYM.get(s) || {}).y).filter(Boolean).join(',');
+  },
+
   async fetch(cfg, query) {
     const budgetLeft = marketaux.remaining(cfg);
     if (budgetLeft <= 0) {
@@ -411,20 +445,25 @@ const marketaux = {
       return [];
     }
     const pages = Math.max(1, Math.min(cfg.marketauxPagesPerRefresh, budgetLeft));
+    const symbols = marketaux.focusSymbols(cfg);
     const out = [];
     let meta = {};
     for (let p = 1; p <= pages; p++) {
       try {
         const res = await marketaux.page(cfg, Object.assign(
           { page: String(p) },
-          query ? { search: query } : { filter_entities: 'true' }
+          query ? { search: query }
+                : (symbols ? { symbols, filter_entities: 'true' } : { filter_entities: 'true' })
         ));
         marketaux.spend(1);
         meta = res.meta;
         out.push(...res.items);
         /* Stop early rather than burning budget on empty pages. */
         if (!res.items.length) break;
-        if (meta.found && p * cfg.marketauxPageSize >= meta.found) break;
+        /* Count what came back, not what we asked for: the free plan caps a
+           page at 3 regardless of `limit`, so paging off the requested size
+           would walk straight past the end of the result set. */
+        if (meta.found && out.length >= meta.found) break;
       } catch (err) {
         marketaux.spend(1);
         console.warn('[marketaux] page', p, 'failed:', err.message);

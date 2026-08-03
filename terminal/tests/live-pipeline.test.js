@@ -149,6 +149,21 @@ async function waitForPort(port, tries = 40) {
   ok(!!negative, 'negative sentiment survives the averaging (not clamped to positive)');
   const mxSym = mxItems.find(a => (a.sym || []).includes('INFY'));
   ok(!!mxSym, 'entity symbols are stripped of the .NS suffix and matched to the universe');
+  /* The vendor tags indices with Yahoo carets and routinely tags BSE bond/ETF
+     series we do not carry. One must map, the other must be dropped — showing
+     an unpriceable ticker on a card is worse than showing none. */
+  const mxIdx = mxItems.find(a => (a.sym || []).includes('NIFTY'));
+  ok(!!mxIdx, "caret index tickers map to the universe ('^NSEI' -> NIFTY)");
+  const stray = mxItems.find(a => (a.sym || []).some(s => /AXISC/.test(s)));
+  ok(!stray, 'entities outside the universe are dropped, not shown raw');
+  const UNIVERSE = new Set(require(path.join(ROOT, 'server/lib/symbols.js')).all());
+  const unknown = [];
+  (nx.body.items || []).forEach(a => (a.sym || []).forEach(s => {
+    if (!UNIVERSE.has(s)) unknown.push(s);
+  }));
+  ok(unknown.length === 0,
+    'every symbol on every story resolves to a page the site can open',
+    unknown.slice(0, 6).join(', '));
 
   const spent = await (await fetch(`http://127.0.0.1:${MOCK_PORT}/__mxcount`)).json();
   ok(spent.requests > 0 && spent.requests <= 3,

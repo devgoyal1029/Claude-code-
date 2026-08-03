@@ -11,11 +11,12 @@
     "kiteAccessToken": ""
   },
 
-  "_marketaux": "Free plan is metered per REQUEST. The server refreshes hourly and spends marketauxPagesPerRefresh requests each time — keep pages x 24 under your daily allowance.",
+  "_marketaux": "Free plan is metered per REQUEST and returns 3 articles per request whatever marketauxPageSize says. The server refreshes hourly and spends marketauxPagesPerRefresh requests each time — keep pages x 24 under your daily allowance. Defaults: 3 x 24 = 72 requests/day (limit 100), about 216 enriched stories a day. Raise marketauxPageSize only on a paid plan.",
   "marketauxTtlMs": 3600000,
   "marketauxDailyBudget": 90,
   "marketauxPagesPerRefresh": 3,
-  "marketauxPageSize": 50,
+  "marketauxPageSize": 3,
+  "_marketauxSymbols": "Which of our symbols each request should ask about. Every request is precious at 3 articles, so it is aimed at the securities the site covers. Omit for the default index+large-cap set.",
 
   "pollOpenMs": 5000,
   "pollClosedMs": 60000,
