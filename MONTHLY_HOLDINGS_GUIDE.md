@@ -114,8 +114,19 @@ TARGET = "2026-07"    # YYYY-MM, or None = latest available
 
 For an AMC whose file you download by hand (no clean URL, or a one-off): in
 `load.py` leave `SOURCES = []`, set `DEFAULT_AMC = "<CODE>"` if the filenames
-don't name the house, run, and **drag the file(s) into the upload box**. Works for
-any structure — the parser matches columns by header text, not position.
+don't name the house, run, and **drag the file(s) into the upload box**.
+
+**This is how we loaded Kotak** (the `ConsolidatedSEBIPortfolio…xlsx` file was
+downloaded and uploaded). It also works if you'd rather download BOI/PPFAS by
+hand instead of using their URL.
+
+> **Every AMC's Excel has a different layout — and you never write per-AMC code
+> for it.** The parser finds each column by its **header text** (Instrument /
+> ISIN / % to NAV / Market Value / Rating), not by position, and detects the
+> percentage scale and the date per file. So one file with a sheet per scheme, or
+> a set of one-file-per-scheme, or a consolidated multi-AMC workbook — all parse
+> with the same `load.py`. If a brand-new layout ever parses to 0 rows, that's the
+> only case worth telling me about.
 
 > **Per-scheme files (like Invesco):** if you ever download a per-scheme set by
 > hand, `load.py` concatenates them and pushes **once per house**. Never push each
@@ -124,9 +135,15 @@ any structure — the parser matches columns by header text, not position.
 ### The AMCs already in the database (loaded before, parser handles them)
 
 Tata, Quant, SBI, Motilal, HDFC, Nippon, ICICI, ABSL, Axis, DSP, Mirae, Bandhan,
-Quantum, Abakkus, 360ONE — plus the five above. To refresh any of them next month,
-use the matching method: a direct link → `load.py` SOURCES; a hand-downloaded file
-→ `load.py` upload with `DEFAULT_AMC`.
+Quantum, Abakkus, 360ONE — plus the five above (Invesco, BOI, PPFAS, Kotak,
+JioBR). To refresh any of them next month, use the matching method: a direct link
+→ `load.py` SOURCES; a hand-downloaded file → `load.py` upload with `DEFAULT_AMC`.
+
+**Not loaded yet (do these when you want them):** **HSBC** (we deferred it this
+round), and any others you care about — UTI, Franklin, Canara Robeco, Sundaram,
+Edelweiss, LIC, Baroda BNP, Mahindra Manulife. All of these publish a monthly
+portfolio; grab the direct `.xlsx`/`.xls` link (or download by hand) and load
+them exactly like BOI/PPFAS/Kotak — nothing new to write.
 
 > **AMC code must be identical every month.** `HDFC` and `HDFC MF` become two
 > different houses and split every cross-fund number in half. Reuse the exact code
